@@ -1,0 +1,85 @@
+{
+  "name": "react-boilerplate",
+  "version": "0.1.0",
+  "license": "LicenseRef-LICENSE",
+  "private": true,
+  "dependencies": {
+    "@emotion/css": "^11.1.3",
+    "@emotion/react": "^11.4.1",
+    "@emotion/styled": "^11.3.0",
+    "@mui/icons-material": "^6.1.6",
+    "@mui/lab": "^6.0.0-beta.14",
+    "@mui/material": "^6.1.6",
+    "@mui/styles": "^6.1.6",
+    "axios": "^1.4.0",
+    "history": "^5.2.0",
+    "i18next": "^23.2.3",
+    "jotai": "^2.17.1",
+    "localforage": "^1.9.0",
+    "lodash-es": "^4.17.20",
+    "prop-types": "^15.7.2",
+    "react": "^18.1.0",
+    "react-dom": "^18.1.0",
+    "react-helmet-async": "^2.0.3",
+    "react-i18next": "^15.1.1",
+    "react-router-dom": "^6.2.1",
+    "web-vitals": "^4.0.0",
+    "workbox-background-sync": "^7.0.0",
+    "workbox-broadcast-update": "^7.0.0",
+    "workbox-cacheable-response": "^7.0.0",
+    "workbox-core": "^7.0.0",
+    "workbox-expiration": "^7.0.0",
+    "workbox-google-analytics": "^7.0.0",
+    "workbox-navigation-preload": "^7.0.0",
+    "workbox-precaching": "^7.0.0",
+    "workbox-range-requests": "^7.0.0",
+    "workbox-routing": "^7.0.0",
+    "workbox-strategies": "^7.0.0",
+    "workbox-streams": "^7.0.0"
+  },
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "updateVersion": "node scripts/updateVersion.mjs",
+    "serve": "serve -s build -l 4000",
+    "lint": "eslint --ext .jsx,.js src/ --fix"
+  },
+  "eslintConfig": {
+    "extends": "react-app"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "^7.17.0",
+    "@babel/preset-react": "^7.16.7",
+    "@eslint/compat": "^1.2.2",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.14.0",
+    "@nabla/vite-plugin-eslint": "^2.0.2",
+    "@vitejs/plugin-react": "^4.0.0",
+    "eslint": "^9.14.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-import-resolver-alias": "^1.1.2",
+    "eslint-plugin-flowtype": "^8.0.3",
+    "eslint-plugin-import": "^2.25.4",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-react": "^7.24.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "rollup-plugin-visualizer": "^5.5.1",
+    "sass": "^1.35.1",
+    "semver": "^7.3.7",
+    "vite": "^5.0.7",
+    "vite-plugin-pwa": "^0.20.0",
+    "yargs": "^17.5.1"
+  }
+}
