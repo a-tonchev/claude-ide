@@ -366,6 +366,77 @@ const orangeVariant = {
   },
 };
 
+const darkIdeVariant = {
+  name: 'Dark IDE',
+  palette: {
+    mode: 'dark',
+    primary: {
+      main: '#58a6ff',
+      contrastText: '#ffffff',
+    },
+    secondary: {
+      main: '#1f6feb',
+      contrastText: '#ffffff',
+    },
+    success: {
+      main: '#3fb950',
+    },
+    warning: {
+      main: '#f0883e',
+    },
+    error: {
+      main: '#f85149',
+    },
+    background: {
+      default: '#0d1117',
+      paper: '#161b22',
+    },
+    text: {
+      primary: '#e6edf3',
+      secondary: '#8b949e',
+    },
+    divider: '#30363d',
+    body: {
+      background: '#0d1117',
+    },
+  },
+  header: {
+    color: '#e6edf3',
+    background: '#161b22',
+    search: {
+      color: '#8b949e',
+    },
+    indicator: {
+      background: '#58a6ff',
+    },
+  },
+  sidebar: {
+    color: '#e6edf3',
+    background: '#0d1117',
+    header: {
+      color: '#e6edf3',
+      background: '#161b22',
+      brand: {
+        color: '#58a6ff',
+      },
+    },
+    footer: {
+      color: '#8b949e',
+      background: '#161b22',
+      online: {
+        background: '#3fb950',
+      },
+    },
+    badge: {
+      color: '#ffffff',
+      background: '#1f6feb',
+    },
+  },
+  body: {
+    background: '#0d1117',
+  },
+};
+
 const variants = [
   orangeVariant,
   greenVariant,
@@ -374,6 +445,7 @@ const variants = [
   blueVariant,
   indigoVariant,
   tealVariant,
+  darkIdeVariant,
 ];
 
 export default variants;

@@ -25,16 +25,17 @@
     "esm": "^3.2.25",
     "express-useragent": "^1.0.15",
     "ipaddr.js": "^2.0.1",
-    "lodash-es": "^4.17.21",
+    "lodash-es": "^4.17.23",
     "mongo-dot-notation": "^3.1.0",
     "mongodb": "^6.2.0",
+    "node-pty": "^1.1.0",
     "nodemon": "^3.0.1",
-    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.49.0"
+    "uWebSockets.js": "uNetworking/uWebSockets.js#v20.57.0"
   },
   "scripts": {
     "start": "node --import ./register.mjs index.js",
-    "start-dev": "environment=local ./node_modules/nodemon/bin/nodemon.js --import ./register.mjs index.js -q",
-    "start-dev-inspect": "environment=local ./node_modules/nodemon/bin/nodemon.js --inspect --import ./register.mjs index.js -q",
+    "start-dev": "node ./node_modules/nodemon/bin/nodemon.js --import ./register.mjs index.js -q",
+    "start-dev-inspect": "node ./node_modules/nodemon/bin/nodemon.js --inspect --import ./register.mjs index.js -q",
     "lint": "eslint src/**/*.js startup/**/*.js --fix",
     "createLib": "node scripts/libTemplate/createLib.cjs -o"
   },

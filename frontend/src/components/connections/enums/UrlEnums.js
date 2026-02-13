@@ -1,5 +1,8 @@
 const UrlEnums = {
   MAIN: '/',
+  DASHBOARD: '/',
+  INSTANCE_VIEW: '/instance/:instanceId',
+  INSTANCE_WINDOW: '/window/:instanceId',
   PROFILE: '/profile',
   ADMIN: '/admin',
   LOGIN: '/login',

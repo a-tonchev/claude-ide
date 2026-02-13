@@ -5,8 +5,10 @@ import mongoPool from '#modules/db/mongoPool';
 
 import setupFaviconRoute from './routes/setup/setupFaviconRoute';
 import setupMainRoute from './routes/setup/setupMainRoute';
+import setupCorsPreflightRoute from './routes/setup/setupCorsPreflightRoute';
 import setupRouteHandlers from './routes/setup/setupRouteHandlers';
 import setupNotFoundRoute from './routes/setup/setupNotFoundRoute';
+import WsHandler from '#modules/wsHandler/WsHandler';
 
 const settingsToUse = SystemSettingsServices.getSettings();
 
@@ -22,6 +24,10 @@ const app = uWebSockets.App();
 setupFaviconRoute(app);
 
 setupMainRoute(app);
+
+setupCorsPreflightRoute(app);
+
+WsHandler.setup(app);
 
 setupRouteHandlers(app, mongoSetup);
 

@@ -16,7 +16,7 @@ const qsToObject = qs => {
 const getParameters = (req, res, path) => {
   const params = {};
 
-  if (req.getMethod() !== 'get' || !path.includes('/:')) return params;
+  if (!path.includes('/:')) return params;
 
   let paramsIndex = 0;
 

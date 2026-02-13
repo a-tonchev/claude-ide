@@ -7,7 +7,9 @@ import Login from '@/screens/auth/Login';
 import SignUp from '@/screens/auth/SignUp';
 import Logout from '@/screens/auth/Logout';
 import NotFoundPage from '@/screens/NotFoundPage';
-import Home from '@/screens/Home';
+import Dashboard from '@/screens/Dashboard/Dashboard';
+import InstanceView from '@/screens/InstanceView/InstanceView';
+import InstanceWindow from '@/screens/InstanceWindow/InstanceWindow';
 import Profile from '@/screens/users/Profile';
 import ForgotPassword from '@/screens/auth/ForgetPassword';
 import ResetPassword from '@/screens/auth/ResetPassword';
@@ -15,9 +17,16 @@ import Showcase from '@/screens/hacktoberfest/Showcase';
 
 const routes = [
   {
-    path: UrlEnums.MAIN,
-    element: <Home />,
-    type: 'authenticated',
+    path: UrlEnums.DASHBOARD,
+    element: <Dashboard />,
+  },
+  {
+    path: UrlEnums.INSTANCE_VIEW,
+    element: <InstanceView />,
+  },
+  {
+    path: UrlEnums.INSTANCE_WINDOW,
+    element: <InstanceWindow />,
   },
   { path: UrlEnums.PROFILE, element: <Profile />, type: 'authenticated' },
   { path: UrlEnums.LOGOUT, element: <Logout />, type: 'authenticated' },

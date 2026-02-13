@@ -51,8 +51,8 @@ const GlobalStyles = () => {
 
   return <Global styles={styles} />;
 };
-// Choose Colorset from variants.js
-const myTheme = muiTheme[1];
+// Choose Colorset from variants.js (7 = Dark IDE)
+const myTheme = muiTheme[7];
 
 const DesignProvider = ({ children }) => (
   <StylesProvider injectFirst>
