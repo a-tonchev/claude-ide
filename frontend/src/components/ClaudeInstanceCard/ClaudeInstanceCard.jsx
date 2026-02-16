@@ -1,4 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, {
+  useState, useCallback, useRef, useEffect,
+} from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
@@ -15,6 +17,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#6897BB' },
@@ -51,8 +54,12 @@ const ClaudeInstanceCard = ({
   // Build a chronological feed of user messages + milestones + claude messages
   const feed = [];
   userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
-  milestones.forEach(m => feed.push({ kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp }));
-  messages.forEach(m => feed.push({ kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp }));
+  milestones.forEach(m => feed.push({
+    kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp,
+  }));
+  messages.forEach(m => feed.push({
+    kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
+  }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
@@ -76,7 +83,7 @@ const ClaudeInstanceCard = ({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       if (inputText.trim()) {
-        onSendInput(instance.id, inputText + '\r');
+        onSendInput(instance.id, `${inputText}\r`);
         setInputText('');
       }
     }
@@ -84,7 +91,7 @@ const ClaudeInstanceCard = ({
 
   const handleSend = useCallback(() => {
     if (inputText.trim()) {
-      onSendInput(instance.id, inputText + '\r');
+      onSendInput(instance.id, `${inputText}\r`);
       setInputText('');
     }
   }, [inputText, instance.id, onSendInput]);
@@ -99,32 +106,42 @@ const ClaudeInstanceCard = ({
       }}
     >
       {/* Header: Status + Name */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+      }}
+      >
         <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
         <Typography sx={{ fontSize: '0.75rem', color: status.color, fontWeight: 500 }}>
           {status.label}
         </Typography>
-        <Typography
-          sx={{
-            fontSize: '0.8rem',
-            color: '#A9B7C6',
-            fontWeight: 600,
-            flex: 1,
-            textAlign: 'right',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, justifyContent: 'flex-end', minWidth: 0,
+        }}
         >
-          {instance.projectName || instance.name}
-        </Typography>
+          <AutoAwesomeIcon sx={{ fontSize: 14, color: '#CC7832', flexShrink: 0 }} />
+          <Typography
+            sx={{
+              fontSize: '0.8rem',
+              color: '#A9B7C6',
+              fontWeight: 600,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {instance.projectName || instance.name}
+          </Typography>
+        </Box>
       </Box>
 
       {/* Activity Feed — user messages + milestones interleaved */}
       {feed.length > 0 && (
         <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
-            <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600, flex: 1 }}>
+            <Typography sx={{
+              fontSize: '0.65rem', color: '#808080', fontWeight: 600, flex: 1,
+            }}
+            >
               ACTIVITY
             </Typography>
             {feed.length > 5 && (
@@ -139,8 +156,16 @@ const ClaudeInstanceCard = ({
             {visibleFeed.map((item, idx) => {
               if (item.kind === 'user') {
                 return (
-                  <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
-                    <PersonIcon sx={{ fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                    }}
+                  >
+                    <PersonIcon sx={{
+                      fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0,
+                    }}
+                    />
                     <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
                       {item.text}
                     </Typography>
@@ -150,11 +175,19 @@ const ClaudeInstanceCard = ({
               if (item.kind === 'message') {
                 const msgColor = item.messageType === 'success' ? '#7CB368'
                   : item.messageType === 'warning' ? '#CC7832'
-                  : item.messageType === 'error' ? '#BC3F3C'
-                  : '#A9B7C6';
+                    : item.messageType === 'error' ? '#BC3F3C'
+                      : '#A9B7C6';
                 return (
-                  <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
-                    <ChatIcon sx={{ fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0 }} />
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                    }}
+                  >
+                    <ChatIcon sx={{
+                      fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0,
+                    }}
+                    />
                     <Typography sx={{ fontSize: '0.7rem', color: msgColor, lineHeight: 1.4 }}>
                       {item.text}
                     </Typography>
@@ -162,8 +195,16 @@ const ClaudeInstanceCard = ({
                 );
               }
               return (
-                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
-                  <SmartToyIcon sx={{ fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                  }}
+                >
+                  <SmartToyIcon sx={{
+                    fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0,
+                  }}
+                  />
                   <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
                     <span style={{ color: '#7CB368' }}>{item.accomplished}</span>
                     {item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
@@ -173,7 +214,10 @@ const ClaudeInstanceCard = ({
             })}
           </Box>
           {isThinking && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+            <Box sx={{
+              display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5,
+            }}
+            >
               <CircularProgress size={10} sx={{ color: '#6897BB' }} />
               <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
                 Claude is working...
@@ -197,7 +241,10 @@ const ClaudeInstanceCard = ({
       {/* Plans */}
       {plans.length > 0 && (
         <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
-          <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.25 }}>
+          <Typography sx={{
+            fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.25,
+          }}
+          >
             PLANS
           </Typography>
           {plans.map((plan, idx) => (
@@ -220,8 +267,14 @@ const ClaudeInstanceCard = ({
 
       {/* User Choices (when waiting) */}
       {pending && (
-        <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41' }}>
-          <Typography sx={{ fontSize: '0.75rem', color: '#CC7832', mb: 0.75, fontWeight: 500 }}>
+        <Box sx={{
+          px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41',
+        }}
+        >
+          <Typography sx={{
+            fontSize: '0.75rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
+          }}
+          >
             {pending.message}
           </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -274,7 +327,10 @@ const ClaudeInstanceCard = ({
       </Box>
 
       {/* Buttons */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5 }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5,
+      }}
+      >
         <IconButton
           size="small"
           onClick={() => onOpenPlaceholder(instance.id)}

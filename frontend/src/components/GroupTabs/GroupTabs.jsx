@@ -41,7 +41,9 @@ function getGroupCounts(instances, groupId) {
   return { counts, terminals };
 }
 
-const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup, instances }) => {
+const GroupTabs = ({
+  groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup, instances,
+}) => {
   const [contextMenu, setContextMenu] = useState(null);
 
   const instanceList = useMemo(
@@ -103,7 +105,7 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
             <Tab
               key={group.id}
               onContextMenu={group.virtual ? undefined : e => handleContextMenu(e, group.id)}
-              label={
+              label={(
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                   <Typography sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
                     {group.name}
@@ -115,7 +117,9 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
                         key={status}
                         size="small"
                         label={`${count} ${chip.label}`}
-                        sx={{ height: 18, fontSize: '0.65rem', bgcolor: chip.bgcolor, color: chip.color }}
+                        sx={{
+                          height: 18, fontSize: '0.65rem', bgcolor: chip.bgcolor, color: chip.color,
+                        }}
                       />
                     );
                   })}
@@ -123,14 +127,18 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
                     <Chip
                       size="small"
                       label={`${terminals} term`}
-                      sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#4E5254', color: '#808080' }}
+                      sx={{
+                        height: 18, fontSize: '0.65rem', bgcolor: '#4E5254', color: '#808080',
+                      }}
                     />
                   )}
                   {stoppedCount > 0 && runningCount === 0 && (
                     <Chip
                       size="small"
                       label={`${savedItemCount} saved`}
-                      sx={{ height: 18, fontSize: '0.65rem', bgcolor: '#3C3F41', color: '#606366' }}
+                      sx={{
+                        height: 18, fontSize: '0.65rem', bgcolor: '#3C3F41', color: '#606366',
+                      }}
                     />
                   )}
                   {onClose && !group.virtual && (
@@ -149,7 +157,7 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
                     </IconButton>
                   )}
                 </Box>
-              }
+              )}
             />
           );
         })}

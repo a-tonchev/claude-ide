@@ -10,9 +10,9 @@ import {
   addClaudeMessage,
   setPendingInput,
   addPlanToInstance,
+  InstanceStores,
 } from '@/stores/instanceAtoms';
 import { clearPlaceholder } from '@/stores/groupAtoms';
-import { InstanceStores } from '@/stores/instanceAtoms';
 
 const RECONNECT_DELAY = 3000;
 
@@ -90,21 +90,33 @@ function handleMessage(event) {
         updateInstanceField(message.instanceId, 'status', message.status);
         break;
 
-      case 'milestone':
+      case 'milestone': {
         addMilestone(message.instanceId, {
           accomplished: message.accomplished,
           workingOn: message.workingOn,
           timestamp: new Date().toISOString(),
         });
+        // Auto-clear stale "thinking" status on activity
+        const mInst = InstanceStores.instancesStore.get()[message.instanceId];
+        if (mInst && ['thinking', 'running'].includes(mInst.status)) {
+          updateInstanceField(message.instanceId, 'status', 'working');
+        }
         break;
+      }
 
-      case 'claude_message':
+      case 'claude_message': {
         addClaudeMessage(message.instanceId, {
           text: message.text,
           type: message.messageType || 'info',
           timestamp: message.timestamp || new Date().toISOString(),
         });
+        // Auto-clear stale "thinking" status on activity
+        const cmInst = InstanceStores.instancesStore.get()[message.instanceId];
+        if (cmInst && ['thinking', 'running'].includes(cmInst.status)) {
+          updateInstanceField(message.instanceId, 'status', 'working');
+        }
         break;
+      }
 
       case 'user_input_needed':
         setPendingInput(message.instanceId, {
@@ -234,7 +246,7 @@ function disconnect() {
   }
 }
 
-const useWebSocket = (onMessage) => {
+const useWebSocket = onMessage => {
   const listenerRef = useRef(onMessage);
   listenerRef.current = onMessage;
 

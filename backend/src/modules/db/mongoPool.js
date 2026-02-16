@@ -35,7 +35,6 @@ const mongoPool = connOptions => {
 
   process.on('SIGINT', function () {
     client.close();
-    process.exit();
   });
 
   return async ctx => {

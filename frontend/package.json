@@ -12,6 +12,7 @@
     "@mui/material": "^6.1.6",
     "@mui/styles": "^6.1.6",
     "axios": "^1.4.0",
+    "es-abstract": "^1.24.1",
     "highlight.js": "^11.11.1",
     "history": "^5.2.0",
     "i18next": "^23.2.3",

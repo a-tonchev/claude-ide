@@ -1,4 +1,6 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import {
+  useState, useCallback, useEffect, useMemo,
+} from 'react';
 import { Box, Grid, Typography } from '@mui/material';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import { Helmet } from 'react-helmet-async';
@@ -23,7 +25,9 @@ import Connections, { ApiEndpoints } from '@/components/connections/Connections'
 import useInstances from '@/hooks/useInstances';
 import useGroups from '@/hooks/useGroups';
 import { assignToPlaceholder } from '@/helpers/placeholderHelper';
-import { setPlaceholder, removeGroup, upsertGroup, initPlaceholders } from '@/stores/groupAtoms';
+import {
+  setPlaceholder, removeGroup, upsertGroup, initPlaceholders,
+} from '@/stores/groupAtoms';
 import { addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
@@ -98,9 +102,9 @@ const Dashboard = () => {
 
   // Filter instances for active group
   const activeGroupInstances = useMemo(
-    () => activeGroupId === UNGROUPED_ID
+    () => (activeGroupId === UNGROUPED_ID
       ? ungroupedInstances
-      : instanceList.filter(i => i.groupId === activeGroupId),
+      : instanceList.filter(i => i.groupId === activeGroupId)),
     [instanceList, activeGroupId, ungroupedInstances],
   );
 
@@ -165,7 +169,9 @@ const Dashboard = () => {
 
   const handleLoadGroup = useCallback(group => {
     const id = group._id || group.id;
-    upsertGroup({ id, name: group.name, items: group.items || [], saved: true });
+    upsertGroup({
+      id, name: group.name, items: group.items || [], saved: true,
+    });
     initPlaceholders(id);
     setActiveGroupId(id);
   }, [setActiveGroupId]);
@@ -192,13 +198,11 @@ const Dashboard = () => {
   // Saved items that don't have a running instance
   const stoppedItems = useMemo(() => {
     if (!activeGroup?.items?.length) return [];
-    return activeGroup.items.filter(item => {
-      return !activeGroupInstances.some(inst => {
-        if (inst.type !== item.type) return false;
-        if (inst.type === 'claude') return inst.projectId === item.projectId;
-        return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
-      });
-    });
+    return activeGroup.items.filter(item => !activeGroupInstances.some(inst => {
+      if (inst.type !== item.type) return false;
+      if (inst.type === 'claude') return inst.projectId === item.projectId;
+      return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
+    }));
   }, [activeGroup, activeGroupInstances]);
 
   const runGroup = useCallback(async groupId => {
@@ -206,7 +210,7 @@ const Dashboard = () => {
     if (!group?.items?.length) return;
     // Enrich claude items that are missing path
     const needsEnrichment = group.items.some(i => i.type === 'claude' && !i.path);
-    let items = group.items;
+    let { items } = group;
     if (needsEnrichment) {
       const result = await Connections.postRequest(ApiEndpoints.projectsAll, {});
       if (result?.ok) {
@@ -221,9 +225,7 @@ const Dashboard = () => {
       }
     }
     // Default shell for terminals missing it
-    items = items.map(item =>
-      item.type === 'terminal' && !item.shell ? { ...item, shell: 'powershell' } : item,
-    );
+    items = items.map(item => (item.type === 'terminal' && !item.shell ? { ...item, shell: 'powershell' } : item));
     startGroup(groupId, items);
   }, [groups, startGroup]);
 
@@ -239,7 +241,7 @@ const Dashboard = () => {
     const gid = activeGroupId;
     if (!gid) return;
     if (item.type === 'claude') {
-      let path = item.path;
+      let { path } = item;
       if (!path && item.projectId) {
         const result = await Connections.postRequest(ApiEndpoints.projectsAll, {});
         if (result?.ok) {
@@ -288,7 +290,10 @@ const Dashboard = () => {
         <title>Claude IDE</title>
       </Helmet>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#2B2B2B' }}>
+      <Box sx={{
+        display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#2B2B2B',
+      }}
+      >
         <TitleBar
           onNewGroup={handleNewGroup}
           onAddClaude={() => setClaudeDialogOpen(true)}
@@ -310,9 +315,15 @@ const Dashboard = () => {
         />
 
         {/* Cards Area */}
-        <Box sx={{ flex: '0 0 auto', maxHeight: '40vh', overflow: 'auto', px: 2, py: 1.5 }}>
+        <Box sx={{
+          flex: '0 0 auto', maxHeight: '40vh', overflow: 'auto', px: 2, py: 1.5,
+        }}
+        >
           {activeGroupInstances.length === 0 && stoppedItems.length === 0 ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4 }}>
+            <Box sx={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4,
+            }}
+            >
               <Box sx={{
                 width: 64,
                 height: 64,
@@ -323,7 +334,8 @@ const Dashboard = () => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 mb: 2,
-              }}>
+              }}
+              >
                 <TerminalIcon sx={{ fontSize: 28, color: '#4E5254' }} />
               </Box>
               <Typography sx={{ color: '#808080', fontSize: '0.85rem' }}>

@@ -2,6 +2,7 @@ import os from 'os';
 import fs from 'fs';
 import crypto from 'crypto';
 import pty from 'node-pty';
+import treeKill from 'tree-kill';
 import { setupForClaude, cleanupForClaude } from '../../../mcp/setupMcp.js';
 import SystemSettingsServices from '#modules/systemSettings/SystemSettingsServices';
 
@@ -221,12 +222,7 @@ const InstanceManager = {
 
     instance.status = 'exited';
 
-    try {
-      instance.pty.kill();
-    } catch (e) {
-      // Process may already be dead
-    }
-
+    // Detach listeners first so we don't get spurious events during kill
     if (instance.onData) {
       instance.onData.dispose();
       instance.onData = null;
@@ -235,6 +231,25 @@ const InstanceManager = {
       instance.onExit.dispose();
       instance.onExit = null;
     }
+
+    const pid = instance.pty.pid;
+
+    try {
+      // Send Ctrl+C to gracefully stop processes inside the PTY (especially WSL children)
+      instance.pty.write('\x03');
+    } catch (e) { /* ignore */ }
+
+    // Give processes a moment to handle SIGINT, then force-kill the tree
+    setTimeout(() => {
+      try {
+        if (pid) {
+          treeKill(pid, 'SIGKILL', () => {});
+        }
+      } catch (e) { /* ignore */ }
+      try {
+        instance.pty.kill();
+      } catch (e) { /* ignore */ }
+    }, 500);
 
     instances.delete(instanceId);
     return true;
@@ -369,6 +384,14 @@ const InstanceManager = {
       }
     }
     return result;
+  },
+
+  stopAll() {
+    const ids = [...instances.keys()];
+    for (const id of ids) {
+      InstanceManager.stop(id);
+    }
+    return ids;
   },
 
   stopGroup(groupId) {

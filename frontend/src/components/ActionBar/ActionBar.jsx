@@ -5,7 +5,9 @@ import SaveIcon from '@mui/icons-material/Save';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 
-const ActionBar = ({ onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop }) => {
+const ActionBar = ({
+  onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop,
+}) => {
   if (!showSave && !showRun && !showStop) return null;
 
   return (

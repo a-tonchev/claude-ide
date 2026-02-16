@@ -1,4 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import {
+  useState, useRef, useCallback, useEffect,
+} from 'react';
 import { useParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -13,6 +15,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
@@ -67,8 +70,12 @@ const InstanceWindow = () => {
   // Build chronological feed
   const feed = [];
   userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
-  milestones.forEach(m => feed.push({ kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp }));
-  messages.forEach(m => feed.push({ kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp }));
+  milestones.forEach(m => feed.push({
+    kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp,
+  }));
+  messages.forEach(m => feed.push({
+    kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
+  }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
 
   const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
@@ -118,7 +125,7 @@ const InstanceWindow = () => {
     if (instance?.type === 'claude' && instance.status !== 'exited') {
       updateInstanceField(instanceId, 'status', 'thinking');
     }
-    writeToInstance(instanceId, inputText + '\r');
+    writeToInstance(instanceId, `${inputText}\r`);
     setInputText('');
   }, [inputText, instanceId, writeToInstance, sendUserMessage, pending, instance?.type, instance?.status]);
 
@@ -154,21 +161,46 @@ const InstanceWindow = () => {
 
   if (!instance) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B',
+      }}
+      >
         <Typography sx={{ color: '#808080' }}>Instance not found</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#2B2B2B' }}>
+    <Box sx={{
+      display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#2B2B2B',
+    }}
+    >
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1, bgcolor: '#1A1A1A', borderBottom: '1px solid #3C3F41' }}>
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1.5,
+        px: 2,
+        py: 1,
+        bgcolor: '#1A1A1A',
+        borderBottom: '1px solid #3C3F41',
+      }}
+      >
         <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
-        <Typography sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: '0.9rem', flex: 1 }}>
+        <AutoAwesomeIcon sx={{ fontSize: 16, color: '#CC7832' }} />
+        <Typography sx={{
+          color: '#A9B7C6', fontWeight: 600, fontSize: '0.9rem', flex: 1,
+        }}
+        >
           {instance.projectName || 'Instance'}
         </Typography>
-        <Chip size="small" label={status.label} sx={{ bgcolor: `${status.color}22`, color: status.color, fontSize: '0.7rem' }} />
+        <Chip
+          size="small"
+          label={status.label}
+          sx={{
+            bgcolor: `${status.color}22`, color: status.color, fontSize: '0.7rem',
+          }}
+        />
         <IconButton
           size="small"
           onClick={() => stopInstance(instanceId)}
@@ -199,14 +231,20 @@ const InstanceWindow = () => {
           flexDirection: 'column',
           borderLeft: '1px solid #3C3F41',
           bgcolor: '#313335',
-        }}>
+        }}
+        >
           {/* Activity feed */}
           <Box
             ref={feedRef}
-            sx={{ flex: 1, overflow: 'auto', px: 2, py: 1.5 }}
+            sx={{
+              flex: 1, overflow: 'auto', px: 2, py: 1.5,
+            }}
           >
             {feed.length === 0 && !isThinking && (
-              <Typography sx={{ color: '#606366', fontSize: '0.8rem', textAlign: 'center', mt: 4 }}>
+              <Typography sx={{
+                color: '#606366', fontSize: '0.8rem', textAlign: 'center', mt: 4,
+              }}
+              >
                 No activity yet. Send a message to get started.
               </Typography>
             )}
@@ -214,8 +252,16 @@ const InstanceWindow = () => {
             {feed.map((item, idx) => {
               if (item.kind === 'user') {
                 return (
-                  <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
-                    <PersonIcon sx={{ fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                    }}
+                  >
+                    <PersonIcon sx={{
+                      fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0,
+                    }}
+                    />
                     <Box sx={{
                       bgcolor: '#3C3F41',
                       border: '1px solid #4E5254',
@@ -223,8 +269,12 @@ const InstanceWindow = () => {
                       px: 1.5,
                       py: 0.75,
                       flex: 1,
-                    }}>
-                      <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    }}
+                    >
+                      <Typography sx={{
+                        fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                      }}
+                      >
                         {item.text}
                       </Typography>
                     </Box>
@@ -234,11 +284,19 @@ const InstanceWindow = () => {
               if (item.kind === 'message') {
                 const msgColor = item.messageType === 'success' ? '#7CB368'
                   : item.messageType === 'warning' ? '#CC7832'
-                  : item.messageType === 'error' ? '#BC3F3C'
-                  : '#A9B7C6';
+                    : item.messageType === 'error' ? '#BC3F3C'
+                      : '#A9B7C6';
                 return (
-                  <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
-                    <ChatIcon sx={{ fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0 }} />
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                    }}
+                  >
+                    <ChatIcon sx={{
+                      fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0,
+                    }}
+                    />
                     <Box sx={{
                       bgcolor: '#2B2B2B',
                       border: `1px solid ${msgColor}33`,
@@ -246,8 +304,12 @@ const InstanceWindow = () => {
                       px: 1.5,
                       py: 0.75,
                       flex: 1,
-                    }}>
-                      <Typography sx={{ fontSize: '0.8rem', color: msgColor, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                    }}
+                    >
+                      <Typography sx={{
+                        fontSize: '0.8rem', color: msgColor, lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                      }}
+                      >
                         {item.text}
                       </Typography>
                     </Box>
@@ -255,8 +317,16 @@ const InstanceWindow = () => {
                 );
               }
               return (
-                <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
-                  <SmartToyIcon sx={{ fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                  }}
+                >
+                  <SmartToyIcon sx={{
+                    fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0,
+                  }}
+                  />
                   <Box sx={{ flex: 1 }}>
                     <Typography sx={{ fontSize: '0.8rem', color: '#7CB368', lineHeight: 1.5 }}>
                       {item.accomplished}
@@ -272,7 +342,10 @@ const InstanceWindow = () => {
             })}
 
             {isThinking && (
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Box sx={{
+                display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+              }}
+              >
                 <CircularProgress size={14} sx={{ color: '#6897BB' }} />
                 <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
                   Claude is working...
@@ -284,9 +357,18 @@ const InstanceWindow = () => {
           {/* Plans section */}
           {plans.length > 0 && (
             <Box sx={{ px: 2, py: 1, borderTop: '1px solid #3C3F41' }}>
-              <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.5 }}>PLANS</Typography>
+              <Typography sx={{
+                fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.5,
+              }}
+              >PLANS
+              </Typography>
               {plans.map((plan, idx) => (
-                <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25 }}>
+                <Box
+                  key={idx}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25,
+                  }}
+                >
                   <Typography
                     onClick={() => handleOpenPlan(plan)}
                     sx={{
@@ -315,8 +397,14 @@ const InstanceWindow = () => {
 
           {/* Pending choices */}
           {pending && (
-            <Box sx={{ px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41' }}>
-              <Typography sx={{ fontSize: '0.8rem', color: '#CC7832', mb: 0.75, fontWeight: 500 }}>
+            <Box sx={{
+              px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41',
+            }}
+            >
+              <Typography sx={{
+                fontSize: '0.8rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
+              }}
+              >
                 {pending.message}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -340,7 +428,10 @@ const InstanceWindow = () => {
           )}
 
           {/* Input */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderTop: '1px solid #3C3F41' }}>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderTop: '1px solid #3C3F41',
+          }}
+          >
             <TextField
               fullWidth
               size="small"

@@ -9,6 +9,7 @@ import setupCorsPreflightRoute from './routes/setup/setupCorsPreflightRoute';
 import setupRouteHandlers from './routes/setup/setupRouteHandlers';
 import setupNotFoundRoute from './routes/setup/setupNotFoundRoute';
 import WsHandler from '#modules/wsHandler/WsHandler';
+import InstanceManager from '#modules/instanceManager/InstanceManager';
 
 const settingsToUse = SystemSettingsServices.getSettings();
 
@@ -47,4 +48,29 @@ app.listen(port, listenSocket => {
     }
     console.info(`Server running on port ${port}`);
   }
+});
+
+// --- Graceful shutdown: kill all PTY instances on server exit ---
+let shuttingDown = false;
+
+function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.info(`\n[${signal}] Stopping all instances...`);
+  const stopped = InstanceManager.stopAll();
+  if (stopped.length > 0) {
+    console.info(`Stopped ${stopped.length} instance(s)`);
+  }
+  // Give tree-kill a moment to finish before exiting
+  setTimeout(() => process.exit(0), 700);
+}
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('uncaughtException', err => {
+  console.error('Uncaught exception:', err);
+  gracefulShutdown('uncaughtException');
+});
+process.on('unhandledRejection', err => {
+  console.error('Unhandled rejection:', err);
 });

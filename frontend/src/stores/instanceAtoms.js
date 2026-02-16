@@ -71,6 +71,9 @@ export const updateInstanceField = (instanceId, field, value) => {
       [field]: value,
     },
   });
+  broadcast({
+    action: 'updateField', instanceId, field, value,
+  });
 };
 
 export const removeInstance = instanceId => {
@@ -126,7 +129,9 @@ export const addUserMessage = (instanceId, text, timestamp) => {
       userMessages: [...(existing.userMessages || []), { text, timestamp: ts }],
     },
   });
-  broadcast({ action: 'addUserMessage', instanceId, text, timestamp: ts });
+  broadcast({
+    action: 'addUserMessage', instanceId, text, timestamp: ts,
+  });
 };
 
 export const addClaudeMessage = (instanceId, message) => {
@@ -183,6 +188,11 @@ if (syncChannel) {
           break;
         case 'setPendingInput':
           setPendingInput(msg.instanceId, msg.pendingInput);
+          break;
+        case 'updateField':
+          updateInstanceField(msg.instanceId, msg.field, msg.value);
+          break;
+        default:
           break;
       }
     } finally {
