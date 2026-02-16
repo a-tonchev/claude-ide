@@ -68,12 +68,15 @@ const MCP_SYSTEM_PROMPT = [
   'You are managed by Claude IDE dashboard. The user interacts through a dashboard UI, NOT this terminal.',
   'You MUST use the MCP tools for ALL communication:',
   '',
-  '- update_status: call with status "working" immediately when starting, "completed" when done',
-  '- send_milestone: call after EVERY significant action with { accomplished, workingOn }. The user can ONLY see milestones — send them frequently.',
+  '- update_status: call with "thinking" as FIRST action when you receive ANY message, then "working" when you start executing, "completed" when done',
+  '- send_milestone: call after EVERY action (file read, edit, search, test, etc.) with { accomplished, workingOn }',
+  '- send_message: call to send responses, answers, summaries, or important information the user should read. Use for: answers to questions, final results, warnings, errors, or any text the user needs to see. Supports types: info, success, warning, error',
   '- user_input_needed: call with { message, choices } when you need user input. NEVER use the built-in AskUserQuestion — ALWAYS use this MCP tool instead. Then STOP and wait.',
   '- send_plan: call with { title, content } when creating implementation plans',
   '',
-  'The user CANNOT see your terminal output. Milestones are their only progress indicator. Never skip them.',
+  'CRITICAL: The user CANNOT see your terminal. They only see status, milestones, and messages.',
+  'Send milestones frequently — after every step. Send messages for anything the user should read.',
+  'Even for simple questions, send a message with your answer. Never leave the user without feedback.',
 ].join('\n');
 
 function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null) {
@@ -154,6 +157,7 @@ const InstanceManager = {
       onData: null,
       onExit: null,
       milestones: [],
+      messages: [],
       pendingInput: null,
       userMessages: [],
       plans: [],
@@ -198,6 +202,7 @@ const InstanceManager = {
       onData: null,
       onExit: null,
       milestones: [],
+      messages: [],
       pendingInput: null,
       userMessages: [],
       plans: [],
@@ -267,6 +272,7 @@ const InstanceManager = {
         startedAt: instance.startedAt,
         isCapturingPlan: instance.isCapturingPlan,
         milestones: instance.milestones,
+        messages: instance.messages || [],
         pendingInput: instance.pendingInput,
         userMessages: instance.userMessages,
         plans: instance.plans,
@@ -328,6 +334,15 @@ const InstanceManager = {
     if (!instance) return null;
     const msg = { text, timestamp: timestamp || new Date().toISOString() };
     instance.userMessages.push(msg);
+    return msg;
+  },
+
+  addMessage(instanceId, { text, type }) {
+    const instance = instances.get(instanceId);
+    if (!instance) return null;
+    if (!instance.messages) instance.messages = [];
+    const msg = { text, type: type || 'info', timestamp: new Date() };
+    instance.messages.push(msg);
     return msg;
   },
 

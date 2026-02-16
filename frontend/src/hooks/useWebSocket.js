@@ -7,6 +7,7 @@ import {
   updateInstanceField,
   removeInstance,
   addMilestone,
+  addClaudeMessage,
   setPendingInput,
   addPlanToInstance,
 } from '@/stores/instanceAtoms';
@@ -75,6 +76,7 @@ function handleMessage(event) {
           status: 'running',
           startedAt: new Date().toISOString(),
           milestones: [],
+          messages: [],
           plans: [],
           pendingInput: null,
         });
@@ -93,6 +95,14 @@ function handleMessage(event) {
           accomplished: message.accomplished,
           workingOn: message.workingOn,
           timestamp: new Date().toISOString(),
+        });
+        break;
+
+      case 'claude_message':
+        addClaudeMessage(message.instanceId, {
+          text: message.text,
+          type: message.messageType || 'info',
+          timestamp: message.timestamp || new Date().toISOString(),
         });
         break;
 
@@ -131,6 +141,7 @@ function handleMessage(event) {
             status: 'running',
             startedAt: new Date().toISOString(),
             milestones: [],
+            messages: [],
             plans: [],
             pendingInput: null,
           });

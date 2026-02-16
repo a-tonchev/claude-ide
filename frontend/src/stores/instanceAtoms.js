@@ -129,6 +129,19 @@ export const addUserMessage = (instanceId, text, timestamp) => {
   broadcast({ action: 'addUserMessage', instanceId, text, timestamp: ts });
 };
 
+export const addClaudeMessage = (instanceId, message) => {
+  const current = InstanceStores.instancesStore.get();
+  const existing = current[instanceId];
+  if (!existing) return;
+  InstanceStores.instancesStore.set({
+    ...current,
+    [instanceId]: {
+      ...existing,
+      messages: [...(existing.messages || []), message],
+    },
+  });
+};
+
 export const addPlanToInstance = (instanceId, plan) => {
   const current = InstanceStores.instancesStore.get();
   const existing = current[instanceId];

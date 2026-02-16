@@ -24,7 +24,7 @@ import useInstances from '@/hooks/useInstances';
 import useGroups from '@/hooks/useGroups';
 import { assignToPlaceholder } from '@/helpers/placeholderHelper';
 import { setPlaceholder, removeGroup, upsertGroup, initPlaceholders } from '@/stores/groupAtoms';
-import { addUserMessage, setPendingInput } from '@/stores/instanceAtoms';
+import { addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
 
@@ -53,6 +53,7 @@ const Dashboard = () => {
     sendUserMessage,
     createTerminal,
     startGroup,
+    stopGroup,
     reassignGroup,
   } = useInstances(onWsMessage);
 
@@ -134,6 +135,10 @@ const Dashboard = () => {
       // Clear pending choices when user types their own input
       const inst = instances?.[instanceId];
       if (inst?.pendingInput) setPendingInput(instanceId, null);
+      // Immediately set "thinking" for Claude instances
+      if (inst?.type === 'claude' && inst.status !== 'exited') {
+        updateInstanceField(instanceId, 'status', 'thinking');
+      }
     }
     writeToInstance(instanceId, data);
   }, [writeToInstance, sendUserMessage, instances]);
@@ -226,6 +231,10 @@ const Dashboard = () => {
     if (activeGroupId) runGroup(activeGroupId);
   }, [activeGroupId, runGroup]);
 
+  const handleStopGroup = useCallback(() => {
+    if (activeGroupId) stopGroup(activeGroupId);
+  }, [activeGroupId, stopGroup]);
+
   const handleStartSavedItem = useCallback(async item => {
     const gid = activeGroupId;
     if (!gid) return;
@@ -296,6 +305,7 @@ const Dashboard = () => {
           onClose={handleCloseGroup}
           onDelete={handleDeleteGroup}
           onRunGroup={runGroup}
+          onStopGroup={stopGroup}
           instances={instances}
         />
 
@@ -362,8 +372,10 @@ const Dashboard = () => {
         <ActionBar
           onSaveGroup={() => setSaveGroupOpen(true)}
           onRunGroup={handleRunGroup}
+          onStopGroup={handleStopGroup}
           showSave={!!activeGroup && !activeGroup.saved}
           showRun={stoppedItems.length > 0}
+          showStop={activeGroupInstances.length > 0}
         />
 
         {/* Placeholder Panel */}

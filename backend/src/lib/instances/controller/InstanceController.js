@@ -95,6 +95,37 @@ const InstanceController = {
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
 
+  async addMessage(ctx) {
+    const { id } = ctx.params;
+    const { text, type } = ctx.request.body;
+
+    if (!text) {
+      return ctx.modS.responses.createErrorResponse(
+        ctx,
+        ctx.modS.responses.CustomErrors.BAD_REQUEST,
+        { message: 'text is required' },
+      );
+    }
+
+    const message = InstanceManager.addMessage(id, { text, type });
+    if (!message) {
+      return ctx.modS.responses.createErrorResponse(
+        ctx,
+        ctx.modS.responses.CustomErrors.NOT_FOUND,
+      );
+    }
+
+    WsHandler.publish(`instance_${id}`, {
+      type: 'claude_message',
+      instanceId: id,
+      text,
+      messageType: type || 'info',
+      timestamp: message.timestamp,
+    });
+
+    return ctx.modS.responses.createSuccessResponse(ctx, { message });
+  },
+
   async userResponse(ctx) {
     const { id } = ctx.params;
     const { choice } = ctx.request.body;

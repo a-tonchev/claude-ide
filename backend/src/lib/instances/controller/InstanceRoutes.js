@@ -21,6 +21,11 @@ const InstanceRoutes = createBasicRoutes({
     },
     {
       method: 'post',
+      path: '/:id/messages',
+      handler: InstanceController.addMessage,
+    },
+    {
+      method: 'post',
       path: '/:id/user-input',
       handler: InstanceController.setUserInput,
     },

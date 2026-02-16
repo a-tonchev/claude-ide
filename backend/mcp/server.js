@@ -49,7 +49,7 @@ const tools = {
       properties: {
         status: {
           type: 'string',
-          enum: ['ready', 'planning', 'plan_ready', 'waiting', 'working', 'completed'],
+          enum: ['ready', 'thinking', 'planning', 'plan_ready', 'waiting', 'working', 'completed'],
           description: 'The new status',
         },
       },
@@ -100,6 +100,28 @@ const tools = {
     },
     async handler({ message, choices }) {
       return apiPost(`/instances/${INSTANCE_ID}/user-input`, { message, choices });
+    },
+  },
+
+  send_message: {
+    description: 'Send a message to the dashboard that the user should see. Use for responses to questions, important information, final summaries, or any output the user needs to read.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          description: 'The message text to display to the user',
+        },
+        type: {
+          type: 'string',
+          enum: ['info', 'success', 'warning', 'error'],
+          description: 'Message type for styling (default: info)',
+        },
+      },
+      required: ['text'],
+    },
+    async handler({ text, type }) {
+      return apiPost(`/instances/${INSTANCE_ID}/messages`, { text, type });
     },
   },
 

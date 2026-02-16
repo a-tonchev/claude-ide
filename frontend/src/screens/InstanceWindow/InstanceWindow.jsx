@@ -11,16 +11,18 @@ import StopIcon from '@mui/icons-material/Stop';
 import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ChatIcon from '@mui/icons-material/Chat';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
-import { addUserMessage, setPendingInput } from '@/stores/instanceAtoms';
+import { addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#6897BB' },
+  thinking: { label: 'Thinking', color: '#CC7832' },
   planning: { label: 'Planning', color: '#CC7832' },
   plan_ready: { label: 'Plan Ready', color: '#7CB368' },
   waiting: { label: 'Waiting', color: '#CC7832' },
@@ -57,6 +59,7 @@ const InstanceWindow = () => {
   const instance = instances?.[instanceId];
   const status = STATUS_CONFIG[instance?.status] || STATUS_CONFIG.running;
   const milestones = instance?.milestones || [];
+  const messages = instance?.messages || [];
   const userMessages = instance?.userMessages || [];
   const plans = instance?.plans || [];
   const pending = instance?.pendingInput;
@@ -65,12 +68,16 @@ const InstanceWindow = () => {
   const feed = [];
   userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
   milestones.forEach(m => feed.push({ kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp }));
+  messages.forEach(m => feed.push({ kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
 
   const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
   const lastMilestone = milestones.length > 0 ? milestones[milestones.length - 1] : null;
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const lastClaudeActivity = [lastMilestone?.timestamp, lastMessage?.timestamp]
+    .filter(Boolean).sort().pop();
   const isThinking = lastUserMsg && instance?.status !== 'exited' && instance?.status !== 'completed'
-    && (!lastMilestone || new Date(lastUserMsg.timestamp) > new Date(lastMilestone.timestamp));
+    && (!lastClaudeActivity || new Date(lastUserMsg.timestamp) > new Date(lastClaudeActivity));
 
   useEffect(() => {
     if (instanceId) {
@@ -107,9 +114,13 @@ const InstanceWindow = () => {
     addUserMessage(instanceId, inputText, ts);
     sendUserMessage(instanceId, inputText, ts);
     if (pending) setPendingInput(instanceId, null);
+    // Immediately set "thinking" for Claude instances
+    if (instance?.type === 'claude' && instance.status !== 'exited') {
+      updateInstanceField(instanceId, 'status', 'thinking');
+    }
     writeToInstance(instanceId, inputText + '\r');
     setInputText('');
-  }, [inputText, instanceId, writeToInstance, sendUserMessage, pending]);
+  }, [inputText, instanceId, writeToInstance, sendUserMessage, pending, instance?.type, instance?.status]);
 
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -182,7 +193,7 @@ const InstanceWindow = () => {
 
         {/* Activity panel */}
         <Box sx={{
-          width: 360,
+          width: 440,
           flexShrink: 0,
           display: 'flex',
           flexDirection: 'column',
@@ -200,24 +211,50 @@ const InstanceWindow = () => {
               </Typography>
             )}
 
-            {feed.map((item, idx) => (
-              item.kind === 'user' ? (
-                <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
-                  <PersonIcon sx={{ fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
-                  <Box sx={{
-                    bgcolor: '#3C3F41',
-                    border: '1px solid #4E5254',
-                    borderRadius: '8px',
-                    px: 1.5,
-                    py: 0.75,
-                    flex: 1,
-                  }}>
-                    <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
-                      {item.text}
-                    </Typography>
+            {feed.map((item, idx) => {
+              if (item.kind === 'user') {
+                return (
+                  <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
+                    <PersonIcon sx={{ fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
+                    <Box sx={{
+                      bgcolor: '#3C3F41',
+                      border: '1px solid #4E5254',
+                      borderRadius: '8px',
+                      px: 1.5,
+                      py: 0.75,
+                      flex: 1,
+                    }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                        {item.text}
+                      </Typography>
+                    </Box>
                   </Box>
-                </Box>
-              ) : (
+                );
+              }
+              if (item.kind === 'message') {
+                const msgColor = item.messageType === 'success' ? '#7CB368'
+                  : item.messageType === 'warning' ? '#CC7832'
+                  : item.messageType === 'error' ? '#BC3F3C'
+                  : '#A9B7C6';
+                return (
+                  <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
+                    <ChatIcon sx={{ fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0 }} />
+                    <Box sx={{
+                      bgcolor: '#2B2B2B',
+                      border: `1px solid ${msgColor}33`,
+                      borderRadius: '8px',
+                      px: 1.5,
+                      py: 0.75,
+                      flex: 1,
+                    }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: msgColor, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                        {item.text}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }
+              return (
                 <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start' }}>
                   <SmartToyIcon sx={{ fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
                   <Box sx={{ flex: 1 }}>
@@ -231,8 +268,8 @@ const InstanceWindow = () => {
                     )}
                   </Box>
                 </Box>
-              )
-            ))}
+              );
+            })}
 
             {isThinking && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>

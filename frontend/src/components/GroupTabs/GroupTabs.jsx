@@ -11,8 +11,10 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 
 const STATUS_CHIPS = {
+  thinking: { label: 'thinking', bgcolor: '#CC783233', color: '#CC7832' },
   working: { label: 'working', bgcolor: '#6897BB33', color: '#6897BB' },
   waiting: { label: 'waiting', bgcolor: '#CC783233', color: '#CC7832' },
   planning: { label: 'planning', bgcolor: '#CC783233', color: '#CC7832' },
@@ -39,7 +41,7 @@ function getGroupCounts(instances, groupId) {
   return { counts, terminals };
 }
 
-const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, instances }) => {
+const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup, instances }) => {
   const [contextMenu, setContextMenu] = useState(null);
 
   const instanceList = useMemo(
@@ -61,6 +63,11 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
 
   const handleRunFromMenu = () => {
     if (contextMenu?.groupId) onRunGroup?.(contextMenu.groupId);
+    setContextMenu(null);
+  };
+
+  const handleStopFromMenu = () => {
+    if (contextMenu?.groupId) onStopGroup?.(contextMenu.groupId);
     setContextMenu(null);
   };
 
@@ -166,6 +173,10 @@ const GroupTabs = ({ groups, activeGroupId, onSelect, onClose, onDelete, onRunGr
         <MenuItem onClick={handleRunFromMenu}>
           <ListItemIcon><PlayArrowIcon sx={{ fontSize: 16, color: '#7CB368' }} /></ListItemIcon>
           <Typography sx={{ fontSize: '0.8rem' }}>Start all</Typography>
+        </MenuItem>
+        <MenuItem onClick={handleStopFromMenu}>
+          <ListItemIcon><StopIcon sx={{ fontSize: 16, color: '#BC3F3C' }} /></ListItemIcon>
+          <Typography sx={{ fontSize: '0.8rem' }}>Stop all</Typography>
         </MenuItem>
         <MenuItem onClick={handleDeleteFromMenu} sx={{ '&:hover': { bgcolor: 'rgba(188,63,60,0.1)' } }}>
           <ListItemIcon><DeleteIcon sx={{ fontSize: 16, color: '#BC3F3C' }} /></ListItemIcon>

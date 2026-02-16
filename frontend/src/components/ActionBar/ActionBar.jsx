@@ -3,9 +3,10 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import SaveIcon from '@mui/icons-material/Save';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
 
-const ActionBar = ({ onSaveGroup, onRunGroup, showSave, showRun }) => {
-  if (!showSave && !showRun) return null;
+const ActionBar = ({ onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop }) => {
+  if (!showSave && !showRun && !showStop) return null;
 
   return (
     <Box
@@ -35,6 +36,23 @@ const ActionBar = ({ onSaveGroup, onRunGroup, showSave, showRun }) => {
           }}
         >
           Run Group
+        </Button>
+      )}
+
+      {showStop && (
+        <Button
+          size="small"
+          variant="contained"
+          startIcon={<StopIcon />}
+          onClick={onStopGroup}
+          sx={{
+            bgcolor: '#BC3F3C',
+            '&:hover': { bgcolor: '#D45B58' },
+            textTransform: 'none',
+            fontSize: '0.8rem',
+          }}
+        >
+          Stop Group
         </Button>
       )}
 

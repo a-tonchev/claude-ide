@@ -14,9 +14,11 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import ChatIcon from '@mui/icons-material/Chat';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#6897BB' },
+  thinking: { label: 'Thinking', color: '#CC7832' },
   planning: { label: 'Planning', color: '#CC7832' },
   plan_ready: { label: 'Plan Ready', color: '#7CB368' },
   waiting: { label: 'Waiting', color: '#CC7832' },
@@ -41,22 +43,27 @@ const ClaudeInstanceCard = ({
 
   const status = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
   const milestones = instance.milestones || [];
+  const messages = instance.messages || [];
   const userMessages = instance.userMessages || [];
   const plans = instance.plans || [];
   const pending = instance.pendingInput;
 
-  // Build a chronological feed of user messages + milestones
+  // Build a chronological feed of user messages + milestones + claude messages
   const feed = [];
   userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
   milestones.forEach(m => feed.push({ kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp }));
+  messages.forEach(m => feed.push({ kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
-  // Check if Claude is "thinking" — user sent a message but no milestone came after it
+  // Check if Claude is "thinking" — user sent a message but no milestone/message came after it
   const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
   const lastMilestone = milestones.length > 0 ? milestones[milestones.length - 1] : null;
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+  const lastClaudeActivity = [lastMilestone?.timestamp, lastMessage?.timestamp]
+    .filter(Boolean).sort().pop();
   const isThinking = lastUserMsg && instance.status !== 'exited' && instance.status !== 'completed'
-    && (!lastMilestone || new Date(lastUserMsg.timestamp) > new Date(lastMilestone.timestamp));
+    && (!lastClaudeActivity || new Date(lastUserMsg.timestamp) > new Date(lastClaudeActivity));
 
   // Auto-scroll feed to bottom
   useEffect(() => {
@@ -129,15 +136,32 @@ const ClaudeInstanceCard = ({
             )}
           </Box>
           <Box ref={feedRef} sx={{ maxHeight: feedExpanded ? 200 : 80, overflowY: 'auto' }}>
-            {visibleFeed.map((item, idx) => (
-              item.kind === 'user' ? (
-                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
-                  <PersonIcon sx={{ fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
-                  <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
-                    {item.text}
-                  </Typography>
-                </Box>
-              ) : (
+            {visibleFeed.map((item, idx) => {
+              if (item.kind === 'user') {
+                return (
+                  <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
+                    <PersonIcon sx={{ fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
+                    <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
+                      {item.text}
+                    </Typography>
+                  </Box>
+                );
+              }
+              if (item.kind === 'message') {
+                const msgColor = item.messageType === 'success' ? '#7CB368'
+                  : item.messageType === 'warning' ? '#CC7832'
+                  : item.messageType === 'error' ? '#BC3F3C'
+                  : '#A9B7C6';
+                return (
+                  <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
+                    <ChatIcon sx={{ fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0 }} />
+                    <Typography sx={{ fontSize: '0.7rem', color: msgColor, lineHeight: 1.4 }}>
+                      {item.text}
+                    </Typography>
+                  </Box>
+                );
+              }
+              return (
                 <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
                   <SmartToyIcon sx={{ fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
                   <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
@@ -145,8 +169,8 @@ const ClaudeInstanceCard = ({
                     {item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
                   </Typography>
                 </Box>
-              )
-            ))}
+              );
+            })}
           </Box>
           {isThinking && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
