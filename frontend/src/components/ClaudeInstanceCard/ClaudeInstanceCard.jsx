@@ -1,0 +1,285 @@
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import TvIcon from '@mui/icons-material/Tv';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import StopIcon from '@mui/icons-material/Stop';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PersonIcon from '@mui/icons-material/Person';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+
+const STATUS_CONFIG = {
+  ready: { label: 'Ready', color: '#6897BB' },
+  planning: { label: 'Planning', color: '#CC7832' },
+  plan_ready: { label: 'Plan Ready', color: '#7CB368' },
+  waiting: { label: 'Waiting', color: '#CC7832' },
+  working: { label: 'Working', color: '#6897BB' },
+  completed: { label: 'Completed', color: '#7CB368' },
+  running: { label: 'Running', color: '#7CB368' },
+  exited: { label: 'Exited', color: '#606366' },
+};
+
+const ClaudeInstanceCard = ({
+  instance,
+  onOpenPlaceholder,
+  onOpenWindow,
+  onStop,
+  onSendInput,
+  onSendResponse,
+  onViewPlan,
+}) => {
+  const [inputText, setInputText] = useState('');
+  const [feedExpanded, setFeedExpanded] = useState(false);
+  const feedRef = useRef(null);
+
+  const status = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
+  const milestones = instance.milestones || [];
+  const userMessages = instance.userMessages || [];
+  const plans = instance.plans || [];
+  const pending = instance.pendingInput;
+
+  // Build a chronological feed of user messages + milestones
+  const feed = [];
+  userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
+  milestones.forEach(m => feed.push({ kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp }));
+  feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const visibleFeed = feedExpanded ? feed : feed.slice(-5);
+
+  // Check if Claude is "thinking" — user sent a message but no milestone came after it
+  const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+  const lastMilestone = milestones.length > 0 ? milestones[milestones.length - 1] : null;
+  const isThinking = lastUserMsg && instance.status !== 'exited' && instance.status !== 'completed'
+    && (!lastMilestone || new Date(lastUserMsg.timestamp) > new Date(lastMilestone.timestamp));
+
+  // Auto-scroll feed to bottom
+  useEffect(() => {
+    if (feedRef.current) {
+      feedRef.current.scrollTop = feedRef.current.scrollHeight;
+    }
+  }, [feed.length]);
+
+  const handleKeyDown = useCallback(e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (inputText.trim()) {
+        onSendInput(instance.id, inputText + '\r');
+        setInputText('');
+      }
+    }
+  }, [inputText, instance.id, onSendInput]);
+
+  const handleSend = useCallback(() => {
+    if (inputText.trim()) {
+      onSendInput(instance.id, inputText + '\r');
+      setInputText('');
+    }
+  }, [inputText, instance.id, onSendInput]);
+
+  return (
+    <Card
+      sx={{
+        bgcolor: '#313335',
+        border: '1px solid #3C3F41',
+        borderRadius: 2,
+        overflow: 'hidden',
+      }}
+    >
+      {/* Header: Status + Name */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41' }}>
+        <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
+        <Typography sx={{ fontSize: '0.75rem', color: status.color, fontWeight: 500 }}>
+          {status.label}
+        </Typography>
+        <Typography
+          sx={{
+            fontSize: '0.8rem',
+            color: '#A9B7C6',
+            fontWeight: 600,
+            flex: 1,
+            textAlign: 'right',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {instance.projectName || instance.name}
+        </Typography>
+      </Box>
+
+      {/* Activity Feed — user messages + milestones interleaved */}
+      {feed.length > 0 && (
+        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+            <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600, flex: 1 }}>
+              ACTIVITY
+            </Typography>
+            {feed.length > 5 && (
+              <IconButton size="small" onClick={() => setFeedExpanded(!feedExpanded)} sx={{ p: 0 }}>
+                {feedExpanded
+                  ? <ExpandLessIcon sx={{ fontSize: 14, color: '#808080' }} />
+                  : <ExpandMoreIcon sx={{ fontSize: 14, color: '#808080' }} />}
+              </IconButton>
+            )}
+          </Box>
+          <Box ref={feedRef} sx={{ maxHeight: feedExpanded ? 200 : 80, overflowY: 'auto' }}>
+            {visibleFeed.map((item, idx) => (
+              item.kind === 'user' ? (
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
+                  <PersonIcon sx={{ fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
+                  <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
+                    {item.text}
+                  </Typography>
+                </Box>
+              ) : (
+                <Box key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25 }}>
+                  <SmartToyIcon sx={{ fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
+                  <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
+                    <span style={{ color: '#7CB368' }}>{item.accomplished}</span>
+                    {item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
+                  </Typography>
+                </Box>
+              )
+            ))}
+          </Box>
+          {isThinking && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5 }}>
+              <CircularProgress size={10} sx={{ color: '#6897BB' }} />
+              <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
+                Claude is working...
+              </Typography>
+            </Box>
+          )}
+        </Box>
+      )}
+      {/* Show thinking indicator even when feed is empty (first message sent) */}
+      {feed.length === 0 && isThinking && (
+        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <CircularProgress size={10} sx={{ color: '#6897BB' }} />
+            <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
+              Claude is working...
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      {/* Plans */}
+      {plans.length > 0 && (
+        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.25 }}>
+            PLANS
+          </Typography>
+          {plans.map((plan, idx) => (
+            <Typography
+              key={idx}
+              onClick={() => onViewPlan?.(plan)}
+              sx={{
+                fontSize: '0.7rem',
+                color: '#6897BB',
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+                lineHeight: 1.4,
+              }}
+            >
+              {plan.title || 'Untitled Plan'}
+            </Typography>
+          ))}
+        </Box>
+      )}
+
+      {/* User Choices (when waiting) */}
+      {pending && (
+        <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41' }}>
+          <Typography sx={{ fontSize: '0.75rem', color: '#CC7832', mb: 0.75, fontWeight: 500 }}>
+            {pending.message}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {(pending.choices || []).map((choice, idx) => (
+              <Chip
+                key={idx}
+                label={choice}
+                size="small"
+                clickable
+                onClick={() => onSendResponse(instance.id, choice)}
+                sx={{
+                  bgcolor: '#214283',
+                  color: '#A9B7C6',
+                  fontSize: '0.7rem',
+                  '&:hover': { bgcolor: '#2E5AA7' },
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+      )}
+
+      {/* Input */}
+      <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+        <TextField
+          fullWidth
+          multiline
+          maxRows={3}
+          size="small"
+          placeholder="Type a message..."
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          disabled={instance.status === 'exited'}
+          slotProps={{ htmlInput: { onKeyDown: handleKeyDown } }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              fontSize: '0.75rem',
+              bgcolor: '#2B2B2B',
+              color: '#A9B7C6',
+              '& fieldset': { borderColor: '#3C3F41' },
+              '&:hover fieldset': { borderColor: '#6897BB' },
+              '&.Mui-focused fieldset': { borderColor: '#6897BB' },
+            },
+            '& .MuiOutlinedInput-input': {
+              py: 0.75,
+              px: 1,
+            },
+          }}
+        />
+      </Box>
+
+      {/* Buttons */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5 }}>
+        <IconButton
+          size="small"
+          onClick={() => onOpenPlaceholder(instance.id)}
+          title="Open in placeholder"
+          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+        >
+          <TvIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => onOpenWindow(instance.id)}
+          title="Open in new window"
+          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+        >
+          <OpenInNewIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <Box sx={{ flex: 1 }} />
+        <IconButton
+          size="small"
+          onClick={() => onStop(instance.id)}
+          disabled={instance.status === 'exited'}
+          title="Stop"
+          sx={{ color: '#BC3F3C', '&:hover': { color: '#D45B58' }, '&.Mui-disabled': { color: '#4E5254' } }}
+        >
+          <StopIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+      </Box>
+    </Card>
+  );
+};
+
+export default ClaudeInstanceCard;

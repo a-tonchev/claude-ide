@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(printf:*)",
+      "Bash(timeout 3 node:*)",
+      "WebSearch",
+      "Bash(echo:*)",
+      "mcp__claude-ide__update_status",
+      "Bash(npx vite build)",
+      "Bash(timeout 15 npx vite:*)",
+      "Bash(CLAUDECODE= claude --help)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "claude-ide"
+  ]
+}

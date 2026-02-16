@@ -3,6 +3,7 @@ const UrlEnums = {
   DASHBOARD: '/',
   INSTANCE_VIEW: '/instance/:instanceId',
   INSTANCE_WINDOW: '/window/:instanceId',
+  PLAN_VIEW: '/viewPlan/:planId',
   PROFILE: '/profile',
   ADMIN: '/admin',
   LOGIN: '/login',

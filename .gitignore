@@ -1,1 +1,4 @@
 /.idea/
+nul
+.mcp.json
+backend/mcp/mcp-config.json

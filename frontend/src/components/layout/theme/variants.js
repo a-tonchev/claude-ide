@@ -367,73 +367,73 @@ const orangeVariant = {
 };
 
 const darkIdeVariant = {
-  name: 'Dark IDE',
+  name: 'Darcula',
   palette: {
     mode: 'dark',
     primary: {
-      main: '#58a6ff',
+      main: '#6897BB',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#1f6feb',
+      main: '#214283',
       contrastText: '#ffffff',
     },
     success: {
-      main: '#3fb950',
+      main: '#7CB368',
     },
     warning: {
-      main: '#f0883e',
+      main: '#CC7832',
     },
     error: {
-      main: '#f85149',
+      main: '#BC3F3C',
     },
     background: {
-      default: '#0d1117',
-      paper: '#161b22',
+      default: '#2B2B2B',
+      paper: '#313335',
     },
     text: {
-      primary: '#e6edf3',
-      secondary: '#8b949e',
+      primary: '#A9B7C6',
+      secondary: '#808080',
     },
-    divider: '#30363d',
+    divider: '#4E5254',
     body: {
-      background: '#0d1117',
+      background: '#2B2B2B',
     },
   },
   header: {
-    color: '#e6edf3',
-    background: '#161b22',
+    color: '#A9B7C6',
+    background: '#313335',
     search: {
-      color: '#8b949e',
+      color: '#808080',
     },
     indicator: {
-      background: '#58a6ff',
+      background: '#6897BB',
     },
   },
   sidebar: {
-    color: '#e6edf3',
-    background: '#0d1117',
+    color: '#A9B7C6',
+    background: '#2B2B2B',
     header: {
-      color: '#e6edf3',
-      background: '#161b22',
+      color: '#A9B7C6',
+      background: '#313335',
       brand: {
-        color: '#58a6ff',
+        color: '#6897BB',
       },
     },
     footer: {
-      color: '#8b949e',
-      background: '#161b22',
+      color: '#808080',
+      background: '#313335',
       online: {
-        background: '#3fb950',
+        background: '#7CB368',
       },
     },
     badge: {
       color: '#ffffff',
-      background: '#1f6feb',
+      background: '#214283',
     },
   },
   body: {
-    background: '#0d1117',
+    background: '#2B2B2B',
   },
 };
 

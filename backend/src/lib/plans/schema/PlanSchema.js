@@ -1,0 +1,27 @@
+import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
+import PlanSchemaFields from './PlanSchemaFields';
+
+const {
+  project_id, instance_id, title, prompt, content, status,
+} = PlanSchemaFields;
+
+const { _id, date } = CommonSchemaFields;
+
+const PlanSchema = {
+  bsonType: 'object',
+  required: ['project_id', 'content', 'status', 'updatedAt', 'createdAt'],
+  additionalProperties: false,
+  properties: {
+    _id,
+    project_id,
+    instance_id,
+    title,
+    prompt,
+    content,
+    status,
+    updatedAt: date,
+    createdAt: date,
+  },
+};
+
+export default PlanSchema;

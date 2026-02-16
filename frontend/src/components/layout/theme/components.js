@@ -7,22 +7,22 @@ const components = {
   MuiCssBaseline: {
     styleOverrides: {
       body: {
-        backgroundColor: '#0d1117',
-        color: '#e6edf3',
+        backgroundColor: '#2B2B2B',
+        color: '#A9B7C6',
       },
       '::-webkit-scrollbar': {
         width: 8,
         height: 8,
       },
       '::-webkit-scrollbar-track': {
-        background: '#161b22',
+        background: '#313335',
       },
       '::-webkit-scrollbar-thumb': {
-        background: '#30363d',
+        background: '#4E5254',
         borderRadius: 4,
       },
       '::-webkit-scrollbar-thumb:hover': {
-        background: '#484f58',
+        background: '#606366',
       },
     },
   },
@@ -36,18 +36,18 @@ const components = {
   MuiDialog: {
     styleOverrides: {
       paper: {
-        backgroundColor: '#161b22',
+        backgroundColor: '#313335',
         backgroundImage: 'none',
-        border: '1px solid #30363d',
+        border: '1px solid #4E5254',
       },
     },
   },
   MuiCard: {
     styleOverrides: {
       root: {
-        backgroundColor: '#161b22',
+        backgroundColor: '#313335',
         backgroundImage: 'none',
-        border: '1px solid #30363d',
+        border: '1px solid #4E5254',
         borderRadius: 12,
       },
     },
@@ -57,20 +57,20 @@ const components = {
       root: {
         '& .MuiOutlinedInput-root': {
           '& fieldset': {
-            borderColor: '#30363d',
+            borderColor: '#4E5254',
           },
           '&:hover fieldset': {
-            borderColor: '#6e7681',
+            borderColor: '#808080',
           },
           '&.Mui-focused fieldset': {
-            borderColor: '#58a6ff',
+            borderColor: '#6897BB',
           },
         },
         '& .MuiInputLabel-root': {
-          color: '#8b949e',
+          color: '#808080',
         },
         '& .MuiInputBase-input': {
-          color: '#e6edf3',
+          color: '#A9B7C6',
         },
       },
     },
@@ -78,26 +78,26 @@ const components = {
   MuiButton: {
     styleOverrides: {
       contained: {
-        backgroundColor: '#1f6feb',
-        color: '#ffffff',
+        backgroundColor: '#214283',
+        color: '#A9B7C6',
         boxShadow: 'none',
         '&:hover': {
-          backgroundColor: '#388bfd',
+          backgroundColor: '#2E5AA7',
           boxShadow: 'none',
         },
       },
       outlined: {
-        borderColor: '#30363d',
-        color: '#e6edf3',
+        borderColor: '#4E5254',
+        color: '#A9B7C6',
         '&:hover': {
-          borderColor: '#6e7681',
-          backgroundColor: 'rgba(110,118,129,0.1)',
+          borderColor: '#808080',
+          backgroundColor: 'rgba(104,151,187,0.1)',
         },
       },
       text: {
-        color: '#8b949e',
+        color: '#808080',
         '&:hover': {
-          backgroundColor: 'rgba(110,118,129,0.1)',
+          backgroundColor: 'rgba(104,151,187,0.1)',
         },
       },
     },
@@ -114,12 +114,12 @@ const components = {
       root: {
         borderRadius: 8,
         '&:hover': {
-          backgroundColor: 'rgba(110,118,129,0.1)',
+          backgroundColor: 'rgba(104,151,187,0.1)',
         },
         '&.Mui-selected': {
-          backgroundColor: 'rgba(31,111,235,0.15)',
+          backgroundColor: 'rgba(33,66,131,0.3)',
           '&:hover': {
-            backgroundColor: 'rgba(31,111,235,0.2)',
+            backgroundColor: 'rgba(33,66,131,0.4)',
           },
         },
       },
@@ -128,17 +128,17 @@ const components = {
   MuiDivider: {
     styleOverrides: {
       root: {
-        borderColor: '#21262d',
+        borderColor: '#3C3F41',
       },
     },
   },
   MuiIconButton: {
     styleOverrides: {
       root: {
-        color: '#8b949e',
+        color: '#808080',
         '&:hover': {
-          backgroundColor: 'rgba(110,118,129,0.15)',
-          color: '#e6edf3',
+          backgroundColor: 'rgba(104,151,187,0.15)',
+          color: '#A9B7C6',
         },
       },
     },

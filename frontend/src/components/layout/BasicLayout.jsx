@@ -35,7 +35,7 @@ const BasicLayout = ({ children }) => {
   }
 
   const noLayout = checkRegExp(
-    [/^\/login/, /^\/signUp/, /^\/passwordRecovery/, /^\/logout/, /^\/$/, /^\/instance/, /^\/window/],
+    [/^\/login/, /^\/signUp/, /^\/passwordRecovery/, /^\/logout/, /^\/$/, /^\/instance/, /^\/window/, /^\/viewPlan/],
   );
   const fullSizeContent = checkRegExp([/^\/previewSpeedPage/]);
 

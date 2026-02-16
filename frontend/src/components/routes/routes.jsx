@@ -10,6 +10,7 @@ import NotFoundPage from '@/screens/NotFoundPage';
 import Dashboard from '@/screens/Dashboard/Dashboard';
 import InstanceView from '@/screens/InstanceView/InstanceView';
 import InstanceWindow from '@/screens/InstanceWindow/InstanceWindow';
+import PlanView from '@/screens/PlanView/PlanView';
 import Profile from '@/screens/users/Profile';
 import ForgotPassword from '@/screens/auth/ForgetPassword';
 import ResetPassword from '@/screens/auth/ResetPassword';
@@ -27,6 +28,10 @@ const routes = [
   {
     path: UrlEnums.INSTANCE_WINDOW,
     element: <InstanceWindow />,
+  },
+  {
+    path: UrlEnums.PLAN_VIEW,
+    element: <PlanView />,
   },
   { path: UrlEnums.PROFILE, element: <Profile />, type: 'authenticated' },
   { path: UrlEnums.LOGOUT, element: <Logout />, type: 'authenticated' },
