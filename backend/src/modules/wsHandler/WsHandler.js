@@ -4,6 +4,18 @@ import InstanceManager from '#modules/instanceManager/InstanceManager';
 const prefix = SystemSettingsServices.getRoutePrefix();
 const wsPath = `${prefix}/ws`;
 
+// Track all connected WebSocket clients so we can subscribe them to new instances
+const connectedClients = new Set();
+
+// How long (ms) with no PTY output before we consider a Claude instance idle
+const IDLE_TIMEOUT_MS = 15000;
+
+// Strip ANSI escape codes from terminal output
+function stripAnsi(str) {
+  // eslint-disable-next-line no-control-regex
+  return str.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07]*\x07)/g, '');
+}
+
 function sendJson(ws, data) {
   try {
     if (!ws.isClosed) {
@@ -14,12 +26,66 @@ function sendJson(ws, data) {
   }
 }
 
+// Subscribe ALL connected clients to an instance topic
+function subscribeAllClients(instanceId) {
+  const topic = `instance_${instanceId}`;
+  for (const client of connectedClients) {
+    if (!client.isClosed) {
+      client.subscribe(topic);
+    }
+  }
+}
+
 function wireInstance(ws, instance) {
   ws.subscribe(`instance_${instance.id}`);
+
+  // Idle detection for Claude instances
+  let idleTimer = null;
+
+  function clearIdleTimer() {
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+      idleTimer = null;
+    }
+  }
+
+  function resetIdleTimer() {
+    clearIdleTimer();
+    if (instance.type !== 'claude') return;
+    idleTimer = setTimeout(() => {
+      // Only transition if currently in an active state
+      if (['working', 'thinking'].includes(instance.status)) {
+        instance.status = 'ready';
+        WsHandler.publish(`instance_${instance.id}`, {
+          type: 'status_update',
+          instanceId: instance.id,
+          status: 'ready',
+        });
+      }
+    }, IDLE_TIMEOUT_MS);
+  }
 
   instance.onData = instance.pty.onData(data => {
     if (instance.isCapturingPlan) {
       instance.outputBuffer += data;
+    }
+
+    // Reset idle timer on any output
+    resetIdleTimer();
+
+    // Quick prompt detection for Claude instances: if output contains
+    // the Claude Code prompt indicator, transition to ready immediately
+    if (instance.type === 'claude' && ['working', 'thinking', 'running'].includes(instance.status)) {
+      const clean = stripAnsi(data);
+      // Claude Code shows ">" or "❯" at start of line when waiting for input
+      if (/(?:^|\n)\s*[>❯]\s*$/.test(clean)) {
+        instance.status = 'ready';
+        WsHandler.publish(`instance_${instance.id}`, {
+          type: 'status_update',
+          instanceId: instance.id,
+          status: 'ready',
+        });
+      }
     }
 
     WsHandler.publish(`instance_${instance.id}`, {
@@ -30,6 +96,7 @@ function wireInstance(ws, instance) {
   });
 
   instance.onExit = instance.pty.onExit(({ exitCode }) => {
+    clearIdleTimer();
     const uptime = Date.now() - instance.startedAt.getTime();
     if (uptime < 3000) {
       console.warn(`Instance ${instance.id} (${instance.type}/${instance.projectName}) exited after ${uptime}ms with code ${exitCode}`);
@@ -66,6 +133,9 @@ function handleCreate(ws, message) {
 
   wireInstance(ws, instance);
 
+  // Subscribe ALL connected clients to this new instance
+  subscribeAllClients(instance.id);
+
   WsHandler.publish('global', {
     type: 'created',
     instanceId: instance.id,
@@ -93,6 +163,9 @@ function handleCreateTerminal(ws, message) {
   }
 
   wireInstance(ws, instance);
+
+  // Subscribe ALL connected clients to this new instance
+  subscribeAllClients(instance.id);
 
   WsHandler.publish('global', {
     type: 'created',
@@ -242,6 +315,8 @@ function handleStartGroup(ws, message) {
 
       if (instance) {
         wireInstance(ws, instance);
+        // Subscribe ALL connected clients to this new instance
+        subscribeAllClients(instance.id);
         createdInstances.push({
           instanceId: instance.id,
           type: instance.type,
@@ -343,8 +418,14 @@ const WsHandler = {
 
       open: ws => {
         ws.isClosed = false;
+        connectedClients.add(ws);
         ws.subscribe('global');
         const instancesList = InstanceManager.list();
+        // Auto-subscribe to all existing instance topics so the client
+        // receives status_update, milestone, claude_message, etc.
+        for (const inst of instancesList) {
+          ws.subscribe(`instance_${inst.id}`);
+        }
         sendJson(ws, { type: 'instances', list: instancesList });
       },
 
@@ -369,6 +450,7 @@ const WsHandler = {
 
       close: (ws) => {
         ws.isClosed = true;
+        connectedClients.delete(ws);
       },
     });
   },

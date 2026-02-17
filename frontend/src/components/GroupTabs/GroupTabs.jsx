@@ -20,8 +20,8 @@ const STATUS_CHIPS = {
   planning: { label: 'planning', bgcolor: '#CC783233', color: '#CC7832' },
   plan_ready: { label: 'plan ready', bgcolor: '#7CB36833', color: '#7CB368' },
   completed: { label: 'done', bgcolor: '#7CB36833', color: '#7CB368' },
-  running: { label: 'running', bgcolor: '#6897BB33', color: '#6897BB' },
-  ready: { label: 'ready', bgcolor: '#6897BB33', color: '#6897BB' },
+  running: { label: 'running', bgcolor: '#7CB36833', color: '#7CB368' },
+  ready: { label: 'ready', bgcolor: '#7CB36833', color: '#7CB368' },
 };
 
 function getGroupCounts(instances, groupId) {

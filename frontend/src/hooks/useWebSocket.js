@@ -40,6 +40,7 @@ function sendJson(data) {
 
   // Queue if not connected yet
   wsState.sendQueue.push(payload);
+  // eslint-disable-next-line no-use-before-define
   connect();
 }
 
@@ -61,6 +62,10 @@ function handleMessage(event) {
     switch (type) {
       case 'instances':
         setInstances(message.list || []);
+        // Subscribe to all instance topics for live updates (covers reconnection)
+        (message.list || []).forEach(inst => {
+          sendJson({ type: 'subscribe', instanceId: inst.id });
+        });
         break;
 
       case 'created':
@@ -80,6 +85,8 @@ function handleMessage(event) {
           plans: [],
           pendingInput: null,
         });
+        // Ensure we're subscribed to this instance's topic for live updates
+        sendJson({ type: 'subscribe', instanceId: message.instanceId });
         break;
 
       case 'status':
@@ -157,6 +164,8 @@ function handleMessage(event) {
             plans: [],
             pendingInput: null,
           });
+          // Ensure we're subscribed to this instance's topic for live updates
+          sendJson({ type: 'subscribe', instanceId: inst.instanceId });
         });
         break;
 

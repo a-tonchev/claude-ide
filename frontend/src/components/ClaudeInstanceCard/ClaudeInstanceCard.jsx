@@ -20,7 +20,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const STATUS_CONFIG = {
-  ready: { label: 'Ready', color: '#6897BB' },
+  ready: { label: 'Ready', color: '#7CB368' },
   thinking: { label: 'Thinking', color: '#CC7832' },
   planning: { label: 'Planning', color: '#CC7832' },
   plan_ready: { label: 'Plan Ready', color: '#7CB368' },

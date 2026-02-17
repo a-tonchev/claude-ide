@@ -1,10 +1,10 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 // import eslintPlugin from '@nabla/vite-plugin-eslint';
 import visualizer from 'rollup-plugin-visualizer';
 import path, { resolve } from 'path';
 import react from '@vitejs/plugin-react';
+import { exec } from 'child_process';
 
 // https://vitejs.dev/config/
 export default ({ mode }) => {
@@ -17,6 +17,16 @@ export default ({ mode }) => {
       }],
     },
     plugins: [
+      {
+        name: 'open-browser',
+        configureServer(server) {
+          server.httpServer?.once('listening', () => {
+            const host = process.env.VITE_DEV_HOST || 'localhost';
+            const { port } = server.httpServer.address();
+            exec(`start http://${host}:${port}`);
+          });
+        },
+      },
       react(),
       VitePWA({
         srcDir: 'src',
