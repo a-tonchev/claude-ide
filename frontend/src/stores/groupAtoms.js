@@ -1,4 +1,5 @@
 import GlobalStateHelper from '@/components/state/GlobalStateHelper';
+import UrlHelper from '@/components/connections/UrlHelper';
 
 export const GroupStores = {
   groupsStore: null,
@@ -63,7 +64,14 @@ export const removeGroup = groupId => {
 
   if (GroupStores.activeGroupIdStore.get() === groupId) {
     const remaining = Object.keys(rest);
-    GroupStores.activeGroupIdStore.set(remaining.length ? remaining[0] : null);
+    const nextId = remaining.length ? remaining[0] : null;
+    GroupStores.activeGroupIdStore.set(nextId);
+    // Keep URL in sync
+    if (nextId) {
+      UrlHelper.setParam('group', nextId);
+    } else {
+      UrlHelper.deleteParam('group');
+    }
   }
 
   // Clean up placeholders for this group

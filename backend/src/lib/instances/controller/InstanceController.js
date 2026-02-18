@@ -22,11 +22,22 @@ const InstanceController = {
       );
     }
 
-    WsHandler.publish(`instance_${id}`, {
-      type: 'status_update',
-      instanceId: id,
-      status,
-    });
+    // Delay 'completed' broadcast so any in-flight messages/plans arrive first
+    if (status === 'completed') {
+      setTimeout(() => {
+        WsHandler.publish(`instance_${id}`, {
+          type: 'status_update',
+          instanceId: id,
+          status,
+        });
+      }, 500);
+    } else {
+      WsHandler.publish(`instance_${id}`, {
+        type: 'status_update',
+        instanceId: id,
+        status,
+      });
+    }
 
     return ctx.modS.responses.createSuccessResponse(ctx, { status });
   },

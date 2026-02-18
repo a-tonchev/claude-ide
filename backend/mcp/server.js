@@ -235,6 +235,25 @@ async function handleMessage(msg) {
   }
 }
 
+// Sequential message queue — ensures tool calls are processed in order
+// so that e.g. send_message completes before update_status('completed')
+const messageQueue = [];
+let processing = false;
+
+async function drainQueue() {
+  if (processing) return;
+  processing = true;
+  while (messageQueue.length) {
+    const msg = messageQueue.shift();
+    try {
+      await handleMessage(msg);
+    } catch (err) {
+      log(`Handler error: ${err.message}`);
+    }
+  }
+  processing = false;
+}
+
 function processBuffer() {
   // Split by newlines — each line is a complete JSON message
   const lines = inputBuffer.split('\n');
@@ -247,13 +266,13 @@ function processBuffer() {
 
     try {
       const msg = JSON.parse(trimmed);
-      handleMessage(msg).catch(err => {
-        log(`Handler error: ${err.message}`);
-      });
+      messageQueue.push(msg);
     } catch (err) {
       log(`Parse error: ${err.message} | line: ${trimmed.substring(0, 100)}`);
     }
   }
+
+  drainQueue();
 }
 
 process.stdin.on('data', chunk => {

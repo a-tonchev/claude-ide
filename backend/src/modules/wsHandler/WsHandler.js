@@ -250,6 +250,14 @@ function handleSubscribe(ws, message) {
   });
 }
 
+function handleList(ws) {
+  const instancesList = InstanceManager.list();
+  for (const inst of instancesList) {
+    ws.subscribe(`instance_${inst.id}`);
+  }
+  sendJson(ws, { type: 'instances', list: instancesList });
+}
+
 function handleUnsubscribe(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
@@ -268,6 +276,7 @@ function handleUserResponse(ws, message) {
   InstanceManager.addUserMessage(instanceId, choice);
   InstanceManager.write(instanceId, choice);
   setTimeout(() => InstanceManager.write(instanceId, '\r'), ENTER_DELAY_MS);
+
   InstanceManager.clearPendingInput(instanceId);
   InstanceManager.updateStatus(instanceId, 'working');
 
@@ -376,6 +385,7 @@ const messageHandlers = {
   stop: handleStop,
   resize: handleResize,
   plan: handlePlan,
+  list: handleList,
   subscribe: handleSubscribe,
   unsubscribe: handleUnsubscribe,
   user_response: handleUserResponse,

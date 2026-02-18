@@ -199,6 +199,28 @@ function handleMessage(event) {
   }
 }
 
+function forceReconnect() {
+  // If socket is already open, just request a fresh state snapshot
+  if (wsState.socket?.readyState === WebSocket.OPEN) {
+    sendJson({ type: 'list' });
+    return;
+  }
+  // Kill any pending reconnect timer and connect immediately
+  if (wsState.reconnectTimer) {
+    clearTimeout(wsState.reconnectTimer);
+    wsState.reconnectTimer = null;
+  }
+  wsState.connecting = false;
+  connect();
+}
+
+// Re-sync when tab becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && wsState.listeners.size > 0) {
+    forceReconnect();
+  }
+});
+
 function connect() {
   if (wsState.connecting || wsState.socket?.readyState === WebSocket.OPEN) return;
   wsState.connecting = true;

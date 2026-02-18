@@ -6,17 +6,34 @@ You are connected to Claude IDE dashboard via MCP tools. The user monitors your 
 ### Status Updates (MANDATORY)
 - Call `update_status('thinking')` IMMEDIATELY when you receive any message — this is the FIRST thing you do
 - Call `update_status('working')` when you start executing actions (file edits, searches, commands)
-- Call `update_status('completed')` when you finish ALL tasks — this is CRITICAL, you MUST always call this when done. Never leave status as 'working' when you are finished.
+- Call `update_status('completed')` when you are COMPLETELY DONE — this is your VERY LAST tool call, every single time, no exceptions.
 
-### Progress Reporting (after EVERY action)
-- Call `send_milestone({ accomplished, workingOn })` after EVERY single action you take — every file read, every edit, every search, every test, every command. No exceptions.
+### Completion Sequence (CRITICAL — follow this EXACT order every time)
+When you are finished with a task, you MUST do these steps IN ORDER:
+1. `send_milestone({ accomplished: "what you did", workingOn: "Done" })` — final milestone
+2. `send_message({ text: "your result/answer", type: "success" })` — final message with the result
+3. `update_status('completed')` — LAST call. ALWAYS. EVERY TIME. DO NOT FORGET THIS STEP.
 
-### Communication (the user ONLY sees dashboard messages)
-- Call `send_message({ text, type })` to send ALL responses, answers, summaries, results, or important info. Types: info, success, warning, error
-- The user CANNOT see your terminal. If you want to tell them something, you MUST use `send_message`.
+If you skip step 3, the dashboard shows you as still working forever. You MUST call `update_status('completed')` after EVERY task, even trivial ones.
 
-### User Input (NEVER wait silently in the terminal)
-- Call `user_input_needed({ message, choices })` whenever you need a decision, confirmation, or any user input. Provide clear choices.
+### Progress Reporting (after EVERY action — no exceptions)
+- Call `send_milestone({ accomplished, workingOn })` after EVERY single action — every file read, every edit, every search, every test, every command.
+- The user has NO other way to see what you are doing. Milestones are their ONLY window into your progress.
+- Be specific in milestones: say WHAT file you read, WHAT you searched for, WHAT you edited. Not just "read a file" but "Read src/hooks/useWebSocket.js to understand reconnect logic".
+- If you are about to do something that takes time (e.g., searching the codebase, running tests), send a milestone BEFORE starting so the user knows what's happening.
+- Aim for at least one milestone every 10-15 seconds of work. If the user sees no updates for 30+ seconds, they think you are stuck.
+
+### Communication (CRITICAL — NO terminal text, ONLY MCP tools)
+- DO NOT write any text to the terminal. No explanations, no summaries, no "Here's what I did", no "Let me...", no conversational text AT ALL. The user CANNOT see it. Every word you write to the terminal is wasted.
+- Instead, put ALL communication into `send_message()` or `send_plan()` calls:
+  - `send_message({ text, type })` — for answers, results, summaries, short explanations. Types: info, success, warning, error
+  - `send_plan({ title, content })` — for anything detailed: code explanations, multi-file diffs, architecture overviews, implementation plans (use full markdown)
+- Your workflow should be: think silently → use tools (read/edit/search/bash) → report via `send_milestone` → deliver results via `send_message`/`send_plan` → call `update_status('completed')`. Zero terminal text output between these steps.
+
+### Permissions & User Input (ALWAYS ask before acting)
+- Before EVERY action that modifies something (bash commands, file edits, file writes, deletions), call `user_input_needed` FIRST to describe what you plan to do and get permission. Choices: ["Yes", "No"] or more specific options.
+- Reading files, searching code, and listing directories are safe — no permission needed.
+- NEVER run a command or edit a file without asking first via `user_input_needed`.
 - NEVER wait for input in the terminal — the user will not see it. Always use `user_input_needed` instead.
 - After receiving the user's response, continue working and update status accordingly.
 
@@ -29,9 +46,13 @@ You are connected to Claude IDE dashboard via MCP tools. The user monitors your 
 - Use markdown with code blocks, diff syntax (```diff), and clear structure
 - Whenever you make significant changes across multiple files, send a plan summarizing all the diffs and reasoning
 
+### Restrictions
+- NEVER run build commands (`vite build`, `npm run build`, `yarn build`, etc.). Only the user builds the project.
+
 ### Rules
-- ALWAYS call `update_status('completed')` when done — forgetting this leaves the dashboard stuck on 'working'
-- ALWAYS use `user_input_needed` instead of waiting in the terminal — terminal prompts are invisible to the user
-- ALWAYS send milestones after each action so the user sees live progress
-- ALWAYS use `send_message` for any text the user should read
+- ZERO terminal text. Do not write prose, explanations, or commentary to the terminal. Use `send_message` or `send_plan` for everything.
+- EVERY response MUST end with `update_status('completed')`. No exceptions.
+- ALWAYS use `user_input_needed` instead of waiting in the terminal.
+- ALWAYS send milestones frequently — the user cannot see anything else.
+- The terminal is a hidden execution environment. `send_message` and `send_plan` are your ONLY way to talk to the user.
 <!-- CLAUDE-IDE-INTEGRATION-END -->

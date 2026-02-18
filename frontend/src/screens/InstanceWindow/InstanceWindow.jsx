@@ -17,6 +17,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
+import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
@@ -304,14 +305,17 @@ const InstanceWindow = () => {
                       px: 1.5,
                       py: 0.75,
                       flex: 1,
+                      minWidth: 0,
                     }}
                     >
-                      <Typography sx={{
-                        fontSize: '0.8rem', color: msgColor, lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                      }}
-                      >
-                        {item.text}
-                      </Typography>
+                      <MarkdownRenderer
+                        content={item.text}
+                        fontSize="0.8rem"
+                        sx={{
+                          color: msgColor,
+                          '& p:last-child': { mb: 0 },
+                        }}
+                      />
                     </Box>
                   </Box>
                 );

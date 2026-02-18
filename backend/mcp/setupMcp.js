@@ -38,6 +38,7 @@ const TOOL_PERMISSIONS = [
   'mcp__claude-ide__update_status',
   'mcp__claude-ide__send_milestone',
   'mcp__claude-ide__user_input_needed',
+  'mcp__claude-ide__send_message',
   'mcp__claude-ide__send_plan',
   'Bash(dir:*)',
   'Read',

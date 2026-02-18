@@ -18,6 +18,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#7CB368' },
@@ -188,9 +189,22 @@ const ClaudeInstanceCard = ({
                       fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0,
                     }}
                     />
-                    <Typography sx={{ fontSize: '0.7rem', color: msgColor, lineHeight: 1.4 }}>
-                      {item.text}
-                    </Typography>
+                    <MarkdownRenderer
+                      content={item.text}
+                      fontSize="0.7rem"
+                      sx={{
+                        color: msgColor,
+                        lineHeight: 1.4,
+                        flex: 1,
+                        minWidth: 0,
+                        '& p': { mb: 0.25 },
+                        '& p:last-child': { mb: 0 },
+                        '& pre': { p: 0.75, mb: 0.5, fontSize: '0.65rem' },
+                        '& ul, & ol': { pl: 2, mb: 0.25 },
+                        '& li': { mb: 0 },
+                        '& h1, & h2, & h3': { fontSize: '0.75rem', mt: 0.5, mb: 0.25 },
+                      }}
+                    />
                   </Box>
                 );
               }

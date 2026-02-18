@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 
 import { useStoreValue } from '@/components/state/GlobalState';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import useQueryState from '@/components/connections/hooks/useQueryState';
 import {
   GroupStores,
   setGroups,
@@ -14,8 +15,17 @@ import { reassignInstancesToGroup } from '@/stores/instanceAtoms';
 
 const useGroups = () => {
   const groups = useStoreValue(GroupStores.groupsStore);
-  const activeGroupId = useStoreValue(GroupStores.activeGroupIdStore);
+  const activeGroupIdFromStore = useStoreValue(GroupStores.activeGroupIdStore);
   const placeholders = useStoreValue(GroupStores.placeholdersStore);
+  const [groupFromUrl, setGroupInUrl] = useQueryState(null, 'group');
+
+  // URL is the source of truth; keep Jotai store in sync
+  const activeGroupId = groupFromUrl || activeGroupIdFromStore;
+
+  const setActiveGroup = useCallback(id => {
+    setActiveGroupId(id);
+    setGroupInUrl(id);
+  }, [setGroupInUrl]);
 
   const fetchGroups = useCallback(async () => {
     const response = await Connections.postRequest(ApiEndpoints.groupsAll, {});
@@ -27,13 +37,15 @@ const useGroups = () => {
       withSaved.forEach(g => {
         initPlaceholders(g._id || g.id);
       });
-      // Set first saved group as active if none is active
-      if (!GroupStores.activeGroupIdStore.get() && withSaved.length > 0) {
-        setActiveGroupId(withSaved[0]._id || withSaved[0].id);
+      // Restore from URL query param, or fall back to first saved group
+      if (!activeGroupId && withSaved.length > 0) {
+        const urlId = groupFromUrl;
+        const matchesUrl = urlId && withSaved.some(g => (g._id || g.id) === urlId);
+        setActiveGroup(matchesUrl ? urlId : (withSaved[0]._id || withSaved[0].id));
       }
     }
     return response;
-  }, []);
+  }, [activeGroupId, groupFromUrl, setActiveGroup]);
 
   const saveGroup = useCallback(async (groupData) => {
     const { id, name, items } = groupData;
@@ -62,10 +74,10 @@ const useGroups = () => {
       }
       upsertGroup({ id: newId, name, items, saved: true });
       initPlaceholders(newId);
-      setActiveGroupId(newId);
+      setActiveGroup(newId);
     }
     return response;
-  }, [groups]);
+  }, [groups, setActiveGroup]);
 
   const deleteGroup = useCallback(async (groupId) => {
     const group = groups[groupId];
@@ -97,9 +109,9 @@ const useGroups = () => {
       saved: false,
     });
     initPlaceholders(groupId);
-    setActiveGroupId(groupId);
+    setActiveGroup(groupId);
     return groupId;
-  }, [groups]);
+  }, [groups, setActiveGroup]);
 
   const groupList = Object.values(groups || {});
 
@@ -108,7 +120,7 @@ const useGroups = () => {
     groupList,
     activeGroupId,
     placeholders,
-    setActiveGroupId,
+    setActiveGroupId: setActiveGroup,
     fetchGroups,
     saveGroup,
     updateGroupItems,
