@@ -6,8 +6,11 @@ const TerminalController = {
 
   async create(ctx) {
     const { name, shell, command, cwd } = ctx.request.body;
+    const doc = { name, shell };
+    if (command !== undefined) doc.command = command;
+    if (cwd !== undefined) doc.cwd = cwd;
     try {
-      const result = await ctx.libS.terminals.add({ name, shell, command, cwd });
+      const result = await ctx.libS.terminals.add(doc);
       return ctx.modS.responses.createSuccessResponse(ctx, {
         _id: result.insertedId,
       });

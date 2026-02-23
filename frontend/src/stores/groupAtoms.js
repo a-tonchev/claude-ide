@@ -35,8 +35,8 @@ GlobalStateHelper.computedAtom({
   store: GroupStores,
 });
 
-export const setGroups = groups => {
-  const map = {};
+export const setGroups = (groups, implicitToPreserve = {}) => {
+  const map = { ...implicitToPreserve };
   if (Array.isArray(groups)) {
     groups.forEach(g => {
       map[g._id || g.id] = { ...g, id: g._id || g.id };

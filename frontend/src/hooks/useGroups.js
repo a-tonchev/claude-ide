@@ -19,12 +19,17 @@ const useGroups = () => {
   const placeholders = useStoreValue(GroupStores.placeholdersStore);
   const [groupFromUrl, setGroupInUrl] = useQueryState(null, 'group');
 
-  // URL is the source of truth; keep Jotai store in sync
-  const activeGroupId = groupFromUrl || activeGroupIdFromStore;
+  // URL is source of truth for saved groups; 'new' means use the Jotai store value
+  const activeGroupId = (groupFromUrl && groupFromUrl !== 'new')
+    ? groupFromUrl
+    : activeGroupIdFromStore;
 
   const setActiveGroup = useCallback(id => {
     setActiveGroupId(id);
-    setGroupInUrl(id);
+    // Saved groups get their real ID in URL; unsaved get 'new'
+    const currentGroups = GroupStores.groupsStore.get();
+    const group = currentGroups[id];
+    setGroupInUrl(group?.saved ? id : 'new');
   }, [setGroupInUrl]);
 
   const fetchGroups = useCallback(async () => {
@@ -33,12 +38,18 @@ const useGroups = () => {
       const fetched = response.data.groups;
       // Mark all fetched groups as saved (they come from DB)
       const withSaved = fetched.map(g => ({ ...g, saved: true }));
-      setGroups(withSaved);
+      // Preserve implicit (unsaved) groups that exist in the store
+      const current = GroupStores.groupsStore.get();
+      const implicit = {};
+      Object.entries(current).forEach(([id, g]) => {
+        if (!g.saved) implicit[id] = g;
+      });
+      setGroups(withSaved, implicit);
       withSaved.forEach(g => {
         initPlaceholders(g._id || g.id);
       });
       // Restore from URL query param, or fall back to first saved group
-      if (!activeGroupId && withSaved.length > 0) {
+      if (!activeGroupId && groupFromUrl !== 'new' && withSaved.length > 0) {
         const urlId = groupFromUrl;
         const matchesUrl = urlId && withSaved.some(g => (g._id || g.id) === urlId);
         setActiveGroup(matchesUrl ? urlId : (withSaved[0]._id || withSaved[0].id));
@@ -109,9 +120,10 @@ const useGroups = () => {
       saved: false,
     });
     initPlaceholders(groupId);
-    setActiveGroup(groupId);
+    setActiveGroupId(groupId);
+    setGroupInUrl('new');
     return groupId;
-  }, [groups, setActiveGroup]);
+  }, [groups, setGroupInUrl]);
 
   const groupList = Object.values(groups || {});
 
