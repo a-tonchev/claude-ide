@@ -12,7 +12,9 @@
       "Bash(CLAUDECODE= claude --help)",
       "Bash(npx eslint:*)",
       "Bash(npm ls:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(true:*)",
+      "Bash(head:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

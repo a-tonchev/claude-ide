@@ -359,11 +359,12 @@ const Dashboard = () => {
                 const isExpanded = expandedCards.has(instance.id);
                 return (
                   <Grid
-                    item
-                    xs={12}
-                    sm={isExpanded ? 12 : 6}
-                    md={isExpanded ? 8 : 4}
-                    lg={isExpanded ? 6 : 3}
+                    size={{
+                      xs: 12,
+                      sm: isExpanded ? 12 : 6,
+                      md: isExpanded ? 8 : 4,
+                      lg: isExpanded ? 6 : 3,
+                    }}
                     key={instance.id}
                   >
                     {instance.type === 'terminal' ? (
@@ -390,7 +391,12 @@ const Dashboard = () => {
                 );
               })}
               {stoppedItems.map((item, idx) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={`saved-${idx}`}>
+                <Grid
+                  size={{
+                    xs: 12, sm: 6, md: 4, lg: 3,
+                  }}
+                  key={`saved-${idx}`}
+                >
                   <SavedItemCard
                     item={item}
                     onStart={handleStartSavedItem}
