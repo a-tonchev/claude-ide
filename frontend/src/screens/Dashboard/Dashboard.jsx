@@ -41,6 +41,7 @@ const Dashboard = () => {
   const [loadGroupOpen, setLoadGroupOpen] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [expandedCards, setExpandedCards] = useState(new Set());
 
   const onWsMessage = useCallback(msg => {
     if (msg.type === 'ws_connected') setWsConnected(true);
@@ -158,6 +159,15 @@ const Dashboard = () => {
     assignToPlaceholder(activeGroupId, instanceId);
   }, [activeGroupId]);
 
+  const handleToggleExpand = useCallback(instanceId => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(instanceId)) next.delete(instanceId);
+      else next.add(instanceId);
+      return next;
+    });
+  }, []);
+
   const handleOpenWindow = useCallback(instanceId => {
     const url = UrlEnums.INSTANCE_WINDOW.replace(':instanceId', instanceId);
     window.open(url, `instance_${instanceId}`, 'width=1200,height=800');
@@ -252,7 +262,7 @@ const Dashboard = () => {
       if (!path) return;
       createInstance(item.projectId, item.name, path, [], gid);
     } else {
-      let { shell, command, cwd } = item;
+      let { shell, command } = item;
       if (!shell) {
         // Look up saved terminal config by name
         const result = await Connections.postRequest(ApiEndpoints.terminalsAll, {});
@@ -261,7 +271,6 @@ const Dashboard = () => {
           if (config) {
             shell = config.shell;
             command = command || config.command;
-            cwd = cwd || config.cwd;
           }
         }
       }
@@ -346,28 +355,40 @@ const Dashboard = () => {
             </Box>
           ) : (
             <Grid container spacing={1.5}>
-              {activeGroupInstances.map(instance => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={instance.id}>
-                  {instance.type === 'terminal' ? (
-                    <TerminalCard
-                      instance={instance}
-                      onOpenPlaceholder={handleOpenPlaceholder}
-                      onOpenWindow={handleOpenWindow}
-                      onStop={stopInstance}
-                    />
-                  ) : (
-                    <ClaudeInstanceCard
-                      instance={instance}
-                      onOpenPlaceholder={handleOpenPlaceholder}
-                      onOpenWindow={handleOpenWindow}
-                      onStop={stopInstance}
-                      onSendInput={handleSendInput}
-                      onSendResponse={handleSendResponse}
-                      onViewPlan={setViewingPlan}
-                    />
-                  )}
-                </Grid>
-              ))}
+              {activeGroupInstances.map(instance => {
+                const isExpanded = expandedCards.has(instance.id);
+                return (
+                  <Grid
+                    item
+                    xs={12}
+                    sm={isExpanded ? 12 : 6}
+                    md={isExpanded ? 8 : 4}
+                    lg={isExpanded ? 6 : 3}
+                    key={instance.id}
+                  >
+                    {instance.type === 'terminal' ? (
+                      <TerminalCard
+                        instance={instance}
+                        onOpenPlaceholder={handleOpenPlaceholder}
+                        onOpenWindow={handleOpenWindow}
+                        onStop={stopInstance}
+                      />
+                    ) : (
+                      <ClaudeInstanceCard
+                        instance={instance}
+                        expanded={isExpanded}
+                        onToggleExpand={handleToggleExpand}
+                        onOpenPlaceholder={handleOpenPlaceholder}
+                        onOpenWindow={handleOpenWindow}
+                        onStop={stopInstance}
+                        onSendInput={handleSendInput}
+                        onSendResponse={handleSendResponse}
+                        onViewPlan={setViewingPlan}
+                      />
+                    )}
+                  </Grid>
+                );
+              })}
               {stoppedItems.map((item, idx) => (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={`saved-${idx}`}>
                   <SavedItemCard

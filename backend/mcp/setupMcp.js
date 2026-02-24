@@ -55,7 +55,7 @@ const TOOL_PERMISSIONS = [
  * Only writes when missing or when API_URL/port changed.
  */
 function ensureMcpConfig() {
-  const port = process.env.PORT || 5001;
+  const port = process.env.PORT || 6950;
   const apiPrefix = '/api/v1';
 
   const config = {

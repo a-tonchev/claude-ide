@@ -23,7 +23,7 @@ log(`MCP server starting. PID=${process.pid}`);
 
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const PROJECT_ID = process.env.PROJECT_ID;
-const API_URL = process.env.API_URL || 'http://localhost:5001';
+const API_URL = process.env.API_URL || 'http://localhost:6950';
 const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
 async function apiPost(path, body) {

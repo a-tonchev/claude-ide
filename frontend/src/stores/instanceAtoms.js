@@ -145,6 +145,7 @@ export const addClaudeMessage = (instanceId, message) => {
       messages: [...(existing.messages || []), message],
     },
   });
+  broadcast({ action: 'addClaudeMessage', instanceId, message });
 };
 
 export const addPlanToInstance = (instanceId, plan) => {
@@ -185,6 +186,9 @@ if (syncChannel) {
       switch (msg.action) {
         case 'addUserMessage':
           addUserMessage(msg.instanceId, msg.text, msg.timestamp);
+          break;
+        case 'addClaudeMessage':
+          addClaudeMessage(msg.instanceId, msg.message);
           break;
         case 'setPendingInput':
           setPendingInput(msg.instanceId, msg.pendingInput);

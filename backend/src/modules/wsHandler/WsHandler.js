@@ -181,15 +181,30 @@ function handleCreateTerminal(ws, message) {
 
 // Delay between writing text and \r so ConPTY forwards them as
 // separate reads — otherwise the app treats it as pasted text.
-const ENTER_DELAY_MS = 100;
+const ENTER_DELAY_MS = 200;
+
+// Track pending \r timeouts per instance to avoid overlap.
+const pendingEnter = new Map();
 
 function handleInput(ws, message) {
   const { instanceId, data } = message;
   if (!instanceId || data === undefined) return;
 
+  // If there's a pending \r for this instance, flush it before new input.
+  const prev = pendingEnter.get(instanceId);
+  if (prev) {
+    clearTimeout(prev);
+    pendingEnter.delete(instanceId);
+    InstanceManager.write(instanceId, '\r');
+  }
+
   if (data.length > 1 && data.endsWith('\r')) {
     InstanceManager.write(instanceId, data.slice(0, -1));
-    setTimeout(() => InstanceManager.write(instanceId, '\r'), ENTER_DELAY_MS);
+    const timer = setTimeout(() => {
+      pendingEnter.delete(instanceId);
+      InstanceManager.write(instanceId, '\r');
+    }, ENTER_DELAY_MS);
+    pendingEnter.set(instanceId, timer);
   } else {
     InstanceManager.write(instanceId, data);
   }
@@ -230,7 +245,11 @@ function handlePlan(ws, message) {
   ].join('\n');
 
   InstanceManager.write(instanceId, planInput);
-  setTimeout(() => InstanceManager.write(instanceId, '\r'), ENTER_DELAY_MS);
+  const planTimer = setTimeout(() => {
+    pendingEnter.delete(instanceId);
+    InstanceManager.write(instanceId, '\r');
+  }, ENTER_DELAY_MS);
+  pendingEnter.set(instanceId, planTimer);
 }
 
 function handleSubscribe(ws, message) {
@@ -243,10 +262,27 @@ function handleSubscribe(ws, message) {
   }
 
   ws.subscribe(`instance_${instanceId}`);
+
+  // Send full instance state so popup windows get all data
   sendJson(ws, {
-    type: 'status',
-    instanceId,
-    status: instance.status,
+    type: 'instance_state',
+    instance: {
+      id: instance.id,
+      type: instance.type,
+      projectId: instance.projectId,
+      projectName: instance.projectName,
+      cwd: instance.cwd,
+      status: instance.status,
+      startedAt: instance.startedAt,
+      milestones: instance.milestones,
+      messages: instance.messages || [],
+      pendingInput: instance.pendingInput,
+      userMessages: instance.userMessages,
+      plans: instance.plans,
+      groupId: instance.groupId,
+      shell: instance.shell,
+      command: instance.command,
+    },
   });
 }
 
@@ -273,9 +309,25 @@ function handleUserResponse(ws, message) {
     return sendJson(ws, { type: 'error', message: 'Instance not found' });
   }
 
+  // Store and broadcast the question text before clearing pendingInput
+  if (instance.pendingInput?.message) {
+    const questionMsg = InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
+    WsHandler.publish(`instance_${instanceId}`, {
+      type: 'claude_message',
+      instanceId,
+      text: instance.pendingInput.message,
+      messageType: 'question',
+      timestamp: questionMsg.timestamp,
+    });
+  }
+
   InstanceManager.addUserMessage(instanceId, choice);
   InstanceManager.write(instanceId, choice);
-  setTimeout(() => InstanceManager.write(instanceId, '\r'), ENTER_DELAY_MS);
+  const choiceTimer = setTimeout(() => {
+    pendingEnter.delete(instanceId);
+    InstanceManager.write(instanceId, '\r');
+  }, ENTER_DELAY_MS);
+  pendingEnter.set(instanceId, choiceTimer);
 
   InstanceManager.clearPendingInput(instanceId);
   InstanceManager.updateStatus(instanceId, 'working');

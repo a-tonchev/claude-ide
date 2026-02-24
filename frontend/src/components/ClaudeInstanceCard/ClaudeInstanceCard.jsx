@@ -14,10 +14,13 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StopIcon from '@mui/icons-material/Stop';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
+import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 
 const STATUS_CONFIG = {
@@ -34,6 +37,8 @@ const STATUS_CONFIG = {
 
 const ClaudeInstanceCard = ({
   instance,
+  expanded,
+  onToggleExpand,
   onOpenPlaceholder,
   onOpenWindow,
   onStop,
@@ -62,7 +67,7 @@ const ClaudeInstanceCard = ({
     kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
   }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  const visibleFeed = feedExpanded ? feed : feed.slice(-5);
+  const visibleFeed = feedExpanded || expanded ? feed : feed.slice(-5);
 
   // Check if Claude is "thinking" — user sent a message but no milestone/message came after it
   const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
@@ -87,13 +92,6 @@ const ClaudeInstanceCard = ({
         onSendInput(instance.id, `${inputText}\r`);
         setInputText('');
       }
-    }
-  }, [inputText, instance.id, onSendInput]);
-
-  const handleSend = useCallback(() => {
-    if (inputText.trim()) {
-      onSendInput(instance.id, `${inputText}\r`);
-      setInputText('');
     }
   }, [inputText, instance.id, onSendInput]);
 
@@ -153,7 +151,7 @@ const ClaudeInstanceCard = ({
               </IconButton>
             )}
           </Box>
-          <Box ref={feedRef} sx={{ maxHeight: feedExpanded ? 200 : 80, overflowY: 'auto' }}>
+          <Box ref={feedRef} sx={{ maxHeight: expanded ? 200 : feedExpanded ? 200 : 80, overflowY: 'auto' }}>
             {visibleFeed.map((item, idx) => {
               if (item.kind === 'user') {
                 return (
@@ -177,7 +175,8 @@ const ClaudeInstanceCard = ({
                 const msgColor = item.messageType === 'success' ? '#7CB368'
                   : item.messageType === 'warning' ? '#CC7832'
                     : item.messageType === 'error' ? '#BC3F3C'
-                      : '#A9B7C6';
+                      : item.messageType === 'question' ? '#CC7832'
+                        : '#A9B7C6';
                 return (
                   <Box
                     key={idx}
@@ -316,13 +315,13 @@ const ClaudeInstanceCard = ({
         <TextField
           fullWidth
           multiline
-          maxRows={3}
+          maxRows={expanded ? 6 : 3}
           size="small"
           placeholder="Type a message..."
           value={inputText}
           onChange={e => setInputText(e.target.value)}
           disabled={instance.status === 'exited'}
-          slotProps={{ htmlInput: { onKeyDown: handleKeyDown } }}
+          onKeyDown={handleKeyDown}
           sx={{
             '& .MuiOutlinedInput-root': {
               fontSize: '0.75rem',
@@ -360,6 +359,16 @@ const ClaudeInstanceCard = ({
           sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
         >
           <OpenInNewIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => onToggleExpand?.(instance.id)}
+          title={expanded ? 'Shrink card' : 'Expand card'}
+          sx={{ color: expanded ? '#6897BB' : '#808080', '&:hover': { color: '#6897BB' } }}
+        >
+          {expanded
+            ? <UnfoldLessIcon sx={{ fontSize: 16 }} />
+            : <UnfoldMoreIcon sx={{ fontSize: 16 }} />}
         </IconButton>
         <Box sx={{ flex: 1 }} />
         <IconButton

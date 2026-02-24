@@ -89,6 +89,10 @@ function handleMessage(event) {
         sendJson({ type: 'subscribe', instanceId: message.instanceId });
         break;
 
+      case 'instance_state':
+        upsertInstance(message.instance);
+        break;
+
       case 'status':
         updateInstanceField(message.instanceId, 'status', message.status);
         break;

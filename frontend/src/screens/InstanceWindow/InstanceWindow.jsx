@@ -224,255 +224,258 @@ const InstanceWindow = () => {
           />
         </Box>
 
-        {/* Activity panel */}
-        <Box sx={{
-          width: 440,
-          flexShrink: 0,
-          display: 'flex',
-          flexDirection: 'column',
-          borderLeft: '1px solid #3C3F41',
-          bgcolor: '#313335',
-        }}
-        >
-          {/* Activity feed */}
-          <Box
-            ref={feedRef}
-            sx={{
-              flex: 1, overflow: 'auto', px: 2, py: 1.5,
-            }}
-          >
-            {feed.length === 0 && !isThinking && (
-              <Typography sx={{
-                color: '#606366', fontSize: '0.8rem', textAlign: 'center', mt: 4,
-              }}
-              >
-                No activity yet. Send a message to get started.
-              </Typography>
-            )}
-
-            {feed.map((item, idx) => {
-              if (item.kind === 'user') {
-                return (
-                  <Box
-                    key={idx}
-                    sx={{
-                      display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
-                    }}
-                  >
-                    <PersonIcon sx={{
-                      fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0,
-                    }}
-                    />
-                    <Box sx={{
-                      bgcolor: '#3C3F41',
-                      border: '1px solid #4E5254',
-                      borderRadius: '8px',
-                      px: 1.5,
-                      py: 0.75,
-                      flex: 1,
-                    }}
-                    >
-                      <Typography sx={{
-                        fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                      }}
-                      >
-                        {item.text}
-                      </Typography>
-                    </Box>
-                  </Box>
-                );
-              }
-              if (item.kind === 'message') {
-                const msgColor = item.messageType === 'success' ? '#7CB368'
-                  : item.messageType === 'warning' ? '#CC7832'
-                    : item.messageType === 'error' ? '#BC3F3C'
-                      : '#A9B7C6';
-                return (
-                  <Box
-                    key={idx}
-                    sx={{
-                      display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
-                    }}
-                  >
-                    <ChatIcon sx={{
-                      fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0,
-                    }}
-                    />
-                    <Box sx={{
-                      bgcolor: '#2B2B2B',
-                      border: `1px solid ${msgColor}33`,
-                      borderRadius: '8px',
-                      px: 1.5,
-                      py: 0.75,
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                    >
-                      <MarkdownRenderer
-                        content={item.text}
-                        fontSize="0.8rem"
-                        sx={{
-                          color: msgColor,
-                          '& p:last-child': { mb: 0 },
-                        }}
-                      />
-                    </Box>
-                  </Box>
-                );
-              }
-              return (
-                <Box
-                  key={idx}
-                  sx={{
-                    display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
-                  }}
-                >
-                  <SmartToyIcon sx={{
-                    fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0,
-                  }}
-                  />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography sx={{ fontSize: '0.8rem', color: '#7CB368', lineHeight: 1.5 }}>
-                      {item.accomplished}
-                    </Typography>
-                    {item.workingOn && (
-                      <Typography sx={{ fontSize: '0.75rem', color: '#7AAACF', lineHeight: 1.4 }}>
-                        Next: {item.workingOn}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              );
-            })}
-
-            {isThinking && (
-              <Box sx={{
-                display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
-              }}
-              >
-                <CircularProgress size={14} sx={{ color: '#6897BB' }} />
-                <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
-                  Claude is working...
-                </Typography>
-              </Box>
-            )}
-          </Box>
-
-          {/* Plans section */}
-          {plans.length > 0 && (
-            <Box sx={{ px: 2, py: 1, borderTop: '1px solid #3C3F41' }}>
-              <Typography sx={{
-                fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.5,
-              }}
-              >PLANS
-              </Typography>
-              {plans.map((plan, idx) => (
-                <Box
-                  key={idx}
-                  sx={{
-                    display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25,
-                  }}
-                >
-                  <Typography
-                    onClick={() => handleOpenPlan(plan)}
-                    sx={{
-                      fontSize: '0.75rem',
-                      color: '#6897BB',
-                      cursor: 'pointer',
-                      flex: 1,
-                      '&:hover': { textDecoration: 'underline' },
-                    }}
-                  >
-                    {plan.title || 'Untitled Plan'}
-                  </Typography>
-                  {plan.id && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleOpenPlan(plan)}
-                      sx={{ p: 0.25, color: '#808080', '&:hover': { color: '#6897BB' } }}
-                    >
-                      <OpenInNewIcon sx={{ fontSize: 12 }} />
-                    </IconButton>
-                  )}
-                </Box>
-              ))}
-            </Box>
-          )}
-
-          {/* Pending choices */}
-          {pending && (
-            <Box sx={{
-              px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41',
-            }}
-            >
-              <Typography sx={{
-                fontSize: '0.8rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
-              }}
-              >
-                {pending.message}
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {(pending.choices || []).map((choice, idx) => (
-                  <Chip
-                    key={idx}
-                    label={choice}
-                    size="small"
-                    clickable
-                    onClick={() => handleChoiceClick(choice)}
-                    sx={{
-                      bgcolor: '#214283',
-                      color: '#A9B7C6',
-                      fontSize: '0.75rem',
-                      '&:hover': { bgcolor: '#2E5AA7' },
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
-
-          {/* Input */}
+        {/* Activity panel (Claude instances only) */}
+        {instance.type === 'claude' && (
           <Box sx={{
-            display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderTop: '1px solid #3C3F41',
+            width: 440,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderLeft: '1px solid #3C3F41',
+            bgcolor: '#313335',
           }}
           >
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Type a message..."
-              value={inputText}
-              onChange={e => setInputText(e.target.value)}
-              disabled={instance.status === 'exited'}
-              multiline
-              maxRows={4}
-              slotProps={{ htmlInput: { onKeyDown: handleKeyDown } }}
+            {/* Activity feed */}
+            <Box
+              ref={feedRef}
               sx={{
-                '& .MuiOutlinedInput-root': {
-                  bgcolor: '#2B2B2B',
-                  fontSize: '0.8rem',
-                  color: '#A9B7C6',
-                  '& fieldset': { borderColor: '#4E5254' },
-                  '&:hover fieldset': { borderColor: '#6897BB' },
-                  '&.Mui-focused fieldset': { borderColor: '#6897BB' },
-                },
-              }}
-            />
-            <IconButton
-              size="small"
-              onClick={handleSend}
-              disabled={instance.status === 'exited' || !inputText.trim()}
-              sx={{
-                color: '#6897BB',
-                bgcolor: 'rgba(104,151,187,0.15)',
-                borderRadius: 2,
-                '&:hover': { bgcolor: 'rgba(104,151,187,0.25)' },
-                '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
+                flex: 1, overflow: 'auto', px: 2, py: 1.5,
               }}
             >
-              <SendIcon sx={{ fontSize: 16 }} />
-            </IconButton>
+              {feed.length === 0 && !isThinking && (
+                <Typography sx={{
+                  color: '#606366', fontSize: '0.8rem', textAlign: 'center', mt: 4,
+                }}
+                >
+                  No activity yet. Send a message to get started.
+                </Typography>
+              )}
+
+              {feed.map((item, idx) => {
+                if (item.kind === 'user') {
+                  return (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                      }}
+                    >
+                      <PersonIcon sx={{
+                        fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0,
+                      }}
+                      />
+                      <Box sx={{
+                        bgcolor: '#3C3F41',
+                        border: '1px solid #4E5254',
+                        borderRadius: '8px',
+                        px: 1.5,
+                        py: 0.75,
+                        flex: 1,
+                      }}
+                      >
+                        <Typography sx={{
+                          fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+                        }}
+                        >
+                          {item.text}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                }
+                if (item.kind === 'message') {
+                  const msgColor = item.messageType === 'success' ? '#7CB368'
+                    : item.messageType === 'warning' ? '#CC7832'
+                      : item.messageType === 'error' ? '#BC3F3C'
+                        : item.messageType === 'question' ? '#CC7832'
+                          : '#A9B7C6';
+                  return (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                      }}
+                    >
+                      <ChatIcon sx={{
+                        fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0,
+                      }}
+                      />
+                      <Box sx={{
+                        bgcolor: '#2B2B2B',
+                        border: `1px solid ${msgColor}33`,
+                        borderRadius: '8px',
+                        px: 1.5,
+                        py: 0.75,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                      >
+                        <MarkdownRenderer
+                          content={item.text}
+                          fontSize="0.8rem"
+                          sx={{
+                            color: msgColor,
+                            '& p:last-child': { mb: 0 },
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  );
+                }
+                return (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', gap: 1, mb: 1.5, alignItems: 'flex-start',
+                    }}
+                  >
+                    <SmartToyIcon sx={{
+                      fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0,
+                    }}
+                    />
+                    <Box sx={{ flex: 1 }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#7CB368', lineHeight: 1.5 }}>
+                        {item.accomplished}
+                      </Typography>
+                      {item.workingOn && (
+                        <Typography sx={{ fontSize: '0.75rem', color: '#7AAACF', lineHeight: 1.4 }}>
+                          Next: {item.workingOn}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              })}
+
+              {isThinking && (
+                <Box sx={{
+                  display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+                }}
+                >
+                  <CircularProgress size={14} sx={{ color: '#6897BB' }} />
+                  <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
+                    Claude is working...
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            {/* Plans section */}
+            {plans.length > 0 && (
+              <Box sx={{ px: 2, py: 1, borderTop: '1px solid #3C3F41' }}>
+                <Typography sx={{
+                  fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.5,
+                }}
+                >PLANS
+                </Typography>
+                {plans.map((plan, idx) => (
+                  <Box
+                    key={idx}
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25,
+                    }}
+                  >
+                    <Typography
+                      onClick={() => handleOpenPlan(plan)}
+                      sx={{
+                        fontSize: '0.75rem',
+                        color: '#6897BB',
+                        cursor: 'pointer',
+                        flex: 1,
+                        '&:hover': { textDecoration: 'underline' },
+                      }}
+                    >
+                      {plan.title || 'Untitled Plan'}
+                    </Typography>
+                    {plan.id && (
+                      <IconButton
+                        size="small"
+                        onClick={() => handleOpenPlan(plan)}
+                        sx={{ p: 0.25, color: '#808080', '&:hover': { color: '#6897BB' } }}
+                      >
+                        <OpenInNewIcon sx={{ fontSize: 12 }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {/* Pending choices */}
+            {pending && (
+              <Box sx={{
+                px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41',
+              }}
+              >
+                <Typography sx={{
+                  fontSize: '0.8rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
+                }}
+                >
+                  {pending.message}
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(pending.choices || []).map((choice, idx) => (
+                    <Chip
+                      key={idx}
+                      label={choice}
+                      size="small"
+                      clickable
+                      onClick={() => handleChoiceClick(choice)}
+                      sx={{
+                        bgcolor: '#214283',
+                        color: '#A9B7C6',
+                        fontSize: '0.75rem',
+                        '&:hover': { bgcolor: '#2E5AA7' },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Input */}
+            <Box sx={{
+              display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderTop: '1px solid #3C3F41',
+            }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Type a message..."
+                value={inputText}
+                onChange={e => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={instance.status === 'exited'}
+                multiline
+                maxRows={4}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: '#2B2B2B',
+                    fontSize: '0.8rem',
+                    color: '#A9B7C6',
+                    '& fieldset': { borderColor: '#4E5254' },
+                    '&:hover fieldset': { borderColor: '#6897BB' },
+                    '&.Mui-focused fieldset': { borderColor: '#6897BB' },
+                  },
+                }}
+              />
+              <IconButton
+                size="small"
+                onClick={handleSend}
+                disabled={instance.status === 'exited' || !inputText.trim()}
+                sx={{
+                  color: '#6897BB',
+                  bgcolor: 'rgba(104,151,187,0.15)',
+                  borderRadius: 2,
+                  '&:hover': { bgcolor: 'rgba(104,151,187,0.25)' },
+                  '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
+                }}
+              >
+                <SendIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Box>
           </Box>
-        </Box>
+        )}
       </Box>
 
       <PlanViewerDialog

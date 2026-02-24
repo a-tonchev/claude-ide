@@ -18,7 +18,7 @@ const mongoSetup = mongoPool({
   dbName: settingsToUse.dbName,
 });
 
-const port = Number(process.env.PORT || 5001);
+const port = Number(process.env.PORT || 6950);
 
 const app = uWebSockets.App();
 
