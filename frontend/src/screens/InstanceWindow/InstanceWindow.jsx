@@ -21,7 +21,7 @@ import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
-import { addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
+import { addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 
 const STATUS_CONFIG = {
@@ -146,10 +146,19 @@ const InstanceWindow = () => {
   }, [instanceId, resizeInstance]);
 
   const handleChoiceClick = useCallback(choice => {
-    addUserMessage(instanceId, choice);
+    const now = Date.now();
+    // Add the question before the answer so the feed ordering is correct
+    if (pending?.message) {
+      addClaudeMessage(instanceId, {
+        text: pending.message,
+        type: 'question',
+        timestamp: new Date(now - 1).toISOString(),
+      });
+    }
+    addUserMessage(instanceId, choice, new Date(now).toISOString());
     setPendingInput(instanceId, null);
     sendUserResponse(instanceId, choice);
-  }, [instanceId, sendUserResponse]);
+  }, [instanceId, sendUserResponse, pending]);
 
   const handleOpenPlan = useCallback(plan => {
     if (plan.id) {

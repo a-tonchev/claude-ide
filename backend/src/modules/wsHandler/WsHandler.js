@@ -310,16 +310,11 @@ function handleUserResponse(ws, message) {
     return sendJson(ws, { type: 'error', message: 'Instance not found' });
   }
 
-  // Store and broadcast the question text before clearing pendingInput
+  // Store the question text for persistence (new windows get it via instance_state).
+  // Don't publish via WS — the frontend adds it locally before the user's answer
+  // to ensure correct chronological ordering in the feed.
   if (instance.pendingInput?.message) {
-    const questionMsg = InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
-    WsHandler.publish(`instance_${instanceId}`, {
-      type: 'claude_message',
-      instanceId,
-      text: instance.pendingInput.message,
-      messageType: 'question',
-      timestamp: questionMsg.timestamp,
-    });
+    InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
   }
 
   InstanceManager.addUserMessage(instanceId, choice);

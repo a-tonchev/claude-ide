@@ -28,7 +28,7 @@ import { assignToPlaceholder } from '@/helpers/placeholderHelper';
 import {
   setPlaceholder, removeGroup, upsertGroup, initPlaceholders,
 } from '@/stores/groupAtoms';
-import { InstanceStores, addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
+import { InstanceStores, addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
 
@@ -149,7 +149,17 @@ const Dashboard = () => {
   }, [writeToInstance, sendUserMessage]);
 
   const handleSendResponse = useCallback((instanceId, choice) => {
-    addUserMessage(instanceId, choice);
+    const now = Date.now();
+    // Add the question before the answer so the feed ordering is correct
+    const inst = InstanceStores.instancesStore.get()[instanceId];
+    if (inst?.pendingInput?.message) {
+      addClaudeMessage(instanceId, {
+        text: inst.pendingInput.message,
+        type: 'question',
+        timestamp: new Date(now - 1).toISOString(),
+      });
+    }
+    addUserMessage(instanceId, choice, new Date(now).toISOString());
     setPendingInput(instanceId, null);
     sendUserResponse(instanceId, choice);
   }, [sendUserResponse]);
