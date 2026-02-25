@@ -28,7 +28,7 @@ import { assignToPlaceholder } from '@/helpers/placeholderHelper';
 import {
   setPlaceholder, removeGroup, upsertGroup, initPlaceholders,
 } from '@/stores/groupAtoms';
-import { addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
+import { InstanceStores, addUserMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
 
@@ -137,16 +137,16 @@ const Dashboard = () => {
       const ts = new Date().toISOString();
       addUserMessage(instanceId, displayText, ts);
       sendUserMessage(instanceId, displayText, ts);
-      // Clear pending choices when user types their own input
-      const inst = instances?.[instanceId];
-      if (inst?.pendingInput) setPendingInput(instanceId, null);
+      // Always clear pending choices when user types their own input
+      setPendingInput(instanceId, null);
       // Immediately set "thinking" for Claude instances
+      const inst = InstanceStores.instancesStore.get()[instanceId];
       if (inst?.type === 'claude' && inst.status !== 'exited') {
         updateInstanceField(instanceId, 'status', 'thinking');
       }
     }
     writeToInstance(instanceId, data);
-  }, [writeToInstance, sendUserMessage, instances]);
+  }, [writeToInstance, sendUserMessage]);
 
   const handleSendResponse = useCallback((instanceId, choice) => {
     addUserMessage(instanceId, choice);

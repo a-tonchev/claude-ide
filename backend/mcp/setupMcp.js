@@ -34,13 +34,16 @@ function findGitRoot(cwd) {
  * for standard operations inside the managed terminal.
  */
 const TOOL_PERMISSIONS = [
+  // Claude IDE MCP tools (both naming formats)
   'MCPTool(claude-ide:*)',
+  'MCPTool',
   'mcp__claude-ide__update_status',
   'mcp__claude-ide__send_milestone',
   'mcp__claude-ide__user_input_needed',
   'mcp__claude-ide__send_message',
   'mcp__claude-ide__send_plan',
-  'Bash(dir:*)',
+  // All built-in tools
+  'Bash',
   'Read',
   'Write',
   'Edit',
@@ -48,6 +51,8 @@ const TOOL_PERMISSIONS = [
   'Grep',
   'WebFetch',
   'WebSearch',
+  'Task',
+  'NotebookEdit',
 ];
 
 /**
@@ -114,9 +119,6 @@ function mergeSettingsFile(filePath, mergeFn) {
 function enableMcpInSettings(projectRoot) {
   const projectSettingsPath = path.join(projectRoot, '.claude', 'settings.local.json');
   mergeSettingsFile(projectSettingsPath, settings => {
-    delete settings.enabledMcpjsonServers;
-    delete settings.enableAllProjectMcpServers;
-
     if (!settings.permissions) settings.permissions = {};
     if (!Array.isArray(settings.permissions.allow)) settings.permissions.allow = [];
 
@@ -138,9 +140,6 @@ function disableMcpInSettings(projectRoot) {
     if (!fs.existsSync(settingsPath)) return;
 
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-
-    delete settings.enableAllProjectMcpServers;
-    delete settings.enabledMcpjsonServers;
 
     if (Array.isArray(settings.permissions?.allow)) {
       const ourPerms = new Set(TOOL_PERMISSIONS);

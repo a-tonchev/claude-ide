@@ -11,6 +11,7 @@ import {
   setPendingInput,
   addPlanToInstance,
   InstanceStores,
+  withoutBroadcast,
 } from '@/stores/instanceAtoms';
 import { clearPlaceholder } from '@/stores/groupAtoms';
 
@@ -59,108 +60,30 @@ function handleMessage(event) {
     const message = JSON.parse(event.data);
     const { type } = message;
 
-    switch (type) {
-      case 'instances':
-        setInstances(message.list || []);
-        // Subscribe to all instance topics for live updates (covers reconnection)
-        (message.list || []).forEach(inst => {
-          sendJson({ type: 'subscribe', instanceId: inst.id });
-        });
-        break;
+    // All windows receive the same WebSocket events independently,
+    // so suppress BroadcastChannel re-broadcasting to prevent duplicates.
+    withoutBroadcast(() => {
+      switch (type) {
+        case 'instances':
+          // The backend open handler already subscribes us to all instance topics,
+          // so we just need to set the state — no need to send subscribe messages
+          // (sending subscribe would trigger redundant instance_state responses
+          // that race with claude_message events and cause duplicates).
+          setInstances(message.list || []);
+          break;
 
-      case 'created':
-        upsertInstance({
-          id: message.instanceId,
-          projectId: message.projectId,
-          projectName: message.projectName,
-          type: message.instanceType || 'claude',
-          groupId: message.groupId || null,
-          cwd: message.cwd || null,
-          shell: message.shell || null,
-          command: message.command || null,
-          status: 'running',
-          startedAt: new Date().toISOString(),
-          milestones: [],
-          messages: [],
-          plans: [],
-          pendingInput: null,
-        });
-        // Ensure we're subscribed to this instance's topic for live updates
-        sendJson({ type: 'subscribe', instanceId: message.instanceId });
-        break;
-
-      case 'instance_state':
-        upsertInstance(message.instance);
-        break;
-
-      case 'status':
-        updateInstanceField(message.instanceId, 'status', message.status);
-        break;
-
-      case 'status_update':
-        updateInstanceField(message.instanceId, 'status', message.status);
-        break;
-
-      case 'milestone': {
-        addMilestone(message.instanceId, {
-          accomplished: message.accomplished,
-          workingOn: message.workingOn,
-          timestamp: new Date().toISOString(),
-        });
-        // Auto-clear stale "thinking" status on activity
-        const mInst = InstanceStores.instancesStore.get()[message.instanceId];
-        if (mInst && ['thinking', 'running'].includes(mInst.status)) {
-          updateInstanceField(message.instanceId, 'status', 'working');
-        }
-        break;
-      }
-
-      case 'claude_message': {
-        addClaudeMessage(message.instanceId, {
-          text: message.text,
-          type: message.messageType || 'info',
-          timestamp: message.timestamp || new Date().toISOString(),
-        });
-        // Auto-clear stale "thinking" status on activity
-        const cmInst = InstanceStores.instancesStore.get()[message.instanceId];
-        if (cmInst && ['thinking', 'running'].includes(cmInst.status)) {
-          updateInstanceField(message.instanceId, 'status', 'working');
-        }
-        break;
-      }
-
-      case 'user_input_needed':
-        setPendingInput(message.instanceId, {
-          message: message.message,
-          choices: message.choices,
-        });
-        updateInstanceField(message.instanceId, 'status', 'waiting');
-        break;
-
-      case 'pending_cleared':
-        setPendingInput(message.instanceId, null);
-        updateInstanceField(message.instanceId, 'status', 'working');
-        break;
-
-      case 'plan_saved':
-        addPlanToInstance(message.instanceId, {
-          id: message.planId,
-          title: message.title,
-          content: message.content || '',
-        });
-        break;
-
-      case 'group_started':
-        (message.instances || []).forEach(inst => {
+        case 'created':
+          // Backend's subscribeAllClients already subscribes us to this topic,
+          // so no need to send a subscribe message here.
           upsertInstance({
-            id: inst.instanceId,
-            type: inst.type,
-            projectId: inst.projectId || null,
-            projectName: inst.name,
-            groupId: message.groupId,
-            cwd: inst.cwd || null,
-            shell: inst.shell || null,
-            command: inst.command || null,
+            id: message.instanceId,
+            projectId: message.projectId,
+            projectName: message.projectName,
+            type: message.instanceType || 'claude',
+            groupId: message.groupId || null,
+            cwd: message.cwd || null,
+            shell: message.shell || null,
+            command: message.command || null,
             status: 'running',
             startedAt: new Date().toISOString(),
             milestones: [],
@@ -168,33 +91,113 @@ function handleMessage(event) {
             plans: [],
             pendingInput: null,
           });
-          // Ensure we're subscribed to this instance's topic for live updates
-          sendJson({ type: 'subscribe', instanceId: inst.instanceId });
-        });
-        break;
+          break;
 
-      case 'group_stopped':
-        (message.stoppedIds || []).forEach(id => {
-          const inst = InstanceStores.instancesStore.get()[id];
-          if (inst?.groupId) {
-            clearPlaceholder(inst.groupId, id);
+        case 'instance_state':
+          upsertInstance(message.instance);
+          break;
+
+        case 'status':
+          updateInstanceField(message.instanceId, 'status', message.status);
+          break;
+
+        case 'status_update':
+          updateInstanceField(message.instanceId, 'status', message.status);
+          break;
+
+        case 'milestone': {
+          addMilestone(message.instanceId, {
+            accomplished: message.accomplished,
+            workingOn: message.workingOn,
+            timestamp: message.timestamp || new Date().toISOString(),
+          });
+          // Auto-clear stale "thinking" status on activity
+          const mInst = InstanceStores.instancesStore.get()[message.instanceId];
+          if (mInst && ['thinking', 'running'].includes(mInst.status)) {
+            updateInstanceField(message.instanceId, 'status', 'working');
           }
-          removeInstance(id);
-        });
-        break;
-
-      case 'stopped': {
-        const stoppedInst = InstanceStores.instancesStore.get()[message.instanceId];
-        if (stoppedInst?.groupId) {
-          clearPlaceholder(stoppedInst.groupId, message.instanceId);
+          break;
         }
-        removeInstance(message.instanceId);
-        break;
-      }
 
-      default:
-        break;
-    }
+        case 'claude_message': {
+          addClaudeMessage(message.instanceId, {
+            text: message.text,
+            type: message.messageType || 'info',
+            timestamp: message.timestamp || new Date().toISOString(),
+          });
+          // Auto-clear stale "thinking" status on activity
+          const cmInst = InstanceStores.instancesStore.get()[message.instanceId];
+          if (cmInst && ['thinking', 'running'].includes(cmInst.status)) {
+            updateInstanceField(message.instanceId, 'status', 'working');
+          }
+          break;
+        }
+
+        case 'user_input_needed':
+          setPendingInput(message.instanceId, {
+            message: message.message,
+            choices: message.choices,
+          });
+          updateInstanceField(message.instanceId, 'status', 'waiting');
+          break;
+
+        case 'pending_cleared':
+          setPendingInput(message.instanceId, null);
+          updateInstanceField(message.instanceId, 'status', 'working');
+          break;
+
+        case 'plan_saved':
+          addPlanToInstance(message.instanceId, {
+            id: message.planId,
+            title: message.title,
+            content: message.content || '',
+          });
+          break;
+
+        case 'group_started':
+          (message.instances || []).forEach(inst => {
+            upsertInstance({
+              id: inst.instanceId,
+              type: inst.type,
+              projectId: inst.projectId || null,
+              projectName: inst.name,
+              groupId: message.groupId,
+              cwd: inst.cwd || null,
+              shell: inst.shell || null,
+              command: inst.command || null,
+              status: 'running',
+              startedAt: new Date().toISOString(),
+              milestones: [],
+              messages: [],
+              plans: [],
+              pendingInput: null,
+            });
+          });
+          break;
+
+        case 'group_stopped':
+          (message.stoppedIds || []).forEach(id => {
+            const inst = InstanceStores.instancesStore.get()[id];
+            if (inst?.groupId) {
+              clearPlaceholder(inst.groupId, id);
+            }
+            removeInstance(id);
+          });
+          break;
+
+        case 'stopped': {
+          const stoppedInst = InstanceStores.instancesStore.get()[message.instanceId];
+          if (stoppedInst?.groupId) {
+            clearPlaceholder(stoppedInst.groupId, message.instanceId);
+          }
+          removeInstance(message.instanceId);
+          break;
+        }
+
+        default:
+          break;
+      }
+    });
 
     // Always forward to per-component listeners (for output, plan_ready, etc.)
     notifyListeners(message);

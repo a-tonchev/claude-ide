@@ -17,6 +17,18 @@ function broadcast(action) {
   syncChannel.postMessage(action);
 }
 
+/** Suppress BroadcastChannel broadcasts for the duration of fn().
+ *  Use this when changes originate from a source all windows receive
+ *  independently (e.g. WebSocket), so re-broadcasting would cause duplicates. */
+export function withoutBroadcast(fn) {
+  _fromSync = true;
+  try {
+    fn();
+  } finally {
+    _fromSync = false;
+  }
+}
+
 // Map of instanceId -> instance data
 GlobalStateHelper.atom({
   key: 'instancesStore',
@@ -94,11 +106,15 @@ export const addMilestone = (instanceId, milestone) => {
   const current = InstanceStores.instancesStore.get();
   const existing = current[instanceId];
   if (!existing) return;
+  // Deduplicate: skip if same accomplished+timestamp already exists
+  const ms = existing.milestones || [];
+  const ts = milestone.timestamp ? String(milestone.timestamp) : '';
+  if (ts && ms.some(m => String(m.timestamp) === ts && m.accomplished === milestone.accomplished)) return;
   InstanceStores.instancesStore.set({
     ...current,
     [instanceId]: {
       ...existing,
-      milestones: [...(existing.milestones || []), milestone],
+      milestones: [...ms, milestone],
     },
   });
 };
@@ -138,11 +154,16 @@ export const addClaudeMessage = (instanceId, message) => {
   const current = InstanceStores.instancesStore.get();
   const existing = current[instanceId];
   if (!existing) return;
+  // Deduplicate: skip if a message with the same text+timestamp already exists
+  // (can happen when instance_state snapshot and claude_message event overlap)
+  const msgs = existing.messages || [];
+  const ts = message.timestamp ? String(message.timestamp) : '';
+  if (ts && msgs.some(m => String(m.timestamp) === ts && m.text === message.text)) return;
   InstanceStores.instancesStore.set({
     ...current,
     [instanceId]: {
       ...existing,
-      messages: [...(existing.messages || []), message],
+      messages: [...msgs, message],
     },
   });
   broadcast({ action: 'addClaudeMessage', instanceId, message });

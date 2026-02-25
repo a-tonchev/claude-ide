@@ -71,6 +71,7 @@ const InstanceController = {
       instanceId: id,
       accomplished,
       workingOn,
+      timestamp: milestone.timestamp,
     });
 
     return ctx.modS.responses.createSuccessResponse(ctx, { milestone });

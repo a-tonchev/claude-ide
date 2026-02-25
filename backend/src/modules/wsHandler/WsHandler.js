@@ -288,6 +288,7 @@ function handleSubscribe(ws, message) {
 
 function handleList(ws) {
   const instancesList = InstanceManager.list();
+  // Re-subscribe in case this is a reconnect (open handler handles initial subscribe)
   for (const inst of instancesList) {
     ws.subscribe(`instance_${inst.id}`);
   }

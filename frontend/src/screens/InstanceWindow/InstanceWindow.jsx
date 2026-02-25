@@ -121,14 +121,14 @@ const InstanceWindow = () => {
     const ts = new Date().toISOString();
     addUserMessage(instanceId, inputText, ts);
     sendUserMessage(instanceId, inputText, ts);
-    if (pending) setPendingInput(instanceId, null);
+    setPendingInput(instanceId, null);
     // Immediately set "thinking" for Claude instances
     if (instance?.type === 'claude' && instance.status !== 'exited') {
       updateInstanceField(instanceId, 'status', 'thinking');
     }
     writeToInstance(instanceId, `${inputText}\r`);
     setInputText('');
-  }, [inputText, instanceId, writeToInstance, sendUserMessage, pending, instance?.type, instance?.status]);
+  }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status]);
 
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Enter' && !e.shiftKey) {

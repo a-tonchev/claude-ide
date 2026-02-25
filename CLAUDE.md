@@ -26,8 +26,9 @@ If you skip step 3, the dashboard shows you as still working forever. You MUST c
 ### Communication (CRITICAL — NO terminal text, ONLY MCP tools)
 - DO NOT write any text to the terminal. No explanations, no summaries, no "Here's what I did", no "Let me...", no conversational text AT ALL. The user CANNOT see it. Every word you write to the terminal is wasted.
 - Instead, put ALL communication into `send_message()` or `send_plan()` calls:
-  - `send_message({ text, type })` — for answers, results, summaries, short explanations. Types: info, success, warning, error
-  - `send_plan({ title, content })` — for anything detailed: code explanations, multi-file diffs, architecture overviews, implementation plans (use full markdown)
+  - `send_message({ text, type })` — for SHORT answers only (1-3 sentences). Types: info, success, warning, error
+  - `send_plan({ title, content })` — for ANYTHING longer than a couple of sentences. Use full markdown.
+- **IMPORTANT: When your response would be longer than ~3 sentences, ALWAYS use `send_plan()` instead of `send_message()`.** The plan viewer renders markdown beautifully (headings, code blocks, lists, diffs). `send_message` is only for brief confirmations or short answers. When in doubt, use `send_plan`.
 - Your workflow should be: think silently → use tools (read/edit/search/bash) → report via `send_milestone` → deliver results via `send_message`/`send_plan` → call `update_status('completed')`. Zero terminal text output between these steps.
 
 ### Permissions & User Input (ALWAYS ask before acting)

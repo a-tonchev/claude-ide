@@ -1,20 +1,23 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)",
-      "Bash(printf:*)",
-      "Bash(timeout 3 node:*)",
-      "WebSearch",
-      "Bash(echo:*)",
+      "MCPTool(claude-ide:*)",
+      "MCPTool",
       "mcp__claude-ide__update_status",
-      "Bash(npx vite build)",
-      "Bash(timeout 15 npx vite:*)",
-      "Bash(CLAUDECODE= claude --help)",
-      "Bash(npx eslint:*)",
-      "Bash(npm ls:*)",
-      "Bash(npm install:*)",
-      "Bash(true:*)",
-      "Bash(head:*)"
+      "mcp__claude-ide__send_milestone",
+      "mcp__claude-ide__user_input_needed",
+      "mcp__claude-ide__send_message",
+      "mcp__claude-ide__send_plan",
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Task",
+      "NotebookEdit"
     ]
   },
   "enableAllProjectMcpServers": true,
