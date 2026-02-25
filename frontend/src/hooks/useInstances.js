@@ -8,14 +8,16 @@ import {
 
 import useWebSocket from './useWebSocket';
 
-const useInstances = (onMessage) => {
+const useInstances = onMessage => {
   const instances = useStoreValue(InstanceStores.instancesStore);
   const activeInstanceId = useStoreValue(InstanceStores.activeInstanceIdStore);
 
   const { send } = useWebSocket(onMessage);
 
   const createInstance = useCallback((projectId, name, path, args, groupId) => {
-    send('create', { projectId, name, path, args, groupId });
+    send('create', {
+      projectId, name, path, args, groupId,
+    });
   }, [send]);
 
   const stopInstance = useCallback(instanceId => {
@@ -43,7 +45,9 @@ const useInstances = (onMessage) => {
   }, [send]);
 
   const createTerminal = useCallback((name, shell, command, groupId) => {
-    send('create_terminal', { name, shell, command, groupId });
+    send('create_terminal', {
+      name, shell, command, groupId,
+    });
   }, [send]);
 
   const sendUserResponse = useCallback((instanceId, choice) => {

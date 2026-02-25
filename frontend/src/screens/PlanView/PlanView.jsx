@@ -28,7 +28,10 @@ const PlanView = () => {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B',
+      }}
+      >
         <CircularProgress sx={{ color: '#6897BB' }} />
       </Box>
     );
@@ -36,7 +39,10 @@ const PlanView = () => {
 
   if (!plan) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', bgcolor: '#2B2B2B',
+      }}
+      >
         <Typography sx={{ color: '#808080' }}>Plan not found.</Typography>
       </Box>
     );
@@ -48,7 +54,10 @@ const PlanView = () => {
         <title>{plan.title || 'Plan'} — Claude IDE</title>
       </Helmet>
 
-      <Box sx={{ bgcolor: '#2B2B2B', minHeight: '100vh', overflow: 'auto', px: 4, py: 3 }}>
+      <Box sx={{
+        bgcolor: '#2B2B2B', minHeight: '100vh', overflow: 'auto', px: 4, py: 3,
+      }}
+      >
         <MarkdownRenderer
           content={plan.content}
           fontSize="0.9rem"

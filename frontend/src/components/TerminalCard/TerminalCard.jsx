@@ -17,7 +17,9 @@ const SHELL_COLORS = {
   gitbash: { bg: '#CC783222', color: '#CC7832', label: 'Git Bash' },
 };
 
-const TerminalCard = ({ instance, onOpenPlaceholder, onOpenWindow, onStop }) => {
+const TerminalCard = ({
+  instance, onOpenPlaceholder, onOpenWindow, onStop,
+}) => {
   const isRunning = instance.status !== 'exited';
   const shellInfo = SHELL_COLORS[instance.shell] || SHELL_COLORS.bash;
 
@@ -31,9 +33,15 @@ const TerminalCard = ({ instance, onOpenPlaceholder, onOpenWindow, onStop }) => 
       }}
     >
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+      }}
+      >
         <FiberManualRecordIcon sx={{ fontSize: 10, color: isRunning ? '#7CB368' : '#606366' }} />
-        <Typography sx={{ fontSize: '0.8rem', color: '#A9B7C6', fontWeight: 600, flex: 1 }}>
+        <Typography sx={{
+          fontSize: '0.8rem', color: '#A9B7C6', fontWeight: 600, flex: 1,
+        }}
+        >
           {instance.projectName || instance.name || 'Terminal'}
         </Typography>
         <Chip
@@ -50,7 +58,10 @@ const TerminalCard = ({ instance, onOpenPlaceholder, onOpenWindow, onStop }) => 
       </Box>
 
       {/* Buttons */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5 }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5,
+      }}
+      >
         <IconButton
           size="small"
           onClick={() => onOpenPlaceholder(instance.id)}

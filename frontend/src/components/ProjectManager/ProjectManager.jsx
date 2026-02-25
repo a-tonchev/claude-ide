@@ -86,7 +86,7 @@ const ProjectManager = ({ open, onClose }) => {
     setForm({ name: project.name, path: project.path });
   }, []);
 
-  const handleDelete = useCallback(async (projectId) => {
+  const handleDelete = useCallback(async projectId => {
     await Connections.postRequest(ApiEndpoints.projectsDelete, { _id: projectId });
     fetchProjects();
   }, [fetchProjects]);
@@ -140,7 +140,10 @@ const ProjectManager = ({ open, onClose }) => {
           },
         }}
       >
-        <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1 }}>
+        <DialogTitle sx={{
+          color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
+        }}
+        >
           Projects
         </DialogTitle>
         <DialogContent>
@@ -229,7 +232,10 @@ const ProjectManager = ({ open, onClose }) => {
               <CircularProgress size={28} sx={{ color: '#6897BB' }} />
             </Box>
           ) : projects.length === 0 ? (
-            <Typography sx={{ color: '#606366', py: 3, textAlign: 'center', fontSize: 14 }}>
+            <Typography sx={{
+              color: '#606366', py: 3, textAlign: 'center', fontSize: 14,
+            }}
+            >
               No projects yet. Add one above.
             </Typography>
           ) : (
@@ -242,7 +248,7 @@ const ProjectManager = ({ open, onClose }) => {
                     mb: 0.5,
                     '&:hover': { bgcolor: 'rgba(78,82,84,0.15)' },
                   }}
-                  secondaryAction={
+                  secondaryAction={(
                     <Box sx={{ display: 'flex', gap: 0.25 }}>
                       <Tooltip title="Edit">
                         <IconButton
@@ -263,7 +269,7 @@ const ProjectManager = ({ open, onClose }) => {
                         </IconButton>
                       </Tooltip>
                     </Box>
-                  }
+                  )}
                 >
                   <ListItemText
                     primary={project.name}

@@ -14,7 +14,9 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import HexagonOutlinedIcon from '@mui/icons-material/HexagonOutlined';
 import Divider from '@mui/material/Divider';
 
-const TitleBar = ({ onNewGroup, onAddClaude, onAddTerminal, onLoadGroup, onManageProjects, onManageTerminals }) => {
+const TitleBar = ({
+  onNewGroup, onAddClaude, onAddTerminal, onLoadGroup, onManageProjects, onManageTerminals,
+}) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
   return (

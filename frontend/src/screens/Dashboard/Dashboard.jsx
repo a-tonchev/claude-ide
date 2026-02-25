@@ -28,7 +28,9 @@ import { assignToPlaceholder } from '@/helpers/placeholderHelper';
 import {
   setPlaceholder, removeGroup, upsertGroup, initPlaceholders,
 } from '@/stores/groupAtoms';
-import { InstanceStores, addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
+import {
+  InstanceStores, addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField,
+} from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
 

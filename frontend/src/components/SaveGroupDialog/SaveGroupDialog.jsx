@@ -12,7 +12,9 @@ import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
 import SaveIcon from '@mui/icons-material/Save';
 
-const SaveGroupDialog = ({ open, onClose, onSave, group, instances }) => {
+const SaveGroupDialog = ({
+  open, onClose, onSave, group, instances,
+}) => {
   const [groupName, setGroupName] = useState(group?.name || '');
 
   const groupInstances = Object.values(instances || {}).filter(
@@ -20,13 +22,11 @@ const SaveGroupDialog = ({ open, onClose, onSave, group, instances }) => {
   );
 
   // Items from the saved group that don't have a running instance
-  const savedOnlyItems = (group?.items || []).filter(item => {
-    return !groupInstances.some(inst => {
-      if (inst.type !== item.type) return false;
-      if (inst.type === 'claude') return inst.projectId === item.projectId;
-      return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
-    });
-  });
+  const savedOnlyItems = (group?.items || []).filter(item => !groupInstances.some(inst => {
+    if (inst.type !== item.type) return false;
+    if (inst.type === 'claude') return inst.projectId === item.projectId;
+    return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
+  }));
 
   const handleSave = () => {
     // Build items from saved group items + running instances
@@ -38,9 +38,17 @@ const SaveGroupDialog = ({ open, onClose, onSave, group, instances }) => {
     groupInstances.forEach(inst => {
       usedInstanceIds.add(inst.id);
       if (inst.type === 'terminal') {
-        items.push({ type: 'terminal', name: inst.projectName || inst.name, shell: inst.shell, command: inst.command, cwd: inst.cwd });
+        items.push({
+          type: 'terminal',
+          name: inst.projectName || inst.name,
+          shell: inst.shell,
+          command: inst.command,
+          cwd: inst.cwd,
+        });
       } else {
-        items.push({ type: 'claude', projectId: inst.projectId, name: inst.projectName || inst.name, path: inst.cwd });
+        items.push({
+          type: 'claude', projectId: inst.projectId, name: inst.projectName || inst.name, path: inst.cwd,
+        });
       }
     });
 
@@ -73,7 +81,10 @@ const SaveGroupDialog = ({ open, onClose, onSave, group, instances }) => {
         <SaveIcon sx={{ color: '#6897BB' }} />
         Save Group
       </DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+      <DialogContent sx={{
+        display: 'flex', flexDirection: 'column', gap: 2, pt: 1,
+      }}
+      >
         <TextField
           label="Group Name"
           value={groupName}

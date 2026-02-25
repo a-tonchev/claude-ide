@@ -75,9 +75,15 @@ const InstanceCard = ({ instance, onOpen, onStop }) => {
       />
 
       {/* Content */}
-      <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{
+        p: 2, flex: 1, display: 'flex', flexDirection: 'column',
+      }}
+      >
         {/* Header row: name + status */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+        <Box sx={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5,
+        }}
+        >
           <Typography
             sx={{
               color: '#A9B7C6',
@@ -126,7 +132,10 @@ const InstanceCard = ({ instance, onOpen, onStop }) => {
         </Box>
 
         {/* Path */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 0.75, mb: 1,
+        }}
+        >
           <FolderOutlinedIcon sx={{ fontSize: 14, color: '#606366' }} />
           <Typography
             sx={{

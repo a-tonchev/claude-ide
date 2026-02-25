@@ -1,4 +1,6 @@
-import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import {
+  useEffect, useRef, useImperativeHandle, forwardRef,
+} from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { Box } from '@mui/material';
@@ -65,7 +67,7 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
     // Initial fit
     try {
       fitAddon.fit();
-    } catch (e) {
+    } catch {
       // Container might not be visible yet
     }
 
@@ -89,7 +91,7 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
         if (onResize) {
           onResize(term.cols, term.rows);
         }
-      } catch (e) {
+      } catch {
         // Ignore fit errors on unmounted
       }
     };

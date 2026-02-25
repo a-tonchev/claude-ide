@@ -57,7 +57,7 @@ const InstanceView = () => {
   }, [instanceId, resizeInstance]);
 
   const handleSend = useCallback(text => {
-    writeToInstance(instanceId, text + '\r');
+    writeToInstance(instanceId, `${text}\r`);
   }, [instanceId, writeToInstance]);
 
   const handlePlan = useCallback(prompt => {
@@ -129,7 +129,10 @@ const InstanceView = () => {
             {projectName}
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mr: 1 }}>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 0.75, mr: 1,
+          }}
+          >
             <Box sx={{
               width: 8,
               height: 8,

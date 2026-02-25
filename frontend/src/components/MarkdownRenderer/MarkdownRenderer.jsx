@@ -14,6 +14,7 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+/* eslint-disable no-continue */
 function parseDiff(text) {
   const files = [];
   let currentFile = null;
@@ -77,31 +78,43 @@ function parseDiff(text) {
     // Content lines
     if (currentHunk) {
       if (line.startsWith('+')) {
-        currentHunk.lines.push({ type: 'add', content: line.slice(1), oldNum: null, newNum: newLine++ });
+        currentHunk.lines.push({
+          type: 'add', content: line.slice(1), oldNum: null, newNum: newLine++,
+        });
       } else if (line.startsWith('-')) {
-        currentHunk.lines.push({ type: 'del', content: line.slice(1), oldNum: oldLine++, newNum: null });
+        currentHunk.lines.push({
+          type: 'del', content: line.slice(1), oldNum: oldLine++, newNum: null,
+        });
       } else if (line.startsWith('\\')) {
         // "\ No newline at end of file" - skip
         continue;
       } else {
-        currentHunk.lines.push({ type: 'ctx', content: line.startsWith(' ') ? line.slice(1) : line, oldNum: oldLine++, newNum: newLine++ });
+        currentHunk.lines.push({
+          type: 'ctx', content: line.startsWith(' ') ? line.slice(1) : line, oldNum: oldLine++, newNum: newLine++,
+        });
       }
     }
   }
 
   // Fallback: if no structured diff was found, try simple +/- lines
-  if (files.length === 0 && lines.some((l) => l.startsWith('+') || l.startsWith('-'))) {
+  if (files.length === 0 && lines.some(l => l.startsWith('+') || l.startsWith('-'))) {
     currentFile = { name: 'changes', hunks: [{ header: '', lines: [] }] };
-    currentHunk = currentFile.hunks[0];
+    [currentHunk] = currentFile.hunks;
     let lineNum = 1;
     for (const line of lines) {
       if (line.startsWith('+')) {
-        currentHunk.lines.push({ type: 'add', content: line.slice(1), oldNum: null, newNum: lineNum++ });
+        currentHunk.lines.push({
+          type: 'add', content: line.slice(1), oldNum: null, newNum: lineNum++,
+        });
       } else if (line.startsWith('-')) {
-        currentHunk.lines.push({ type: 'del', content: line.slice(1), oldNum: lineNum, newNum: null });
+        currentHunk.lines.push({
+          type: 'del', content: line.slice(1), oldNum: lineNum, newNum: null,
+        });
         lineNum++;
       } else if (line.trim() !== '') {
-        currentHunk.lines.push({ type: 'ctx', content: line, oldNum: lineNum, newNum: lineNum });
+        currentHunk.lines.push({
+          type: 'ctx', content: line, oldNum: lineNum, newNum: lineNum,
+        });
         lineNum++;
       }
     }
@@ -111,6 +124,7 @@ function parseDiff(text) {
   return files;
 }
 
+/* eslint-disable max-len */
 function renderDiffHtml(text) {
   const files = parseDiff(text);
   if (files.length === 0) return `<pre><code>${escapeHtml(text)}</code></pre>`;
@@ -146,6 +160,7 @@ function renderDiffHtml(text) {
   html += '</div>';
   return html;
 }
+/* eslint-enable max-len */
 
 // --- Marked Instance ---
 
@@ -173,18 +188,38 @@ const markdownBaseStyles = {
   color: '#A9B7C6',
   lineHeight: 1.7,
   fontFamily: 'inherit',
-  '& h1': { color: '#A9B7C6', fontSize: '1.4rem', fontWeight: 600, borderBottom: '1px solid #3C3F41', pb: 1, mb: 2 },
-  '& h2': { color: '#A9B7C6', fontSize: '1.15rem', fontWeight: 600, mt: 3, mb: 1.5 },
-  '& h3': { color: '#A9B7C6', fontSize: '1rem', fontWeight: 600, mt: 2, mb: 1 },
+  '& h1': {
+    color: '#A9B7C6', fontSize: '1.4rem', fontWeight: 600, borderBottom: '1px solid #3C3F41', pb: 1, mb: 2,
+  },
+  '& h2': {
+    color: '#A9B7C6', fontSize: '1.15rem', fontWeight: 600, mt: 3, mb: 1.5,
+  },
+  '& h3': {
+    color: '#A9B7C6', fontSize: '1rem', fontWeight: 600, mt: 2, mb: 1,
+  },
   '& p': { mb: 1.5 },
   '& ul, & ol': { pl: 3, mb: 1.5 },
   '& li': { mb: 0.5 },
-  '& code': { bgcolor: '#3C3F41', color: '#CC7832', px: 0.75, py: 0.25, borderRadius: '4px', fontSize: '0.85em', fontFamily: '"JetBrains Mono", monospace' },
-  '& pre': { bgcolor: '#313335', border: '1px solid #4E5254', borderRadius: '6px', p: 2, overflow: 'auto', mb: 2 },
+  '& code': {
+    bgcolor: '#3C3F41',
+    color: '#CC7832',
+    px: 0.75,
+    py: 0.25,
+    borderRadius: '4px',
+    fontSize: '0.85em',
+    fontFamily: '"JetBrains Mono", monospace',
+  },
+  '& pre': {
+    bgcolor: '#313335', border: '1px solid #4E5254', borderRadius: '6px', p: 2, overflow: 'auto', mb: 2,
+  },
   '& pre code': { bgcolor: 'transparent', color: '#A9B7C6', p: 0 },
-  '& blockquote': { borderLeft: '3px solid #4E5254', pl: 2, color: '#808080', ml: 0, mb: 1.5 },
+  '& blockquote': {
+    borderLeft: '3px solid #4E5254', pl: 2, color: '#808080', ml: 0, mb: 1.5,
+  },
   '& table:not(.diff-table)': { borderCollapse: 'collapse', width: '100%', mb: 2 },
-  '& th, & td:not(.diff-line-num):not(.diff-line-content):not(.diff-hunk-info)': { border: '1px solid #4E5254', px: 1.5, py: 0.75, fontSize: '0.85rem' },
+  '& th, & td:not(.diff-line-num):not(.diff-line-content):not(.diff-hunk-info)': {
+    border: '1px solid #4E5254', px: 1.5, py: 0.75, fontSize: '0.85rem',
+  },
   '& th': { bgcolor: '#313335', fontWeight: 600 },
   '& a': { color: '#6897BB', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } },
   '& hr': { border: 'none', borderTop: '1px solid #3C3F41', my: 3 },

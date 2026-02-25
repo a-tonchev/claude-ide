@@ -58,7 +58,7 @@ const useGroups = () => {
     return response;
   }, [activeGroupId, groupFromUrl, setActiveGroup]);
 
-  const saveGroup = useCallback(async (groupData) => {
+  const saveGroup = useCallback(async groupData => {
     const { id, name, items } = groupData;
 
     if (id && groups[id]?.saved) {
@@ -67,7 +67,9 @@ const useGroups = () => {
         _id: id, name, items,
       });
       if (response?.ok) {
-        upsertGroup({ id, name, items, saved: true });
+        upsertGroup({
+          id, name, items, saved: true,
+        });
       }
       return response;
     }
@@ -83,14 +85,16 @@ const useGroups = () => {
         reassignInstancesToGroup(id, newId);
         removeGroup(id);
       }
-      upsertGroup({ id: newId, name, items, saved: true });
+      upsertGroup({
+        id: newId, name, items, saved: true,
+      });
       initPlaceholders(newId);
       setActiveGroup(newId);
     }
     return response;
   }, [groups, setActiveGroup]);
 
-  const deleteGroup = useCallback(async (groupId) => {
+  const deleteGroup = useCallback(async groupId => {
     const group = groups[groupId];
     if (group?.saved) {
       await Connections.postRequest(ApiEndpoints.groupsDelete, { _id: groupId });
@@ -111,7 +115,7 @@ const useGroups = () => {
     return response;
   }, [groups]);
 
-  const createImplicitGroup = useCallback((name) => {
+  const createImplicitGroup = useCallback(name => {
     const groupId = crypto.randomUUID();
     upsertGroup({
       id: groupId,

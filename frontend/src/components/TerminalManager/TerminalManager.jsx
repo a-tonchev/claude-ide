@@ -38,7 +38,9 @@ const SHELLS = [
 
 const SHELL_LABELS = Object.fromEntries(SHELLS.map(s => [s.value, s.label]));
 
-const emptyForm = { name: '', shell: 'powershell', command: '', cwd: '' };
+const emptyForm = {
+  name: '', shell: 'powershell', command: '', cwd: '',
+};
 
 const TerminalManager = ({ open, onClose }) => {
   const [terminals, setTerminals] = useState([]);
@@ -106,7 +108,7 @@ const TerminalManager = ({ open, onClose }) => {
     });
   }, []);
 
-  const handleDelete = useCallback(async (terminalId) => {
+  const handleDelete = useCallback(async terminalId => {
     await Connections.postRequest(ApiEndpoints.terminalsDelete, { _id: terminalId });
     fetchTerminals();
   }, [fetchTerminals]);
@@ -149,7 +151,10 @@ const TerminalManager = ({ open, onClose }) => {
         },
       }}
     >
-      <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{
+        color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1,
+      }}
+      >
         <TerminalIcon sx={{ color: '#6897BB' }} />
         Terminal Configs
       </DialogTitle>
@@ -165,7 +170,8 @@ const TerminalManager = ({ open, onClose }) => {
           bgcolor: '#2B2B2B',
           borderRadius: 2,
           border: '1px solid #3C3F41',
-        }}>
+        }}
+        >
           <TextField
             size="small"
             label="Name"
@@ -236,7 +242,10 @@ const TerminalManager = ({ open, onClose }) => {
             <CircularProgress size={28} sx={{ color: '#6897BB' }} />
           </Box>
         ) : terminals.length === 0 ? (
-          <Typography sx={{ color: '#606366', py: 3, textAlign: 'center', fontSize: 14 }}>
+          <Typography sx={{
+            color: '#606366', py: 3, textAlign: 'center', fontSize: 14,
+          }}
+          >
             No terminal configs yet. Add one above.
           </Typography>
         ) : (
@@ -249,7 +258,7 @@ const TerminalManager = ({ open, onClose }) => {
                   mb: 0.5,
                   '&:hover': { bgcolor: 'rgba(78,82,84,0.15)' },
                 }}
-                secondaryAction={
+                secondaryAction={(
                   <Box sx={{ display: 'flex', gap: 0.25 }}>
                     <Tooltip title="Edit">
                       <IconButton
@@ -270,19 +279,21 @@ const TerminalManager = ({ open, onClose }) => {
                       </IconButton>
                     </Tooltip>
                   </Box>
-                }
+                )}
               >
                 <ListItemText
-                  primary={
+                  primary={(
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <span>{terminal.name}</span>
                       <Chip
                         size="small"
                         label={SHELL_LABELS[terminal.shell] || terminal.shell}
-                        sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#4E5254', color: '#808080' }}
+                        sx={{
+                          height: 18, fontSize: '0.6rem', bgcolor: '#4E5254', color: '#808080',
+                        }}
                       />
                     </Box>
-                  }
+                  )}
                   secondary={terminal.command || 'Interactive shell'}
                   primaryTypographyProps={{
                     sx: { color: '#A9B7C6', fontWeight: 500, fontSize: 14 },

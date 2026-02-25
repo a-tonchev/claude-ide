@@ -24,7 +24,10 @@ const SavedItemCard = ({ item, onStart, onRemove }) => {
         transition: 'opacity 0.2s, border-color 0.2s',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+      }}
+      >
         {isClaude
           ? <SmartToyIcon sx={{ fontSize: 14, color: '#606366' }} />
           : <TerminalIcon sx={{ fontSize: 14, color: '#606366' }} />}
@@ -57,21 +60,25 @@ const SavedItemCard = ({ item, onStart, onRemove }) => {
       {/* Details */}
       <Box sx={{ px: 1.5, py: 0.75 }}>
         {isClaude && item.path && (
-          <Typography sx={{ fontSize: '0.65rem', color: '#606366', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <Typography sx={{
+            fontSize: '0.65rem', color: '#606366', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}
+          >
             {item.path}
           </Typography>
         )}
         {!isClaude && (
-          <>
-            <Typography sx={{ fontSize: '0.65rem', color: '#606366' }}>
+          <Typography sx={{ fontSize: '0.65rem', color: '#606366' }}>
               {item.shell}{item.command ? ` — ${item.command}` : ''}
-            </Typography>
-          </>
+          </Typography>
         )}
       </Box>
 
       {/* Actions */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, borderTop: '1px solid #3C3F41' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, borderTop: '1px solid #3C3F41',
+      }}
+      >
         <IconButton
           size="small"
           onClick={() => onStart(item)}

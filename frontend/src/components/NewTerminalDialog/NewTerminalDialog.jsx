@@ -123,7 +123,10 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
         },
       }}
     >
-      <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+      <DialogTitle sx={{
+        color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1,
+      }}
+      >
         <TerminalIcon sx={{ color: '#6897BB' }} />
         New Terminal
       </DialogTitle>
@@ -135,7 +138,10 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
           </Box>
         ) : savedConfigs.length > 0 && (
           <>
-            <Typography sx={{ color: '#808080', fontSize: 12, mb: 1, fontWeight: 600 }}>
+            <Typography sx={{
+              color: '#808080', fontSize: 12, mb: 1, fontWeight: 600,
+            }}
+            >
               SAVED TERMINALS
             </Typography>
             <List dense sx={{ mx: -1, mb: 1 }}>
@@ -164,12 +170,16 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
                     primary={config.name}
                     secondary={config.command || 'Interactive shell'}
                     primaryTypographyProps={{ sx: { color: '#A9B7C6', fontWeight: 500, fontSize: 13 } }}
-                    secondaryTypographyProps={{ sx: { color: '#606366', fontSize: 11, fontFamily: '"JetBrains Mono", monospace' } }}
+                    secondaryTypographyProps={{
+                      sx: { color: '#606366', fontSize: 11, fontFamily: '"JetBrains Mono", monospace' },
+                    }}
                   />
                   <Chip
                     size="small"
                     label={SHELL_LABELS[config.shell] || config.shell}
-                    sx={{ mr: 1, height: 20, fontSize: '0.65rem', bgcolor: '#4E5254', color: '#808080' }}
+                    sx={{
+                      mr: 1, height: 20, fontSize: '0.65rem', bgcolor: '#4E5254', color: '#808080',
+                    }}
                   />
                   <IconButton
                     size="small"
@@ -186,7 +196,10 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
         )}
 
         {/* Manual config form */}
-        <Typography sx={{ color: '#808080', fontSize: 12, mb: 1, fontWeight: 600 }}>
+        <Typography sx={{
+          color: '#808080', fontSize: 12, mb: 1, fontWeight: 600,
+        }}
+        >
           {selected ? 'EDIT BEFORE LAUNCH' : 'CONFIGURE'}
         </Typography>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
@@ -225,14 +238,14 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
           />
           {!selected && (
             <FormControlLabel
-              control={
+              control={(
                 <Checkbox
                   checked={saveConfig}
                   onChange={e => setSaveConfig(e.target.checked)}
                   size="small"
                   sx={{ color: '#606366', '&.Mui-checked': { color: '#6897BB' } }}
                 />
-              }
+              )}
               label="Save this terminal config"
               sx={{ '& .MuiFormControlLabel-label': { fontSize: 13, color: '#808080' } }}
             />

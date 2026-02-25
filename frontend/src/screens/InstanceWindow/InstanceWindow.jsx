@@ -21,7 +21,9 @@ import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
-import { addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField } from '@/stores/instanceAtoms';
+import {
+  addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField,
+} from '@/stores/instanceAtoms';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 
 const STATUS_CONFIG = {

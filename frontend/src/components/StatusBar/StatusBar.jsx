@@ -10,7 +10,9 @@ const StatusBar = ({ instances, wsConnected }) => {
     const running = list.filter(i => i.status === 'running' || i.status === 'working' || i.status === 'ready').length;
     const waiting = list.filter(i => i.status === 'waiting').length;
     const completed = list.filter(i => i.status === 'completed').length;
-    return { total, running, waiting, completed };
+    return {
+      total, running, waiting, completed,
+    };
   }, [instances]);
 
   return (

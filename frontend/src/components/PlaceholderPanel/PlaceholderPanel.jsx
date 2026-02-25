@@ -1,5 +1,5 @@
 import React, {
-  useRef, useEffect, useCallback, useState,
+  useRef, useEffect, useCallback,
 } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -90,7 +90,13 @@ const PlaceholderSlot = ({
           >
             <MenuItem value="" disabled>Select instance...</MenuItem>
             {instanceList.map(inst => (
-              <MenuItem key={inst.id} value={inst.id} sx={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <MenuItem
+                key={inst.id}
+                value={inst.id}
+                sx={{
+                  fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.75,
+                }}
+              >
                 {inst.type === 'claude'
                   ? <AutoAwesomeIcon sx={{ fontSize: 13, color: '#CC7832' }} />
                   : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
@@ -149,7 +155,13 @@ const PlaceholderSlot = ({
           }}
         >
           {instanceList.map(inst => (
-            <MenuItem key={inst.id} value={inst.id} sx={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <MenuItem
+              key={inst.id}
+              value={inst.id}
+              sx={{
+                fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 0.75,
+              }}
+            >
               {inst.type === 'claude'
                 ? <AutoAwesomeIcon sx={{ fontSize: 13, color: '#CC7832' }} />
                 : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}

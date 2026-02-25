@@ -16,7 +16,9 @@ import FolderIcon from '@mui/icons-material/Folder';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 
-const LoadGroupDialog = ({ open, onClose, onLoad, openGroupIds }) => {
+const LoadGroupDialog = ({
+  open, onClose, onLoad, openGroupIds,
+}) => {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -54,7 +56,10 @@ const LoadGroupDialog = ({ open, onClose, onLoad, openGroupIds }) => {
         },
       }}
     >
-      <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1 }}>
+      <DialogTitle sx={{
+        color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
+      }}
+      >
         Open Saved Group
       </DialogTitle>
       <DialogContent>
@@ -63,7 +68,10 @@ const LoadGroupDialog = ({ open, onClose, onLoad, openGroupIds }) => {
             <CircularProgress size={28} sx={{ color: '#6897BB' }} />
           </Box>
         ) : closedGroups.length === 0 ? (
-          <Box sx={{ py: 4, textAlign: 'center', bgcolor: '#2B2B2B', borderRadius: 2, border: '1px solid #3C3F41' }}>
+          <Box sx={{
+            py: 4, textAlign: 'center', bgcolor: '#2B2B2B', borderRadius: 2, border: '1px solid #3C3F41',
+          }}
+          >
             <Typography sx={{ color: '#808080', fontSize: 14 }}>
               {groups.length === 0 ? 'No saved groups yet.' : 'All saved groups are already open.'}
             </Typography>

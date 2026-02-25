@@ -57,7 +57,10 @@ const NewInstanceDialog = ({ open, onClose, onCreate }) => {
         },
       }}
     >
-      <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1 }}>
+      <DialogTitle sx={{
+        color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
+      }}
+      >
         Launch New Instance
       </DialogTitle>
       <DialogContent>

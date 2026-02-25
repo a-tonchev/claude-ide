@@ -28,11 +28,11 @@ const DirectoryBrowser = ({ open, onClose, onSelect }) => {
   const [entries, setEntries] = useState([]);
   const [roots, setRoots] = useState(null);
 
-  const browse = useCallback(async (dirPath) => {
+  const browse = useCallback(async dirPath => {
     setLoading(true);
     const result = await Connections.postRequest(ApiEndpoints.browse, { path: dirPath || '' });
     if (result?.ok) {
-      const data = result.data;
+      const { data } = result;
       setCurrent(data.current || '');
       setParent(data.parent || null);
       setEntries(data.entries || []);
@@ -76,7 +76,10 @@ const DirectoryBrowser = ({ open, onClose, onSelect }) => {
         },
       }}
     >
-      <DialogTitle sx={{ color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1 }}>
+      <DialogTitle sx={{
+        color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
+      }}
+      >
         Browse Directory
       </DialogTitle>
       <DialogContent>
@@ -115,7 +118,10 @@ const DirectoryBrowser = ({ open, onClose, onSelect }) => {
 
         {/* Drive roots (Windows) */}
         {roots && roots.length > 0 && (
-          <Box sx={{ display: 'flex', gap: 0.75, mb: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{
+            display: 'flex', gap: 0.75, mb: 1.5, flexWrap: 'wrap',
+          }}
+          >
             {roots.map(root => (
               <Chip
                 key={root.path}
@@ -160,7 +166,10 @@ const DirectoryBrowser = ({ open, onClose, onSelect }) => {
             )}
 
             {entries.length === 0 && !parent && (
-              <Typography sx={{ color: '#606366', py: 3, textAlign: 'center', fontSize: 13 }}>
+              <Typography sx={{
+                color: '#606366', py: 3, textAlign: 'center', fontSize: 13,
+              }}
+              >
                 No subdirectories found.
               </Typography>
             )}

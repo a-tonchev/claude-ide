@@ -40,8 +40,19 @@ const PlanViewerDialog = ({ open, onClose, plan }) => {
         },
       }}
     >
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, borderBottom: '1px solid #3C3F41', py: 1.5 }}>
-        <Box sx={{ flex: 1, fontSize: '0.95rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <DialogTitle sx={{
+        display: 'flex', alignItems: 'center', gap: 1, borderBottom: '1px solid #3C3F41', py: 1.5,
+      }}
+      >
+        <Box sx={{
+          flex: 1,
+          fontSize: '0.95rem',
+          fontWeight: 600,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+        >
           {plan.title || 'Untitled Plan'}
         </Box>
         <ToggleButtonGroup
@@ -50,15 +61,38 @@ const PlanViewerDialog = ({ open, onClose, plan }) => {
           onChange={(e, val) => val && setViewMode(val)}
           size="small"
         >
-          <ToggleButton value="rendered" sx={{ py: 0.25, px: 1, color: '#808080', borderColor: '#4E5254', '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' } }}>
+          <ToggleButton
+            value="rendered"
+            sx={{
+              py: 0.25,
+              px: 1,
+              color: '#808080',
+              borderColor: '#4E5254',
+              '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' },
+            }}
+          >
             <ArticleIcon sx={{ fontSize: 14, mr: 0.5 }} /> MD
           </ToggleButton>
-          <ToggleButton value="code" sx={{ py: 0.25, px: 1, color: '#808080', borderColor: '#4E5254', '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' } }}>
+          <ToggleButton
+            value="code"
+            sx={{
+              py: 0.25,
+              px: 1,
+              color: '#808080',
+              borderColor: '#4E5254',
+              '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' },
+            }}
+          >
             <CodeIcon sx={{ fontSize: 14, mr: 0.5 }} /> Code
           </ToggleButton>
         </ToggleButtonGroup>
         {plan.id && (
-          <IconButton size="small" onClick={handleOpenInWindow} title="Open in new window" sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}>
+          <IconButton
+            size="small"
+            onClick={handleOpenInWindow}
+            title="Open in new window"
+            sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+          >
             <OpenInNewIcon fontSize="small" />
           </IconButton>
         )}
