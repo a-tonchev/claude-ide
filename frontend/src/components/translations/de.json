@@ -1,7 +1,7 @@
 {
-  "app.name": "My APP",
-  "app.title": "My App",
-  "app.description": "My App description",
+  "app.name": "Claude IDE",
+  "app.title": "Claude IDE",
+  "app.description": "Claude IDE description",
   "app.pageNotFound": "Die Seite wurde nicht gefunden!",
   "user.notFound": "Benutzer nicht gefunden",
   "profile": "Profil",
