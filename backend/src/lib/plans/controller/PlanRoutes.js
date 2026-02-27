@@ -33,6 +33,11 @@ const PlanRoutes = createBasicRoutes({
       path: '/delete',
       handler: PlanController.remove,
     },
+    {
+      method: 'post',
+      path: '/deleteAll',
+      handler: PlanController.removeAll,
+    },
   ],
 });
 

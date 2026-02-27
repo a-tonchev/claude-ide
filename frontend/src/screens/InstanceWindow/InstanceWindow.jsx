@@ -17,8 +17,10 @@ import ChatIcon from '@mui/icons-material/Chat';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import ArticleIcon from '@mui/icons-material/Article';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
+import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
@@ -45,6 +47,7 @@ const InstanceWindow = () => {
   const feedRef = useRef(null);
   const [inputText, setInputText] = useState('');
   const [viewingPlan, setViewingPlan] = useState(null);
+  const [plansOpen, setPlansOpen] = useState(false);
 
   const onMessage = useCallback(msg => {
     if (msg.type === 'output' && msg.instanceId === instanceId) {
@@ -225,6 +228,14 @@ const InstanceWindow = () => {
             bgcolor: `${status.color}22`, color: status.color, fontSize: '0.7rem',
           }}
         />
+        <IconButton
+          size="small"
+          onClick={() => setPlansOpen(true)}
+          title="View stored plans"
+          sx={{ color: '#6897BB', '&:hover': { color: '#89B8DE' } }}
+        >
+          <ArticleIcon sx={{ fontSize: 18 }} />
+        </IconButton>
         <IconButton
           size="small"
           onClick={() => stopInstance(instanceId)}
@@ -505,6 +516,10 @@ const InstanceWindow = () => {
         open={!!viewingPlan}
         onClose={() => setViewingPlan(null)}
         plan={viewingPlan}
+      />
+      <PlansDialog
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
       />
     </Box>
   );

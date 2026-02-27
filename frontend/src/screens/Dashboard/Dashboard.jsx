@@ -19,6 +19,7 @@ import SaveGroupDialog from '@/components/SaveGroupDialog/SaveGroupDialog';
 import ProjectManager from '@/components/ProjectManager/ProjectManager';
 import TerminalManager from '@/components/TerminalManager/TerminalManager';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
+import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import LoadGroupDialog from '@/components/LoadGroupDialog/LoadGroupDialog';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [terminalsOpen, setTerminalsOpen] = useState(false);
   const [loadGroupOpen, setLoadGroupOpen] = useState(false);
+  const [plansOpen, setPlansOpen] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
@@ -331,6 +333,7 @@ const Dashboard = () => {
           onLoadGroup={() => setLoadGroupOpen(true)}
           onManageProjects={() => setProjectsOpen(true)}
           onManageTerminals={() => setTerminalsOpen(true)}
+          onManagePlans={() => setPlansOpen(true)}
         />
 
         <GroupTabs
@@ -487,6 +490,11 @@ const Dashboard = () => {
         onClose={() => setLoadGroupOpen(false)}
         onLoad={handleLoadGroup}
         openGroupIds={groupList.map(g => g.id)}
+      />
+
+      <PlansDialog
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
       />
 
       <PlanViewerDialog

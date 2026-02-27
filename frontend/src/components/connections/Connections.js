@@ -32,6 +32,7 @@ export const ApiEndpoints = {
   plansAdd: '/plans/add',
   plansUpdate: '/plans/update',
   plansDelete: '/plans/delete',
+  plansDeleteAll: '/plans/deleteAll',
   browse: '/browse',
   groupsAll: '/groups/all',
   groupsAdd: '/groups/add',

@@ -56,6 +56,14 @@ const usePlans = () => {
     return result;
   }, []);
 
+  const deleteAllPlans = useCallback(async () => {
+    const result = await Connections.postRequest(ApiEndpoints.plansDeleteAll, {});
+    if (result?.ok) {
+      setPlans([]);
+    }
+    return result;
+  }, []);
+
   return {
     plans,
     activePlanId,
@@ -65,6 +73,7 @@ const usePlans = () => {
     createPlan,
     updatePlan,
     deletePlan,
+    deleteAllPlans,
   };
 };
 

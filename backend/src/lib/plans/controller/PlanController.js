@@ -91,6 +91,11 @@ const PlanController = {
     await ctx.libS.plans.removeById(_id);
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
+
+  async removeAll(ctx) {
+    await ctx.libS.plans.removeByQuery({ query: {}, multiple: false });
+    return ctx.modS.responses.createSuccessResponse(ctx);
+  },
 };
 
 export default PlanController;

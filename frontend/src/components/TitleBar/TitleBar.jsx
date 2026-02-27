@@ -11,11 +11,12 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ArticleIcon from '@mui/icons-material/Article';
 import HexagonOutlinedIcon from '@mui/icons-material/HexagonOutlined';
 import Divider from '@mui/material/Divider';
 
 const TitleBar = ({
-  onNewGroup, onAddClaude, onAddTerminal, onLoadGroup, onManageProjects, onManageTerminals,
+  onNewGroup, onAddClaude, onAddTerminal, onLoadGroup, onManageProjects, onManageTerminals, onManagePlans,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -133,6 +134,11 @@ const TitleBar = ({
         <MenuItem onClick={() => { setAnchorEl(null); onManageTerminals?.(); }}>
           <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
           Terminal Configs
+        </MenuItem>
+        <Divider sx={{ borderColor: '#3C3F41' }} />
+        <MenuItem onClick={() => { setAnchorEl(null); onManagePlans?.(); }}>
+          <ListItemIcon><ArticleIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
+          Plans
         </MenuItem>
       </Menu>
     </Box>
