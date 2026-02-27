@@ -8,6 +8,7 @@ import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import Popover from '@mui/material/Popover';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import TvIcon from '@mui/icons-material/Tv';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -20,6 +21,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import HistoryIcon from '@mui/icons-material/History';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 
@@ -48,6 +50,7 @@ const ClaudeInstanceCard = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const [feedExpanded, setFeedExpanded] = useState(false);
+  const [plansAnchorEl, setPlansAnchorEl] = useState(null);
   const feedRef = useRef(null);
 
   const status = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
@@ -102,11 +105,14 @@ const ClaudeInstanceCard = ({
         border: '1px solid #3C3F41',
         borderRadius: 2,
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: 'calc(40vh - 36px)',
       }}
     >
       {/* Header: Status + Name */}
       <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', flexShrink: 0,
       }}
       >
         <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
@@ -135,8 +141,13 @@ const ClaudeInstanceCard = ({
 
       {/* Activity Feed — user messages + milestones interleaved */}
       {feed.length > 0 && (
-        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25 }}>
+        <Box sx={{
+          px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41',
+          flexShrink: 1, flexGrow: 1, minHeight: 0, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+        }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, flexShrink: 0 }}>
             <Typography sx={{
               fontSize: '0.65rem', color: '#808080', fontWeight: 600, flex: 1,
             }}
@@ -151,7 +162,7 @@ const ClaudeInstanceCard = ({
               </IconButton>
             )}
           </Box>
-          <Box ref={feedRef} sx={{ maxHeight: expanded ? 200 : feedExpanded ? 200 : 80, overflowY: 'auto' }}>
+          <Box ref={feedRef} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {visibleFeed.map((item, idx) => {
               if (item.kind === 'user') {
                 return (
@@ -228,7 +239,7 @@ const ClaudeInstanceCard = ({
           </Box>
           {isThinking && (
             <Box sx={{
-              display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5,
+              display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexShrink: 0,
             }}
             >
               <CircularProgress size={10} sx={{ color: '#6897BB' }} />
@@ -241,7 +252,7 @@ const ClaudeInstanceCard = ({
       )}
       {/* Show thinking indicator even when feed is empty (first message sent) */}
       {feed.length === 0 && isThinking && (
-        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <CircularProgress size={10} sx={{ color: '#6897BB' }} />
             <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
@@ -251,24 +262,72 @@ const ClaudeInstanceCard = ({
         </Box>
       )}
 
-      {/* Plans */}
+      {/* Plans — show only the last plan; history icon opens full list */}
       {plans.length > 0 && (
-        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600 }}>
+              PLANS
+            </Typography>
+            {plans.length > 1 && (
+              <IconButton
+                size="small"
+                onClick={e => setPlansAnchorEl(e.currentTarget)}
+                sx={{ p: 0, ml: 'auto' }}
+              >
+                <HistoryIcon sx={{ fontSize: 14, color: '#808080' }} />
+              </IconButton>
+            )}
+          </Box>
+          <Typography
+            onClick={() => onViewPlan?.(plans[plans.length - 1])}
+            sx={{
+              fontSize: '0.7rem',
+              color: '#6897BB',
+              cursor: 'pointer',
+              '&:hover': { textDecoration: 'underline' },
+              lineHeight: 1.4,
+            }}
+          >
+            {plans[plans.length - 1].title || 'Untitled Plan'}
+          </Typography>
+        </Box>
+      )}
+      <Popover
+        open={Boolean(plansAnchorEl)}
+        anchorEl={plansAnchorEl}
+        onClose={() => setPlansAnchorEl(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        PaperProps={{
+          sx: {
+            bgcolor: '#313335',
+            border: '1px solid #4E5254',
+            maxHeight: 300,
+            overflowY: 'auto',
+            minWidth: 200,
+            maxWidth: 350,
+          },
+        }}
+      >
+        <Box sx={{ py: 0.5 }}>
           <Typography sx={{
-            fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.25,
+            fontSize: '0.65rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5,
           }}
           >
-            PLANS
+            ALL PLANS
           </Typography>
           {plans.map((plan, idx) => (
             <Typography
               key={idx}
-              onClick={() => onViewPlan?.(plan)}
+              onClick={() => { onViewPlan?.(plan); setPlansAnchorEl(null); }}
               sx={{
                 fontSize: '0.7rem',
                 color: '#6897BB',
                 cursor: 'pointer',
-                '&:hover': { textDecoration: 'underline' },
+                px: 1.5,
+                py: 0.5,
+                '&:hover': { bgcolor: '#3C3F41' },
                 lineHeight: 1.4,
               }}
             >
@@ -276,12 +335,12 @@ const ClaudeInstanceCard = ({
             </Typography>
           ))}
         </Box>
-      )}
+      </Popover>
 
       {/* User Choices (when waiting) */}
       {pending && (
         <Box sx={{
-          px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41',
+          px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41', flexShrink: 0,
         }}
         >
           <Typography sx={{
@@ -311,11 +370,11 @@ const ClaudeInstanceCard = ({
       )}
 
       {/* Input */}
-      <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41' }}>
+      <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
         <TextField
           fullWidth
           multiline
-          maxRows={expanded ? 6 : 3}
+          maxRows={expanded ? 12 : 8}
           size="small"
           placeholder="Type a message..."
           value={inputText}
@@ -341,7 +400,7 @@ const ClaudeInstanceCard = ({
 
       {/* Buttons */}
       <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5,
+        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, flexShrink: 0,
       }}
       >
         <IconButton

@@ -182,13 +182,29 @@ function handleCreateTerminal(ws, message) {
 // Delay between writing text and \r so ConPTY forwards them as
 // separate reads — otherwise the app treats it as pasted text.
 const ENTER_DELAY_MS = 200;
+// Delay before sending a second \r to confirm/submit the input.
+// Claude Code treats the first Enter as a newline; the second (empty line) submits.
+const SUBMIT_DELAY_MS = 1000;
 
 // Track pending \r timeouts per instance to avoid overlap.
 const pendingEnter = new Map();
+// Track pending second-Enter (submit) timeouts per instance.
+const pendingSubmit = new Map();
+
+function cancelPendingSubmit(instanceId) {
+  const prev = pendingSubmit.get(instanceId);
+  if (prev) {
+    clearTimeout(prev);
+    pendingSubmit.delete(instanceId);
+  }
+}
 
 function handleInput(ws, message) {
   const { instanceId, data } = message;
   if (!instanceId || data === undefined) return;
+
+  // Cancel any pending submit-enter for this instance on new input.
+  cancelPendingSubmit(instanceId);
 
   // If there's a pending \r for this instance, flush it before new input.
   const prev = pendingEnter.get(instanceId);
@@ -203,6 +219,12 @@ function handleInput(ws, message) {
     const timer = setTimeout(() => {
       pendingEnter.delete(instanceId);
       InstanceManager.write(instanceId, '\r');
+      // Schedule a second Enter after SUBMIT_DELAY_MS to actually submit.
+      const submitTimer = setTimeout(() => {
+        pendingSubmit.delete(instanceId);
+        InstanceManager.write(instanceId, '\r');
+      }, SUBMIT_DELAY_MS);
+      pendingSubmit.set(instanceId, submitTimer);
     }, ENTER_DELAY_MS);
     pendingEnter.set(instanceId, timer);
   } else {
@@ -214,6 +236,7 @@ function handleStop(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
 
+  cancelPendingSubmit(instanceId);
   const stopped = InstanceManager.stop(instanceId);
   if (stopped) {
     WsHandler.publish('global', { type: 'stopped', instanceId });
@@ -318,6 +341,7 @@ function handleUserResponse(ws, message) {
   }
 
   InstanceManager.addUserMessage(instanceId, choice);
+  cancelPendingSubmit(instanceId);
   InstanceManager.write(instanceId, choice);
   const choiceTimer = setTimeout(() => {
     pendingEnter.delete(instanceId);
@@ -344,6 +368,20 @@ function handleUserMessage(ws, message) {
   const { instanceId, text, timestamp } = message;
   if (!instanceId || !text) return;
   InstanceManager.addUserMessage(instanceId, text, timestamp);
+
+  // If there was a pending input (multiple-choice prompt), clear it on the backend
+  // so reconnects don't resurrect stale choices. Store the question text as a message.
+  const instance = InstanceManager.get(instanceId);
+  if (instance && instance.pendingInput) {
+    if (instance.pendingInput.message) {
+      InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
+    }
+    InstanceManager.clearPendingInput(instanceId);
+    WsHandler.publish(`instance_${instanceId}`, {
+      type: 'pending_cleared',
+      instanceId,
+    });
+  }
 }
 
 function handleStartGroup(ws, message) {

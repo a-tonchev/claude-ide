@@ -136,13 +136,22 @@ const Dashboard = () => {
     // Record the user's message (strip trailing \r for display)
     const displayText = data.endsWith('\r') ? data.slice(0, -1) : data;
     if (displayText.trim()) {
-      const ts = new Date().toISOString();
+      const now = Date.now();
+      // If there's a pending choice prompt, keep the question as a message in the feed
+      const inst = InstanceStores.instancesStore.get()[instanceId];
+      if (inst?.pendingInput?.message) {
+        addClaudeMessage(instanceId, {
+          text: inst.pendingInput.message,
+          type: 'question',
+          timestamp: new Date(now - 1).toISOString(),
+        });
+      }
+      const ts = new Date(now).toISOString();
       addUserMessage(instanceId, displayText, ts);
       sendUserMessage(instanceId, displayText, ts);
       // Always clear pending choices when user types their own input
       setPendingInput(instanceId, null);
       // Immediately set "thinking" for Claude instances
-      const inst = InstanceStores.instancesStore.get()[instanceId];
       if (inst?.type === 'claude' && inst.status !== 'exited') {
         updateInstanceField(instanceId, 'status', 'thinking');
       }

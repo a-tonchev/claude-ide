@@ -16,6 +16,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import TerminalIcon from '@mui/icons-material/Terminal';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
@@ -120,7 +121,16 @@ const InstanceWindow = () => {
 
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
-    const ts = new Date().toISOString();
+    const now = Date.now();
+    // If there's a pending choice prompt, keep the question as a message in the feed
+    if (pending?.message) {
+      addClaudeMessage(instanceId, {
+        text: pending.message,
+        type: 'question',
+        timestamp: new Date(now - 1).toISOString(),
+      });
+    }
+    const ts = new Date(now).toISOString();
     addUserMessage(instanceId, inputText, ts);
     sendUserMessage(instanceId, inputText, ts);
     setPendingInput(instanceId, null);
@@ -130,7 +140,7 @@ const InstanceWindow = () => {
     }
     writeToInstance(instanceId, `${inputText}\r`);
     setInputText('');
-  }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status]);
+  }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status, pending]);
 
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -199,7 +209,9 @@ const InstanceWindow = () => {
       }}
       >
         <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
-        <AutoAwesomeIcon sx={{ fontSize: 16, color: '#CC7832' }} />
+        {instance.type === 'terminal'
+          ? <TerminalIcon sx={{ fontSize: 16, color: '#6897BB' }} />
+          : <AutoAwesomeIcon sx={{ fontSize: 16, color: '#CC7832' }} />}
         <Typography sx={{
           color: '#A9B7C6', fontWeight: 600, fontSize: '0.9rem', flex: 1,
         }}
