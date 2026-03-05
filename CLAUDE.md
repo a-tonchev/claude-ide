@@ -36,7 +36,13 @@ If you skip step 3, the dashboard shows you as still working forever. You MUST c
 - Reading files, searching code, and listing directories are safe — no permission needed.
 - NEVER run a command or edit a file without asking first via `user_input_needed`.
 - NEVER wait for input in the terminal — the user will not see it. Always use `user_input_needed` instead.
-- After receiving the user's response, continue working and update status accordingly.
+
+#### CRITICAL: `user_input_needed` is ASYNCHRONOUS — you MUST STOP and WAIT
+- When you call `user_input_needed`, the API returns `{ ok: true }` immediately. This is just an acknowledgment that the dialog was shown to the user — it is NOT the user's answer.
+- After calling `user_input_needed`, you MUST **completely stop all work**. Do NOT call any other tools. Do NOT proceed with the action. Do NOT assume any answer.
+- The user's actual choice will arrive as a new message in the conversation. Only after you receive that message should you continue.
+- Your flow MUST be: call `user_input_needed` → call `update_status('waiting')` → **STOP** (end your turn, output nothing else) → wait for the user's response to appear as the next message → then continue based on their choice.
+- If the user chose "No", do NOT proceed with the action. Acknowledge their decision via `send_message` and move on.
 
 ### Plans (use for ANY structured/detailed content)
 - Call `send_plan({ title, content })` for implementation plans, AND also for:
