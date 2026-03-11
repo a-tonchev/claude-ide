@@ -327,7 +327,6 @@ const Dashboard = () => {
           onDelete={handleDeleteGroup}
           onRunGroup={runGroup}
           onStopGroup={stopGroup}
-          instances={instances}
         />
 
         {/* Cards Area */}

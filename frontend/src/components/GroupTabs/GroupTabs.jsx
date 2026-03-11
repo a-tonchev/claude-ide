@@ -13,6 +13,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 
+import { useStoreValue } from '@/components/state/GlobalState';
+import { InstanceStores } from '@/stores/instanceAtoms';
+
 const STATUS_CHIPS = {
   thinking: { label: 'thinking', bgcolor: '#CC783233', color: '#CC7832' },
   working: { label: 'working', bgcolor: '#6897BB33', color: '#6897BB' },
@@ -42,10 +45,13 @@ function getGroupCounts(instances, groupId) {
 }
 
 const GroupTabs = ({
-  groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup, instances,
+  groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup,
 }) => {
   const [contextMenu, setContextMenu] = useState(null);
 
+  // Subscribe directly to the store so status changes always trigger re-render,
+  // even for non-active group tabs
+  const instances = useStoreValue(InstanceStores.instancesStore);
   const instanceList = useMemo(
     () => Object.values(instances || {}),
     [instances],
