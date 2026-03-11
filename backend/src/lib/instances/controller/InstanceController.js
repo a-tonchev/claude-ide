@@ -14,6 +14,14 @@ const InstanceController = {
       );
     }
 
+    // Don't let Claude override 'waiting' while user input is pending —
+    // prevents race between update_status('working') and user_input_needed
+    const existing = InstanceManager.get(id);
+    if (existing && existing.status === 'waiting' && existing.pendingInput
+        && ['working', 'thinking', 'running'].includes(status)) {
+      return ctx.modS.responses.createSuccessResponse(ctx, { status: existing.status });
+    }
+
     const updated = InstanceManager.updateStatus(id, status);
     if (!updated) {
       return ctx.modS.responses.createErrorResponse(
@@ -54,18 +62,6 @@ const InstanceController = {
       );
     }
 
-    // Auto-transition to "working" when we receive activity
-    const instance = InstanceManager.get(id);
-    const autoTransition = instance && ['running', 'thinking', 'ready'].includes(instance.status);
-    if (autoTransition) {
-      InstanceManager.updateStatus(id, 'working');
-      WsHandler.publish(`instance_${id}`, {
-        type: 'status_update',
-        instanceId: id,
-        status: 'working',
-      });
-    }
-
     WsHandler.publish(`instance_${id}`, {
       type: 'milestone',
       instanceId: id,
@@ -95,12 +91,17 @@ const InstanceController = {
       );
     }
 
-    const set = InstanceManager.setPendingInput(id, { message, choices });
+    const set = InstanceManager.setPendingInput(id, { choices });
     if (!set) {
       return ctx.modS.responses.createErrorResponse(
         ctx,
         ctx.modS.responses.CustomErrors.NOT_FOUND,
       );
+    }
+
+    // Store the question as a chat message immediately (for persistence/reconnects)
+    if (message) {
+      InstanceManager.addMessage(id, { text: message, type: 'question' });
     }
 
     WsHandler.publish(`instance_${id}`, {
@@ -137,18 +138,6 @@ const InstanceController = {
         ctx,
         ctx.modS.responses.CustomErrors.NOT_FOUND,
       );
-    }
-
-    // Auto-transition to "working" when we receive activity
-    const instance = InstanceManager.get(id);
-    const autoTransition = instance && ['running', 'thinking', 'ready'].includes(instance.status);
-    if (autoTransition) {
-      InstanceManager.updateStatus(id, 'working');
-      WsHandler.publish(`instance_${id}`, {
-        type: 'status_update',
-        instanceId: id,
-        status: 'working',
-      });
     }
 
     WsHandler.publish(`instance_${id}`, {

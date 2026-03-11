@@ -101,41 +101,43 @@ function handleMessage(event) {
           updateInstanceField(message.instanceId, 'status', message.status);
           break;
 
-        case 'status_update':
+        case 'status_update': {
+          // Don't let 'working'/'thinking' override 'waiting' — race condition guard
+          const suInst = InstanceStores.instancesStore.get()[message.instanceId];
+          if (suInst?.status === 'waiting' && suInst?.pendingInput
+              && ['working', 'thinking', 'running'].includes(message.status)) {
+            break;
+          }
           updateInstanceField(message.instanceId, 'status', message.status);
           break;
+        }
 
-        case 'milestone': {
+        case 'milestone':
           addMilestone(message.instanceId, {
             accomplished: message.accomplished,
             workingOn: message.workingOn,
             timestamp: message.timestamp || new Date().toISOString(),
           });
-          // Auto-clear stale "thinking" status on activity
-          const mInst = InstanceStores.instancesStore.get()[message.instanceId];
-          if (mInst && ['thinking', 'running'].includes(mInst.status)) {
-            updateInstanceField(message.instanceId, 'status', 'working');
-          }
           break;
-        }
 
-        case 'claude_message': {
+        case 'claude_message':
           addClaudeMessage(message.instanceId, {
             text: message.text,
             type: message.messageType || 'info',
             timestamp: message.timestamp || new Date().toISOString(),
           });
-          // Auto-clear stale "thinking" status on activity
-          const cmInst = InstanceStores.instancesStore.get()[message.instanceId];
-          if (cmInst && ['thinking', 'running'].includes(cmInst.status)) {
-            updateInstanceField(message.instanceId, 'status', 'working');
-          }
           break;
-        }
 
         case 'user_input_needed':
+          // Add the question text as a chat message immediately
+          if (message.message) {
+            addClaudeMessage(message.instanceId, {
+              text: message.message,
+              type: 'question',
+              timestamp: new Date().toISOString(),
+            });
+          }
           setPendingInput(message.instanceId, {
-            message: message.message,
             choices: message.choices,
           });
           updateInstanceField(message.instanceId, 'status', 'waiting');

@@ -338,19 +338,13 @@ const ClaudeInstanceCard = ({
       </Popover>
 
       {/* User Choices (when waiting) */}
-      {pending && (
+      {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
         <Box sx={{
           px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41', flexShrink: 0,
         }}
         >
-          <Typography sx={{
-            fontSize: '0.75rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
-          }}
-          >
-            {pending.message}
-          </Typography>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {(pending.choices || []).map((choice, idx) => (
+            {pending.choices.map((choice, idx) => (
               <Chip
                 key={idx}
                 label={choice}

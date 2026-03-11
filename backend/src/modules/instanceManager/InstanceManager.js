@@ -35,9 +35,11 @@ function getShellCommand(shell, command) {
       const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
       const psPath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
       if (command) {
-        return { file: psPath, args: ['-NoLogo', '-Command', command] };
+        // Windows PowerShell 5.1 doesn't support && — replace with ;
+        const psCommand = command.replace(/\s*&&\s*/g, ' ; ');
+        return { file: psPath, args: ['-ExecutionPolicy', 'Bypass', '-NoLogo', '-NoExit', '-Command', psCommand] };
       }
-      return { file: psPath, args: ['-NoLogo'] };
+      return { file: psPath, args: ['-ExecutionPolicy', 'Bypass', '-NoLogo'] };
     }
     case 'cmd':
       if (command) {
@@ -125,6 +127,8 @@ function spawnTerminal(shell, command, cwd) {
   const { file, args } = getShellCommand(shell, command);
   const defaultCwd = process.env.USERPROFILE || process.env.HOME || undefined;
   const resolvedCwd = cwd || defaultCwd;
+
+  console.log('[spawnTerminal]', { shell, command, cwd: resolvedCwd, file, args });
 
   return pty.spawn(file, args, {
     name: 'xterm-256color',

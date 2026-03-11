@@ -139,15 +139,7 @@ const Dashboard = () => {
     const displayText = data.endsWith('\r') ? data.slice(0, -1) : data;
     if (displayText.trim()) {
       const now = Date.now();
-      // If there's a pending choice prompt, keep the question as a message in the feed
       const inst = InstanceStores.instancesStore.get()[instanceId];
-      if (inst?.pendingInput?.message) {
-        addClaudeMessage(instanceId, {
-          text: inst.pendingInput.message,
-          type: 'question',
-          timestamp: new Date(now - 1).toISOString(),
-        });
-      }
       const ts = new Date(now).toISOString();
       addUserMessage(instanceId, displayText, ts);
       sendUserMessage(instanceId, displayText, ts);
@@ -163,15 +155,6 @@ const Dashboard = () => {
 
   const handleSendResponse = useCallback((instanceId, choice) => {
     const now = Date.now();
-    // Add the question before the answer so the feed ordering is correct
-    const inst = InstanceStores.instancesStore.get()[instanceId];
-    if (inst?.pendingInput?.message) {
-      addClaudeMessage(instanceId, {
-        text: inst.pendingInput.message,
-        type: 'question',
-        timestamp: new Date(now - 1).toISOString(),
-      });
-    }
     addUserMessage(instanceId, choice, new Date(now).toISOString());
     setPendingInput(instanceId, null);
     sendUserResponse(instanceId, choice);

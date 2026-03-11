@@ -124,16 +124,7 @@ const InstanceWindow = () => {
 
   const handleSend = useCallback(() => {
     if (!inputText.trim()) return;
-    const now = Date.now();
-    // If there's a pending choice prompt, keep the question as a message in the feed
-    if (pending?.message) {
-      addClaudeMessage(instanceId, {
-        text: pending.message,
-        type: 'question',
-        timestamp: new Date(now - 1).toISOString(),
-      });
-    }
-    const ts = new Date(now).toISOString();
+    const ts = new Date().toISOString();
     addUserMessage(instanceId, inputText, ts);
     sendUserMessage(instanceId, inputText, ts);
     setPendingInput(instanceId, null);
@@ -143,7 +134,7 @@ const InstanceWindow = () => {
     }
     writeToInstance(instanceId, `${inputText}\r`);
     setInputText('');
-  }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status, pending]);
+  }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status]);
 
   const handleKeyDown = useCallback(e => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,19 +152,10 @@ const InstanceWindow = () => {
   }, [instanceId, resizeInstance]);
 
   const handleChoiceClick = useCallback(choice => {
-    const now = Date.now();
-    // Add the question before the answer so the feed ordering is correct
-    if (pending?.message) {
-      addClaudeMessage(instanceId, {
-        text: pending.message,
-        type: 'question',
-        timestamp: new Date(now - 1).toISOString(),
-      });
-    }
-    addUserMessage(instanceId, choice, new Date(now).toISOString());
+    addUserMessage(instanceId, choice, new Date().toISOString());
     setPendingInput(instanceId, null);
     sendUserResponse(instanceId, choice);
-  }, [instanceId, sendUserResponse, pending]);
+  }, [instanceId, sendUserResponse]);
 
   const handleOpenPlan = useCallback(plan => {
     if (plan.id) {
@@ -436,19 +418,13 @@ const InstanceWindow = () => {
             )}
 
             {/* Pending choices */}
-            {pending && (
+            {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
               <Box sx={{
                 px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41',
               }}
               >
-                <Typography sx={{
-                  fontSize: '0.8rem', color: '#CC7832', mb: 0.75, fontWeight: 500,
-                }}
-                >
-                  {pending.message}
-                </Typography>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {(pending.choices || []).map((choice, idx) => (
+                  {pending.choices.map((choice, idx) => (
                     <Chip
                       key={idx}
                       label={choice}

@@ -333,13 +333,6 @@ function handleUserResponse(ws, message) {
     return sendJson(ws, { type: 'error', message: 'Instance not found' });
   }
 
-  // Store the question text for persistence (new windows get it via instance_state).
-  // Don't publish via WS — the frontend adds it locally before the user's answer
-  // to ensure correct chronological ordering in the feed.
-  if (instance.pendingInput?.message) {
-    InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
-  }
-
   InstanceManager.addUserMessage(instanceId, choice);
   cancelPendingSubmit(instanceId);
   InstanceManager.write(instanceId, choice);
@@ -370,12 +363,9 @@ function handleUserMessage(ws, message) {
   InstanceManager.addUserMessage(instanceId, text, timestamp);
 
   // If there was a pending input (multiple-choice prompt), clear it on the backend
-  // so reconnects don't resurrect stale choices. Store the question text as a message.
+  // so reconnects don't resurrect stale choices.
   const instance = InstanceManager.get(instanceId);
   if (instance && instance.pendingInput) {
-    if (instance.pendingInput.message) {
-      InstanceManager.addMessage(instanceId, { text: instance.pendingInput.message, type: 'question' });
-    }
     InstanceManager.clearPendingInput(instanceId);
     WsHandler.publish(`instance_${instanceId}`, {
       type: 'pending_cleared',
