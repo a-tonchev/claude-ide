@@ -36,6 +36,27 @@ function subscribeAllClients(instanceId) {
   }
 }
 
+// Compute and broadcast current status summary for an instance's group
+function broadcastGroupStatus(instanceId) {
+  const instance = InstanceManager.get(instanceId);
+  if (!instance || !instance.groupId) return;
+
+  const groupInstances = InstanceManager.getByGroupId(instance.groupId);
+  const statuses = {};
+  for (const inst of groupInstances) {
+    if (inst.type !== 'terminal' && inst.status !== 'exited') {
+      const s = inst.status || 'running';
+      statuses[s] = (statuses[s] || 0) + 1;
+    }
+  }
+
+  WsHandler.publish('global', {
+    type: 'group_status',
+    groupId: instance.groupId,
+    statuses,
+  });
+}
+
 function wireInstance(ws, instance) {
   ws.subscribe(`instance_${instance.id}`);
 
@@ -61,6 +82,7 @@ function wireInstance(ws, instance) {
           instanceId: instance.id,
           status: 'ready',
         });
+        broadcastGroupStatus(instance.id);
       }
     }, IDLE_TIMEOUT_MS);
   }
@@ -85,6 +107,7 @@ function wireInstance(ws, instance) {
           instanceId: instance.id,
           status: 'ready',
         });
+        broadcastGroupStatus(instance.id);
       }
     }
 
@@ -109,6 +132,8 @@ function wireInstance(ws, instance) {
       status: 'exited',
       exitCode,
     });
+
+    broadcastGroupStatus(instance.id);
   });
 }
 
@@ -145,6 +170,10 @@ function handleCreate(ws, message) {
     groupId: instance.groupId,
     cwd: instance.cwd,
   });
+
+  if (instance.groupId) {
+    broadcastGroupStatus(instance.id);
+  }
 }
 
 function handleCreateTerminal(ws, message) {
@@ -236,10 +265,25 @@ function handleStop(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
 
+  const instance = InstanceManager.get(instanceId);
+  const groupId = instance?.groupId;
+
   cancelPendingSubmit(instanceId);
   const stopped = InstanceManager.stop(instanceId);
   if (stopped) {
     WsHandler.publish('global', { type: 'stopped', instanceId });
+    // Update group tab status after removing the instance
+    if (groupId) {
+      const remaining = InstanceManager.getByGroupId(groupId);
+      const statuses = {};
+      for (const inst of remaining) {
+        if (inst.type !== 'terminal' && inst.status !== 'exited') {
+          const s = inst.status || 'running';
+          statuses[s] = (statuses[s] || 0) + 1;
+        }
+      }
+      WsHandler.publish('global', { type: 'group_status', groupId, statuses });
+    }
   }
 }
 
@@ -422,6 +466,11 @@ function handleStartGroup(ws, message) {
     groupId,
     instances: createdInstances,
   });
+
+  // Broadcast initial group status so tabs show it immediately
+  if (createdInstances.length > 0) {
+    broadcastGroupStatus(createdInstances[0].instanceId);
+  }
 }
 
 function handleStopGroup(ws, message) {
@@ -442,6 +491,9 @@ function handleStopGroup(ws, message) {
     groupId,
     stoppedIds,
   });
+
+  // All instances stopped — clear group status
+  WsHandler.publish('global', { type: 'group_status', groupId, statuses: {} });
 }
 
 function handleReassignGroup(ws, message) {
@@ -548,4 +600,5 @@ const WsHandler = {
   },
 };
 
+export { broadcastGroupStatus };
 export default WsHandler;

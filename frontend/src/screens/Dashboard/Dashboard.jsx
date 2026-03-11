@@ -46,10 +46,14 @@ const Dashboard = () => {
   const [viewingPlan, setViewingPlan] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
+  const [groupStatuses, setGroupStatuses] = useState({});
 
   const onWsMessage = useCallback(msg => {
     if (msg.type === 'ws_connected') setWsConnected(true);
     if (msg.type === 'ws_disconnected') setWsConnected(false);
+    if (msg.type === 'group_status') {
+      setGroupStatuses(prev => ({ ...prev, [msg.groupId]: msg.statuses }));
+    }
   }, []);
 
   const {
@@ -134,31 +138,45 @@ const Dashboard = () => {
     createTerminal(name, shell, command, gid);
   }, [createTerminal, ensureGroup]);
 
+  // Update group tab status immediately when user sends input
+  const setInstanceThinking = useCallback(instanceId => {
+    const inst = InstanceStores.instancesStore.get()[instanceId];
+    if (!inst || inst.type !== 'claude' || inst.status === 'exited' || !inst.groupId) return;
+    updateInstanceField(instanceId, 'status', 'thinking');
+    // Update group tab status immediately
+    const allInstances = InstanceStores.instancesStore.get();
+    const statuses = {};
+    for (const i of Object.values(allInstances)) {
+      if (i.groupId === inst.groupId && i.type !== 'terminal' && i.status !== 'exited') {
+        const s = i.id === instanceId ? 'thinking' : (i.status || 'running');
+        statuses[s] = (statuses[s] || 0) + 1;
+      }
+    }
+    setGroupStatuses(prev => ({ ...prev, [inst.groupId]: statuses }));
+  }, []);
+
   const handleSendInput = useCallback((instanceId, data) => {
     // Record the user's message (strip trailing \r for display)
     const displayText = data.endsWith('\r') ? data.slice(0, -1) : data;
     if (displayText.trim()) {
       const now = Date.now();
-      const inst = InstanceStores.instancesStore.get()[instanceId];
       const ts = new Date(now).toISOString();
       addUserMessage(instanceId, displayText, ts);
       sendUserMessage(instanceId, displayText, ts);
       // Always clear pending choices when user types their own input
       setPendingInput(instanceId, null);
-      // Immediately set "thinking" for Claude instances
-      if (inst?.type === 'claude' && inst.status !== 'exited') {
-        updateInstanceField(instanceId, 'status', 'thinking');
-      }
+      setInstanceThinking(instanceId);
     }
     writeToInstance(instanceId, data);
-  }, [writeToInstance, sendUserMessage]);
+  }, [writeToInstance, sendUserMessage, setInstanceThinking]);
 
   const handleSendResponse = useCallback((instanceId, choice) => {
     const now = Date.now();
     addUserMessage(instanceId, choice, new Date(now).toISOString());
     setPendingInput(instanceId, null);
     sendUserResponse(instanceId, choice);
-  }, [sendUserResponse]);
+    setInstanceThinking(instanceId);
+  }, [sendUserResponse, setInstanceThinking]);
 
   const handleOpenPlaceholder = useCallback(instanceId => {
     if (!activeGroupId) return;
@@ -327,6 +345,8 @@ const Dashboard = () => {
           onDelete={handleDeleteGroup}
           onRunGroup={runGroup}
           onStopGroup={stopGroup}
+          groupStatuses={groupStatuses}
+          instances={instances}
         />
 
         {/* Cards Area */}

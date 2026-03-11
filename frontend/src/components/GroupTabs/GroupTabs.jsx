@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
@@ -13,9 +13,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 
-import { useStoreValue } from '@/components/state/GlobalState';
-import { InstanceStores } from '@/stores/instanceAtoms';
-
 const STATUS_CHIPS = {
   thinking: { label: 'thinking', bgcolor: '#CC783233', color: '#CC7832' },
   working: { label: 'working', bgcolor: '#6897BB33', color: '#6897BB' },
@@ -27,39 +24,21 @@ const STATUS_CHIPS = {
   ready: { label: 'ready', bgcolor: '#7CB36833', color: '#7CB368' },
 };
 
-function getGroupCounts(instances, groupId) {
-  const groupInstances = instances.filter(i => i.groupId === groupId);
-  const counts = {};
-  let terminals = 0;
-
-  groupInstances.forEach(inst => {
-    if (inst.type === 'terminal') {
-      terminals++;
-    } else if (inst.status !== 'exited') {
-      const s = inst.status || 'running';
-      counts[s] = (counts[s] || 0) + 1;
-    }
-  });
-
-  return { counts, terminals };
-}
-
 const GroupTabs = ({
   groups, activeGroupId, onSelect, onClose, onDelete, onRunGroup, onStopGroup,
+  groupStatuses, instances,
 }) => {
   const [contextMenu, setContextMenu] = useState(null);
-
-  // Subscribe directly to the store so status changes always trigger re-render,
-  // even for non-active group tabs
-  const instances = useStoreValue(InstanceStores.instancesStore);
-  const instanceList = useMemo(
-    () => Object.values(instances || {}),
-    [instances],
-  );
 
   if (!groups || groups.length === 0) return null;
 
   const activeIdx = groups.findIndex(g => g.id === activeGroupId);
+
+  // Compute terminal counts from instances (terminals don't have MCP status)
+  const getTerminalCount = groupId => {
+    const list = Object.values(instances || {});
+    return list.filter(i => i.groupId === groupId && i.type === 'terminal').length;
+  };
 
   const handleContextMenu = (e, groupId) => {
     e.preventDefault();
@@ -103,7 +82,8 @@ const GroupTabs = ({
         }}
       >
         {groups.map(group => {
-          const { counts, terminals } = getGroupCounts(instanceList, group.id);
+          const counts = groupStatuses[group.id] || {};
+          const terminals = getTerminalCount(group.id);
           const savedItemCount = group.saved ? (group.items?.length || 0) : 0;
           const runningCount = Object.values(counts).reduce((a, b) => a + b, 0) + terminals;
           const stoppedCount = savedItemCount > runningCount ? savedItemCount - runningCount : 0;

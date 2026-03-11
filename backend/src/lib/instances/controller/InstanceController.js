@@ -1,5 +1,5 @@
 import InstanceManager from '#modules/instanceManager/InstanceManager';
-import WsHandler from '#modules/wsHandler/WsHandler';
+import WsHandler, { broadcastGroupStatus } from '#modules/wsHandler/WsHandler';
 
 const InstanceController = {
   async updateStatus(ctx) {
@@ -38,6 +38,7 @@ const InstanceController = {
           instanceId: id,
           status,
         });
+        broadcastGroupStatus(id);
       }, 500);
     } else {
       WsHandler.publish(`instance_${id}`, {
@@ -45,6 +46,7 @@ const InstanceController = {
         instanceId: id,
         status,
       });
+      broadcastGroupStatus(id);
     }
 
     return ctx.modS.responses.createSuccessResponse(ctx, { status });
@@ -117,6 +119,8 @@ const InstanceController = {
       status: 'waiting',
     });
 
+    broadcastGroupStatus(id);
+
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
 
@@ -187,6 +191,8 @@ const InstanceController = {
       instanceId: id,
       status: 'working',
     });
+
+    broadcastGroupStatus(id);
 
     return ctx.modS.responses.createSuccessResponse(ctx);
   },

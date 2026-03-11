@@ -370,7 +370,7 @@ const InstanceWindow = () => {
                 >
                   <CircularProgress size={14} sx={{ color: '#6897BB' }} />
                   <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
-                    Claude is working...
+                    Processing...
                   </Typography>
                 </Box>
               )}

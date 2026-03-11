@@ -244,7 +244,7 @@ const ClaudeInstanceCard = ({
             >
               <CircularProgress size={10} sx={{ color: '#6897BB' }} />
               <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
-                Claude is working...
+                Processing...
               </Typography>
             </Box>
           )}
