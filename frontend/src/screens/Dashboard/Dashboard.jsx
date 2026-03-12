@@ -21,6 +21,7 @@ import TerminalManager from '@/components/TerminalManager/TerminalManager';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import LoadGroupDialog from '@/components/LoadGroupDialog/LoadGroupDialog';
+import MinifiedSidebar from '@/components/MinifiedSidebar/MinifiedSidebar';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import useInstances from '@/hooks/useInstances';
@@ -46,6 +47,7 @@ const Dashboard = () => {
   const [viewingPlan, setViewingPlan] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
+  const [minimizedCards, setMinimizedCards] = useState(new Set());
   const [groupStatuses, setGroupStatuses] = useState({});
 
   const onWsMessage = useCallback(msg => {
@@ -183,6 +185,33 @@ const Dashboard = () => {
     assignToPlaceholder(activeGroupId, instanceId);
   }, [activeGroupId]);
 
+  const handleMinimize = useCallback(instanceId => {
+    setMinimizedCards(prev => {
+      const next = new Set(prev);
+      next.add(instanceId);
+      return next;
+    });
+  }, []);
+
+  const handleRestore = useCallback(instanceId => {
+    setMinimizedCards(prev => {
+      const next = new Set(prev);
+      next.delete(instanceId);
+      return next;
+    });
+  }, []);
+
+  const handleRemoveFromGroup = useCallback(instanceId => {
+    // Unassign instance from the active group (set groupId to null)
+    updateInstanceField(instanceId, 'groupId', null);
+    // Also remove from minimized if it was there
+    setMinimizedCards(prev => {
+      const next = new Set(prev);
+      next.delete(instanceId);
+      return next;
+    });
+  }, []);
+
   const handleToggleExpand = useCallback(instanceId => {
     setExpandedCards(prev => {
       const next = new Set(prev);
@@ -237,6 +266,26 @@ const Dashboard = () => {
       if (inst.type === 'claude') return inst.projectId === item.projectId;
       return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
     }));
+  }, [activeGroup, activeGroupInstances]);
+
+  // Check if group has unsaved changes (new instances added or saved items removed)
+  const hasUnsavedChanges = useMemo(() => {
+    if (!activeGroup?.saved) return false;
+    const savedItems = activeGroup.items || [];
+    if (!activeGroupInstances.length && !savedItems.length) return false;
+    // Check for new instances not in saved items
+    const hasNew = activeGroupInstances.some(inst => !savedItems.some(item => {
+      if (inst.type !== item.type) return false;
+      if (inst.type === 'claude') return inst.projectId === item.projectId;
+      return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
+    }));
+    // Check for saved items that no longer have a running instance (were removed)
+    const hasRemoved = savedItems.some(item => !activeGroupInstances.some(inst => {
+      if (inst.type !== item.type) return false;
+      if (inst.type === 'claude') return inst.projectId === item.projectId;
+      return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
+    }));
+    return hasNew || hasRemoved;
   }, [activeGroup, activeGroupInstances]);
 
   const runGroup = useCallback(async groupId => {
@@ -349,96 +398,111 @@ const Dashboard = () => {
           instances={instances}
         />
 
-        {/* Cards Area */}
-        <Box sx={{
-          flex: '0 0 auto', maxHeight: '40vh', overflow: 'auto', px: 2, py: 1.5,
-        }}
-        >
-          {activeGroupInstances.length === 0 && stoppedItems.length === 0 ? (
-            <Box sx={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4,
-            }}
-            >
-              <Box sx={{
-                width: 64,
-                height: 64,
-                borderRadius: '50%',
-                bgcolor: '#313335',
-                border: '1px solid #4E5254',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mb: 2,
-              }}
-              >
-                <TerminalIcon sx={{ fontSize: 28, color: '#4E5254' }} />
-              </Box>
-              <Typography sx={{ color: '#808080', fontSize: '0.85rem' }}>
-                {groupList.length === 0
-                  ? 'Create a group and add instances to get started.'
-                  : 'No instances in this group. Use the buttons above to add one.'}
-              </Typography>
-            </Box>
-          ) : (
-            <Grid container spacing={1.5}>
-              {activeGroupInstances.map(instance => {
-                const isExpanded = expandedCards.has(instance.id);
-                return (
-                  <Grid
-                    size={{
-                      xs: 12,
-                      sm: isExpanded ? 12 : 6,
-                      md: isExpanded ? 8 : 4,
-                      lg: isExpanded ? 6 : 3,
-                    }}
-                    key={instance.id}
-                  >
-                    {instance.type === 'terminal' ? (
-                      <TerminalCard
-                        instance={instance}
-                        onOpenPlaceholder={handleOpenPlaceholder}
-                        onOpenWindow={handleOpenWindow}
-                        onStop={stopInstance}
-                      />
-                    ) : (
-                      <ClaudeInstanceCard
-                        instance={instance}
-                        expanded={isExpanded}
-                        onToggleExpand={handleToggleExpand}
-                        onOpenPlaceholder={handleOpenPlaceholder}
-                        onOpenWindow={handleOpenWindow}
-                        onStop={stopInstance}
-                        onSendInput={handleSendInput}
-                        onSendResponse={handleSendResponse}
-                        onViewPlan={setViewingPlan}
-                      />
-                    )}
-                  </Grid>
-                );
-              })}
-              {stoppedItems.map((item, idx) => (
-                <Grid
-                  size={{
-                    xs: 12, sm: 6, md: 4, lg: 3,
-                  }}
-                  key={`saved-${idx}`}
+        {/* Cards Area + Minimized Sidebar */}
+        <Box sx={{ display: 'flex', flex: '0 0 auto', maxHeight: '40vh' }}>
+          <Box sx={{
+            flex: 1, overflow: 'auto', px: 2, py: 1.5, minWidth: 0,
+          }}
+          >
+            {activeGroupInstances.filter(i => !minimizedCards.has(i.id)).length === 0
+              && stoppedItems.length === 0 ? (
+                <Box sx={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', py: 4,
+                }}
                 >
-                  <SavedItemCard
-                    item={item}
-                    onStart={handleStartSavedItem}
-                    onRemove={handleRemoveSavedItem}
-                  />
+                  <Box sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    bgcolor: '#313335',
+                    border: '1px solid #4E5254',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2,
+                  }}
+                  >
+                    <TerminalIcon sx={{ fontSize: 28, color: '#4E5254' }} />
+                  </Box>
+                  <Typography sx={{ color: '#808080', fontSize: '0.85rem' }}>
+                    {groupList.length === 0
+                      ? 'Create a group and add instances to get started.'
+                      : 'No instances in this group. Use the buttons above to add one.'}
+                  </Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={1.5}>
+                  {activeGroupInstances
+                    .filter(i => !minimizedCards.has(i.id))
+                    .map(instance => {
+                      const isExpanded = expandedCards.has(instance.id);
+                      return (
+                        <Grid
+                          size={{
+                            xs: 12,
+                            sm: isExpanded ? 12 : 6,
+                            md: isExpanded ? 8 : 4,
+                            lg: isExpanded ? 6 : 3,
+                          }}
+                          key={instance.id}
+                        >
+                          {instance.type === 'terminal' ? (
+                            <TerminalCard
+                              instance={instance}
+                              onOpenPlaceholder={handleOpenPlaceholder}
+                              onOpenWindow={handleOpenWindow}
+                              onStop={stopInstance}
+                              onMinimize={handleMinimize}
+                              onRemoveFromGroup={handleRemoveFromGroup}
+                            />
+                          ) : (
+                            <ClaudeInstanceCard
+                              instance={instance}
+                              expanded={isExpanded}
+                              onToggleExpand={handleToggleExpand}
+                              onOpenPlaceholder={handleOpenPlaceholder}
+                              onOpenWindow={handleOpenWindow}
+                              onStop={stopInstance}
+                              onSendInput={handleSendInput}
+                              onSendResponse={handleSendResponse}
+                              onViewPlan={setViewingPlan}
+                              onMinimize={handleMinimize}
+                              onRemoveFromGroup={handleRemoveFromGroup}
+                            />
+                          )}
+                        </Grid>
+                      );
+                    })}
+                  {stoppedItems.map((item, idx) => (
+                    <Grid
+                      size={{
+                        xs: 12, sm: 6, md: 4, lg: 3,
+                      }}
+                      key={`saved-${idx}`}
+                    >
+                      <SavedItemCard
+                        item={item}
+                        onStart={handleStartSavedItem}
+                        onRemove={handleRemoveSavedItem}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
-              ))}
-            </Grid>
-          )}
+              )}
+          </Box>
+          <MinifiedSidebar
+            instances={activeGroupInstances.filter(i => minimizedCards.has(i.id))}
+            onRestore={handleRestore}
+            onOpenPlaceholder={handleOpenPlaceholder}
+          />
         </Box>
 
         <ActionBar
           onSaveGroup={() => setSaveGroupOpen(true)}
           onRunGroup={handleRunGroup}
           onStopGroup={handleStopGroup}
-          showSave={!!activeGroup && !activeGroup.saved}
+          showSave={!!activeGroup && (!activeGroup.saved || hasUnsavedChanges)}
+          isUpdate={!!activeGroup?.saved && hasUnsavedChanges}
           showRun={stoppedItems.length > 0}
           showStop={activeGroupInstances.length > 0}
         />
@@ -475,6 +539,7 @@ const Dashboard = () => {
         onSave={handleSaveGroup}
         group={activeGroup}
         instances={instances}
+        isUpdate={hasUnsavedChanges}
       />
 
       <ProjectManager

@@ -17,6 +17,8 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
+import MinimizeIcon from '@mui/icons-material/Minimize';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -24,6 +26,8 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HistoryIcon from '@mui/icons-material/History';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
+import { useStoreValue } from '@/components/state/GlobalState';
+import { InstanceStores, setInputDraft } from '@/stores/instanceAtoms';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#7CB368' },
@@ -47,8 +51,11 @@ const ClaudeInstanceCard = ({
   onSendInput,
   onSendResponse,
   onViewPlan,
+  onMinimize,
+  onRemoveFromGroup,
 }) => {
-  const [inputText, setInputText] = useState('');
+  const inputDrafts = useStoreValue(InstanceStores.inputDraftsStore);
+  const inputText = inputDrafts[instance.id] || '';
   const [feedExpanded, setFeedExpanded] = useState(false);
   const [plansAnchorEl, setPlansAnchorEl] = useState(null);
   const feedRef = useRef(null);
@@ -93,7 +100,7 @@ const ClaudeInstanceCard = ({
       e.preventDefault();
       if (inputText.trim()) {
         onSendInput(instance.id, `${inputText}\r`);
-        setInputText('');
+        setInputDraft(instance.id, '');
       }
     }
   }, [inputText, instance.id, onSendInput]);
@@ -372,7 +379,7 @@ const ClaudeInstanceCard = ({
           size="small"
           placeholder="Type a message..."
           value={inputText}
-          onChange={e => setInputText(e.target.value)}
+          onChange={e => setInputDraft(instance.id, e.target.value)}
           disabled={instance.status === 'exited'}
           onKeyDown={handleKeyDown}
           sx={{
@@ -415,6 +422,14 @@ const ClaudeInstanceCard = ({
         </IconButton>
         <IconButton
           size="small"
+          onClick={() => onMinimize?.(instance.id)}
+          title="Minimize to sidebar"
+          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+        >
+          <MinimizeIcon sx={{ fontSize: 16 }} />
+        </IconButton>
+        <IconButton
+          size="small"
           onClick={() => onToggleExpand?.(instance.id)}
           title={expanded ? 'Shrink card' : 'Expand card'}
           sx={{ color: expanded ? '#6897BB' : '#808080', '&:hover': { color: '#6897BB' } }}
@@ -424,6 +439,14 @@ const ClaudeInstanceCard = ({
             : <UnfoldMoreIcon sx={{ fontSize: 16 }} />}
         </IconButton>
         <Box sx={{ flex: 1 }} />
+        <IconButton
+          size="small"
+          onClick={() => onRemoveFromGroup?.(instance.id)}
+          title="Remove from group"
+          sx={{ color: '#808080', '&:hover': { color: '#CC7832' } }}
+        >
+          <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
+        </IconButton>
         <IconButton
           size="small"
           onClick={() => onStop(instance.id)}

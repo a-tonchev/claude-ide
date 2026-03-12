@@ -8,6 +8,8 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import TvIcon from '@mui/icons-material/Tv';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StopIcon from '@mui/icons-material/Stop';
+import MinimizeIcon from '@mui/icons-material/Minimize';
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
 const SHELL_COLORS = {
   wsl: { bg: '#CC783222', color: '#CC7832', label: 'WSL' },
@@ -18,7 +20,7 @@ const SHELL_COLORS = {
 };
 
 const TerminalCard = ({
-  instance, onOpenPlaceholder, onOpenWindow, onStop,
+  instance, onOpenPlaceholder, onOpenWindow, onStop, onMinimize, onRemoveFromGroup,
 }) => {
   const isRunning = instance.status !== 'exited';
   const shellInfo = SHELL_COLORS[instance.shell] || SHELL_COLORS.bash;
@@ -78,7 +80,23 @@ const TerminalCard = ({
         >
           <OpenInNewIcon sx={{ fontSize: 16 }} />
         </IconButton>
+        <IconButton
+          size="small"
+          onClick={() => onMinimize?.(instance.id)}
+          title="Minimize to sidebar"
+          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+        >
+          <MinimizeIcon sx={{ fontSize: 16 }} />
+        </IconButton>
         <Box sx={{ flex: 1 }} />
+        <IconButton
+          size="small"
+          onClick={() => onRemoveFromGroup?.(instance.id)}
+          title="Remove from group"
+          sx={{ color: '#808080', '&:hover': { color: '#CC7832' } }}
+        >
+          <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
+        </IconButton>
         <IconButton
           size="small"
           onClick={() => onStop(instance.id)}

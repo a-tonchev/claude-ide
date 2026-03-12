@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,9 +13,16 @@ import Chip from '@mui/material/Chip';
 import SaveIcon from '@mui/icons-material/Save';
 
 const SaveGroupDialog = ({
-  open, onClose, onSave, group, instances,
+  open, onClose, onSave, group, instances, isUpdate,
 }) => {
   const [groupName, setGroupName] = useState(group?.name || '');
+
+  // Sync group name when dialog opens or group changes
+  useEffect(() => {
+    if (open && group?.name) {
+      setGroupName(group.name);
+    }
+  }, [open, group?.name]);
 
   const groupInstances = Object.values(instances || {}).filter(
     i => i.groupId === group?.id,
@@ -79,7 +86,7 @@ const SaveGroupDialog = ({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <SaveIcon sx={{ color: '#6897BB' }} />
-        Save Group
+        {isUpdate ? 'Update Group' : 'Save Group'}
       </DialogTitle>
       <DialogContent sx={{
         display: 'flex', flexDirection: 'column', gap: 2, pt: 1,
@@ -155,7 +162,7 @@ const SaveGroupDialog = ({
           variant="contained"
           sx={{ bgcolor: '#579945', '&:hover': { bgcolor: '#68AD55' } }}
         >
-          Save Group
+          {isUpdate ? 'Update Group' : 'Save Group'}
         </Button>
       </DialogActions>
     </Dialog>

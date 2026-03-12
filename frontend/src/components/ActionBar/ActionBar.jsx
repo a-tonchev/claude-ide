@@ -6,7 +6,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 
 const ActionBar = ({
-  onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop,
+  onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop, isUpdate,
 }) => {
   if (!showSave && !showRun && !showStop) return null;
 
@@ -72,7 +72,7 @@ const ActionBar = ({
             fontSize: '0.8rem',
           }}
         >
-          Save Group
+          {isUpdate ? 'Update Group' : 'Save Group'}
         </Button>
       )}
     </Box>

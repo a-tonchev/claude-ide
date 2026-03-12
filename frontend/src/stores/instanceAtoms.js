@@ -3,6 +3,7 @@ import GlobalStateHelper from '@/components/state/GlobalStateHelper';
 export const InstanceStores = {
   instancesStore: null,
   activeInstanceIdStore: null,
+  inputDraftsStore: null,
 };
 
 // --- Cross-window sync via BroadcastChannel ---
@@ -42,6 +43,23 @@ GlobalStateHelper.atom({
   default: null,
   store: InstanceStores,
 });
+
+// Map of instanceId -> draft input text (persists across tab switches)
+GlobalStateHelper.atom({
+  key: 'inputDraftsStore',
+  default: {},
+  store: InstanceStores,
+});
+
+export const setInputDraft = (instanceId, text) => {
+  const current = InstanceStores.inputDraftsStore.get();
+  InstanceStores.inputDraftsStore.set({ ...current, [instanceId]: text });
+};
+
+export const getInputDraft = instanceId => {
+  const current = InstanceStores.inputDraftsStore.get();
+  return current[instanceId] || '';
+};
 
 // Derived: list of instances as array
 GlobalStateHelper.computedAtom({
