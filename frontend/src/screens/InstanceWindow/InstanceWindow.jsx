@@ -102,9 +102,10 @@ const InstanceWindow = () => {
   }, [instanceId, subscribeInstance, unsubscribeInstance]);
 
   useEffect(() => {
-    if (instance?.projectName) {
+    const name = instance?.projectName || instance?.name;
+    if (name) {
       const s = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
-      document.title = `[${s.label}] ${instance.projectName} — Claude IDE`;
+      document.title = `[${s.label}] ${name} — Claude IDE`;
       // Update browser tab theme color
       let meta = document.querySelector('meta[name="theme-color"]');
       if (!meta) {
@@ -114,7 +115,7 @@ const InstanceWindow = () => {
       }
       meta.content = s.color;
     }
-  }, [instance?.projectName, instance?.status]);
+  }, [instance?.projectName, instance?.name, instance?.status]);
 
   // Auto-scroll feed
   useEffect(() => {

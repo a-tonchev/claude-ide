@@ -48,13 +48,13 @@ const Dashboard = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [minimizedCards, setMinimizedCards] = useState(new Set());
-  const [groupStatuses, setGroupStatuses] = useState({});
+  const [wsGroupStatuses, setWsGroupStatuses] = useState({});
 
   const onWsMessage = useCallback(msg => {
     if (msg.type === 'ws_connected') setWsConnected(true);
     if (msg.type === 'ws_disconnected') setWsConnected(false);
     if (msg.type === 'group_status') {
-      setGroupStatuses(prev => ({ ...prev, [msg.groupId]: msg.statuses }));
+      setWsGroupStatuses(prev => ({ ...prev, [msg.groupId]: msg.statuses }));
     }
   }, []);
 
@@ -88,6 +88,27 @@ const Dashboard = () => {
   useEffect(() => {
     fetchGroups();
   }, [fetchGroups]);
+
+  // Derive group statuses from instance data (covers reconnect when no group_status event fires)
+  const derivedGroupStatuses = useMemo(() => {
+    const derived = {};
+    instanceList.forEach(inst => {
+      if (!inst.groupId || inst.type !== 'claude') return;
+      if (!derived[inst.groupId]) derived[inst.groupId] = {};
+      const s = inst.status || 'running';
+      derived[inst.groupId][s] = (derived[inst.groupId][s] || 0) + 1;
+    });
+    return derived;
+  }, [instanceList]);
+
+  // Merge: WS group_status takes priority, fall back to derived
+  const groupStatuses = useMemo(() => {
+    const merged = { ...derivedGroupStatuses };
+    Object.entries(wsGroupStatuses).forEach(([gid, statuses]) => {
+      merged[gid] = statuses;
+    });
+    return merged;
+  }, [derivedGroupStatuses, wsGroupStatuses]);
 
   // Instances without a group
   const ungroupedInstances = useMemo(
@@ -154,7 +175,7 @@ const Dashboard = () => {
         statuses[s] = (statuses[s] || 0) + 1;
       }
     }
-    setGroupStatuses(prev => ({ ...prev, [inst.groupId]: statuses }));
+    setWsGroupStatuses(prev => ({ ...prev, [inst.groupId]: statuses }));
   }, []);
 
   const handleSendInput = useCallback((instanceId, data) => {
