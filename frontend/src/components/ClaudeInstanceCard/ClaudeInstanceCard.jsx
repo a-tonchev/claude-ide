@@ -172,20 +172,31 @@ const ClaudeInstanceCard = ({
           <Box ref={feedRef} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {visibleFeed.map((item, idx) => {
               if (item.kind === 'user') {
+                const isLongUser = item.text && item.text.length > 250;
+                const userDisplay = isLongUser ? `${item.text.slice(0, 200)}...` : item.text;
                 return (
                   <Box
                     key={idx}
+                    onClick={isLongUser ? () => onViewPlan?.({ title: 'User Message', content: item.text }) : undefined}
                     sx={{
                       display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                      ...(isLongUser && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
                     }}
                   >
                     <PersonIcon sx={{
                       fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0,
                     }}
                     />
-                    <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
-                      {item.text}
-                    </Typography>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
+                        {userDisplay}
+                      </Typography>
+                      {isLongUser && (
+                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
+                          Click to read full message
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 );
               }
@@ -195,53 +206,76 @@ const ClaudeInstanceCard = ({
                     : item.messageType === 'error' ? '#BC3F3C'
                       : item.messageType === 'question' ? '#CC7832'
                         : '#A9B7C6';
+                const isLongMsg = item.text && item.text.length > 250;
+                const msgDisplay = isLongMsg ? `${item.text.slice(0, 200)}...` : item.text;
                 return (
                   <Box
                     key={idx}
+                    onClick={isLongMsg ? () => onViewPlan?.({ title: 'Message', content: item.text }) : undefined}
                     sx={{
                       display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                      ...(isLongMsg && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
                     }}
                   >
                     <ChatIcon sx={{
                       fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0,
                     }}
                     />
-                    <MarkdownRenderer
-                      content={item.text}
-                      fontSize="0.7rem"
-                      sx={{
-                        color: msgColor,
-                        lineHeight: 1.4,
-                        flex: 1,
-                        minWidth: 0,
-                        '& p': { mb: 0.25 },
-                        '& p:last-child': { mb: 0 },
-                        '& pre': { p: 0.75, mb: 0.5, fontSize: '0.65rem' },
-                        '& ul, & ol': { pl: 2, mb: 0.25 },
-                        '& li': { mb: 0 },
-                        '& h1, & h2, & h3': { fontSize: '0.75rem', mt: 0.5, mb: 0.25 },
-                      }}
-                    />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <MarkdownRenderer
+                        content={msgDisplay}
+                        fontSize="0.7rem"
+                        sx={{
+                          color: msgColor,
+                          lineHeight: 1.4,
+                          '& p': { mb: 0.25 },
+                          '& p:last-child': { mb: 0 },
+                          '& pre': { p: 0.75, mb: 0.5, fontSize: '0.65rem' },
+                          '& ul, & ol': { pl: 2, mb: 0.25 },
+                          '& li': { mb: 0 },
+                          '& h1, & h2, & h3': { fontSize: '0.75rem', mt: 0.5, mb: 0.25 },
+                        }}
+                      />
+                      {isLongMsg && (
+                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
+                          Click to read full message
+                        </Typography>
+                      )}
+                    </Box>
                   </Box>
                 );
               }
-              return (
-                <Box
-                  key={idx}
-                  sx={{
-                    display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
-                  }}
-                >
-                  <SmartToyIcon sx={{
-                    fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0,
-                  }}
-                  />
-                  <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
-                    <span style={{ color: '#7CB368' }}>{item.accomplished}</span>
-                    {item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
-                  </Typography>
-                </Box>
-              );
+              {
+                const milestoneText = `${item.accomplished || ''}${item.workingOn ? ` → ${item.workingOn}` : ''}`;
+                const isLongMs = milestoneText.length > 250;
+                const msDisplay = isLongMs ? `${(item.accomplished || '').slice(0, 200)}...` : null;
+                return (
+                  <Box
+                    key={idx}
+                    onClick={isLongMs ? () => onViewPlan?.({ title: 'Milestone', content: milestoneText }) : undefined}
+                    sx={{
+                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
+                      ...(isLongMs && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
+                    }}
+                  >
+                    <SmartToyIcon sx={{
+                      fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0,
+                    }}
+                    />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
+                        <span style={{ color: '#7CB368' }}>{isLongMs ? msDisplay : item.accomplished}</span>
+                        {!isLongMs && item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
+                      </Typography>
+                      {isLongMs && (
+                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
+                          Click to read full message
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                );
+              }
             })}
           </Box>
           {isThinking && (

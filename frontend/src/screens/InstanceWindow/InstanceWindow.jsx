@@ -47,6 +47,7 @@ const InstanceWindow = () => {
   const feedRef = useRef(null);
   const [inputText, setInputText] = useState('');
   const [viewingPlan, setViewingPlan] = useState(null);
+  const [viewingMessage, setViewingMessage] = useState(null);
   const [plansOpen, setPlansOpen] = useState(false);
 
   const onMessage = useCallback(msg => {
@@ -269,6 +270,10 @@ const InstanceWindow = () => {
 
               {feed.map((item, idx) => {
                 if (item.kind === 'user') {
+                  const isLongUser = item.text && item.text.length > 250;
+                  const userDisplayText = isLongUser
+                    ? `${item.text.slice(0, 200)}...`
+                    : item.text;
                   return (
                     <Box
                       key={idx}
@@ -280,21 +285,35 @@ const InstanceWindow = () => {
                         fontSize: 16, color: '#B07ACC', mt: '2px', flexShrink: 0,
                       }}
                       />
-                      <Box sx={{
-                        bgcolor: '#3C3F41',
-                        border: '1px solid #4E5254',
-                        borderRadius: '8px',
-                        px: 1.5,
-                        py: 0.75,
-                        flex: 1,
-                      }}
+                      <Box
+                        onClick={isLongUser ? () => setViewingMessage({ text: item.text, title: 'User Message' }) : undefined}
+                        sx={{
+                          bgcolor: '#3C3F41',
+                          border: '1px solid #4E5254',
+                          borderRadius: '8px',
+                          px: 1.5,
+                          py: 0.75,
+                          flex: 1,
+                          ...(isLongUser && {
+                            cursor: 'pointer',
+                            '&:hover': { border: '1px solid #6E7274', bgcolor: '#434648' },
+                          }),
+                        }}
                       >
                         <Typography sx={{
                           fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap',
                         }}
                         >
-                          {item.text}
+                          {userDisplayText}
                         </Typography>
+                        {isLongUser && (
+                          <Typography sx={{
+                            fontSize: '0.7rem', color: '#6897BB', mt: 0.5, fontStyle: 'italic',
+                          }}
+                          >
+                            Click to read full message
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
                   );
@@ -305,6 +324,10 @@ const InstanceWindow = () => {
                       : item.messageType === 'error' ? '#BC3F3C'
                         : item.messageType === 'question' ? '#CC7832'
                           : '#A9B7C6';
+                  const isLong = item.text && item.text.length > 250;
+                  const displayText = isLong
+                    ? `${item.text.slice(0, 200)}...`
+                    : item.text;
                   return (
                     <Box
                       key={idx}
@@ -316,28 +339,50 @@ const InstanceWindow = () => {
                         fontSize: 16, color: msgColor, mt: '2px', flexShrink: 0,
                       }}
                       />
-                      <Box sx={{
-                        bgcolor: '#2B2B2B',
-                        border: `1px solid ${msgColor}33`,
-                        borderRadius: '8px',
-                        px: 1.5,
-                        py: 0.75,
-                        flex: 1,
-                        minWidth: 0,
-                      }}
+                      <Box
+                        onClick={isLong ? () => setViewingMessage({ text: item.text, title: 'Message' }) : undefined}
+                        sx={{
+                          bgcolor: '#2B2B2B',
+                          border: `1px solid ${msgColor}33`,
+                          borderRadius: '8px',
+                          px: 1.5,
+                          py: 0.75,
+                          flex: 1,
+                          minWidth: 0,
+                          ...(isLong && {
+                            cursor: 'pointer',
+                            '&:hover': { border: `1px solid ${msgColor}66`, bgcolor: '#323436' },
+                          }),
+                        }}
                       >
                         <MarkdownRenderer
-                          content={item.text}
+                          content={displayText}
                           fontSize="0.8rem"
                           sx={{
                             color: msgColor,
                             '& p:last-child': { mb: 0 },
                           }}
                         />
+                        {isLong && (
+                          <Typography sx={{
+                            fontSize: '0.7rem',
+                            color: '#6897BB',
+                            mt: 0.5,
+                            fontStyle: 'italic',
+                          }}
+                          >
+                            Click to read full message
+                          </Typography>
+                        )}
                       </Box>
                     </Box>
                   );
                 }
+                const milestoneText = `${item.accomplished || ''}${item.workingOn ? `\nNext: ${item.workingOn}` : ''}`;
+                const isLongMilestone = milestoneText.length > 250;
+                const milestoneDisplay = isLongMilestone
+                  ? `${(item.accomplished || '').slice(0, 200)}...`
+                  : item.accomplished;
                 return (
                   <Box
                     key={idx}
@@ -349,13 +394,34 @@ const InstanceWindow = () => {
                       fontSize: 16, color: '#7CB368', mt: '2px', flexShrink: 0,
                     }}
                     />
-                    <Box sx={{ flex: 1 }}>
+                    <Box
+                      onClick={isLongMilestone ? () => setViewingMessage({ text: milestoneText, title: 'Milestone' }) : undefined}
+                      sx={{
+                        flex: 1,
+                        ...(isLongMilestone && {
+                          cursor: 'pointer',
+                          borderRadius: '8px',
+                          px: 1,
+                          py: 0.5,
+                          mx: -1,
+                          '&:hover': { bgcolor: '#3C3F41' },
+                        }),
+                      }}
+                    >
                       <Typography sx={{ fontSize: '0.8rem', color: '#7CB368', lineHeight: 1.5 }}>
-                        {item.accomplished}
+                        {milestoneDisplay}
                       </Typography>
-                      {item.workingOn && (
+                      {!isLongMilestone && item.workingOn && (
                         <Typography sx={{ fontSize: '0.75rem', color: '#7AAACF', lineHeight: 1.4 }}>
                           Next: {item.workingOn}
+                        </Typography>
+                      )}
+                      {isLongMilestone && (
+                        <Typography sx={{
+                          fontSize: '0.7rem', color: '#6897BB', mt: 0.5, fontStyle: 'italic',
+                        }}
+                        >
+                          Click to read full message
                         </Typography>
                       )}
                     </Box>
@@ -492,6 +558,11 @@ const InstanceWindow = () => {
         open={!!viewingPlan}
         onClose={() => setViewingPlan(null)}
         plan={viewingPlan}
+      />
+      <PlanViewerDialog
+        open={!!viewingMessage}
+        onClose={() => setViewingMessage(null)}
+        plan={viewingMessage ? { title: viewingMessage.title || 'Message', content: viewingMessage.text } : null}
       />
       <PlansDialog
         open={plansOpen}
