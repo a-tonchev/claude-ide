@@ -42,6 +42,9 @@ const TOOL_PERMISSIONS = [
   'mcp__claude-ide__user_input_needed',
   'mcp__claude-ide__send_message',
   'mcp__claude-ide__send_plan',
+  // Observer-specific MCP tools
+  'mcp__claude-ide__getObserver',
+  'mcp__claude-ide__setObserver',
   // All built-in tools
   'Bash',
   'Read',

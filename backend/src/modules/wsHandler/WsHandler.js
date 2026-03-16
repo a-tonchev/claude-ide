@@ -44,7 +44,7 @@ function broadcastGroupStatus(instanceId) {
   const groupInstances = InstanceManager.getByGroupId(instance.groupId);
   const statuses = {};
   for (const inst of groupInstances) {
-    if (inst.type !== 'terminal' && inst.status !== 'exited') {
+    if ((inst.type === 'claude' || inst.type === 'observer') && inst.status !== 'exited') {
       const s = inst.status || 'running';
       statuses[s] = (statuses[s] || 0) + 1;
     }
@@ -72,7 +72,7 @@ function wireInstance(ws, instance) {
 
   function resetIdleTimer() {
     clearIdleTimer();
-    if (instance.type !== 'claude') return;
+    if (instance.type !== 'claude' && instance.type !== 'observer') return;
     idleTimer = setTimeout(() => {
       // Only transition if currently in an active state
       if (['working', 'thinking'].includes(instance.status)) {
@@ -97,7 +97,7 @@ function wireInstance(ws, instance) {
 
     // Quick prompt detection for Claude instances: if output contains
     // the Claude Code prompt indicator, transition to ready immediately
-    if (instance.type === 'claude' && ['working', 'thinking', 'running'].includes(instance.status)) {
+    if ((instance.type === 'claude' || instance.type === 'observer') && ['working', 'thinking', 'running'].includes(instance.status)) {
       const clean = stripAnsi(data);
       // Claude Code shows ">" or "❯" at start of line when waiting for input
       if (/(?:^|\n)\s*[>❯]\s*$/.test(clean)) {
@@ -159,6 +159,43 @@ function handleCreate(ws, message) {
   wireInstance(ws, instance);
 
   // Subscribe ALL connected clients to this new instance
+  subscribeAllClients(instance.id);
+
+  WsHandler.publish('global', {
+    type: 'created',
+    instanceId: instance.id,
+    projectId: instance.projectId,
+    projectName: instance.projectName,
+    instanceType: instance.type,
+    groupId: instance.groupId,
+    cwd: instance.cwd,
+  });
+
+  if (instance.groupId) {
+    broadcastGroupStatus(instance.id);
+  }
+}
+
+function handleCreateObserver(ws, message) {
+  const { name, observerId, cwd, groupId } = message;
+
+  if (!observerId || !cwd) {
+    return sendJson(ws, { type: 'error', message: 'observerId and cwd are required' });
+  }
+
+  let instance;
+  try {
+    instance = InstanceManager.createObserver(observerId, name || '', cwd, groupId);
+  } catch (err) {
+    console.error('Observer create failed:', err.message);
+    return sendJson(ws, { type: 'error', message: err.message });
+  }
+
+  if (groupId) {
+    InstanceManager.setGroupId(instance.id, groupId);
+  }
+
+  wireInstance(ws, instance);
   subscribeAllClients(instance.id);
 
   WsHandler.publish('global', {
@@ -277,7 +314,7 @@ function handleStop(ws, message) {
       const remaining = InstanceManager.getByGroupId(groupId);
       const statuses = {};
       for (const inst of remaining) {
-        if (inst.type !== 'terminal' && inst.status !== 'exited') {
+        if ((inst.type === 'claude' || inst.type === 'observer') && inst.status !== 'exited') {
           const s = inst.status || 'running';
           statuses[s] = (statuses[s] || 0) + 1;
         }
@@ -432,6 +469,8 @@ function handleStartGroup(ws, message) {
       if (item.type === 'claude') {
         instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', []);
         InstanceManager.setGroupId(instance.id, groupId);
+      } else if (item.type === 'observer') {
+        instance = InstanceManager.createObserver(item.observerId, item.name || '', item.cwd || '', groupId);
       } else if (item.type === 'terminal') {
         instance = InstanceManager.createTerminal({
           name: item.name,
@@ -508,6 +547,7 @@ function handleReassignGroup(ws, message) {
 
 const messageHandlers = {
   create: handleCreate,
+  create_observer: handleCreateObserver,
   create_terminal: handleCreateTerminal,
   input: handleInput,
   stop: handleStop,

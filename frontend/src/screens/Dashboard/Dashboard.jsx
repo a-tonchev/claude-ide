@@ -11,10 +11,14 @@ import ActionBar from '@/components/ActionBar/ActionBar';
 import StatusBar from '@/components/StatusBar/StatusBar';
 import PlaceholderPanel from '@/components/PlaceholderPanel/PlaceholderPanel';
 import ClaudeInstanceCard from '@/components/ClaudeInstanceCard/ClaudeInstanceCard';
+import ObserverCard from '@/components/ObserverCard/ObserverCard';
 import TerminalCard from '@/components/TerminalCard/TerminalCard';
 import SavedItemCard from '@/components/SavedItemCard/SavedItemCard';
 import NewInstanceDialog from '@/components/NewInstanceDialog/NewInstanceDialog';
 import NewTerminalDialog from '@/components/NewTerminalDialog/NewTerminalDialog';
+import NewObserverDialog from '@/components/NewObserverDialog/NewObserverDialog';
+import ObserverManager from '@/components/ObserverManager/ObserverManager';
+import InstructionsDialog from '@/components/InstructionsDialog/InstructionsDialog';
 import SaveGroupDialog from '@/components/SaveGroupDialog/SaveGroupDialog';
 import ProjectManager from '@/components/ProjectManager/ProjectManager';
 import TerminalManager from '@/components/TerminalManager/TerminalManager';
@@ -39,9 +43,12 @@ const UNGROUPED_ID = '__ungrouped__';
 const Dashboard = () => {
   const [claudeDialogOpen, setClaudeDialogOpen] = useState(false);
   const [terminalDialogOpen, setTerminalDialogOpen] = useState(false);
+  const [observerDialogOpen, setObserverDialogOpen] = useState(false);
+  const [instructionsDialog, setInstructionsDialog] = useState(null);
   const [saveGroupOpen, setSaveGroupOpen] = useState(false);
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [terminalsOpen, setTerminalsOpen] = useState(false);
+  const [observersOpen, setObserversOpen] = useState(false);
   const [loadGroupOpen, setLoadGroupOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
@@ -67,6 +74,7 @@ const Dashboard = () => {
     sendUserResponse,
     sendUserMessage,
     createTerminal,
+    createObserver,
     startGroup,
     stopGroup,
     reassignGroup,
@@ -93,7 +101,7 @@ const Dashboard = () => {
   const derivedGroupStatuses = useMemo(() => {
     const derived = {};
     instanceList.forEach(inst => {
-      if (!inst.groupId || inst.type !== 'claude') return;
+      if (!inst.groupId || (inst.type !== 'claude' && inst.type !== 'observer')) return;
       if (!derived[inst.groupId]) derived[inst.groupId] = {};
       const s = inst.status || 'running';
       derived[inst.groupId][s] = (derived[inst.groupId][s] || 0) + 1;
@@ -161,16 +169,25 @@ const Dashboard = () => {
     createTerminal(name, shell, command, gid);
   }, [createTerminal, ensureGroup]);
 
+  const handleCreateObserver = useCallback((observerId, name, path) => {
+    const gid = ensureGroup();
+    createObserver(name, observerId, path, gid);
+  }, [createObserver, ensureGroup]);
+
+  const handleViewInstructions = useCallback((observerId, observerName) => {
+    setInstructionsDialog({ observerId, observerName });
+  }, []);
+
   // Update group tab status immediately when user sends input
   const setInstanceThinking = useCallback(instanceId => {
     const inst = InstanceStores.instancesStore.get()[instanceId];
-    if (!inst || inst.type !== 'claude' || inst.status === 'exited' || !inst.groupId) return;
+    if (!inst || (inst.type !== 'claude' && inst.type !== 'observer') || inst.status === 'exited' || !inst.groupId) return;
     updateInstanceField(instanceId, 'status', 'thinking');
     // Update group tab status immediately
     const allInstances = InstanceStores.instancesStore.get();
     const statuses = {};
     for (const i of Object.values(allInstances)) {
-      if (i.groupId === inst.groupId && i.type !== 'terminal' && i.status !== 'exited') {
+      if (i.groupId === inst.groupId && (i.type === 'claude' || i.type === 'observer') && i.status !== 'exited') {
         const s = i.id === instanceId ? 'thinking' : (i.status || 'running');
         statuses[s] = (statuses[s] || 0) + 1;
       }
@@ -401,9 +418,11 @@ const Dashboard = () => {
           onNewGroup={handleNewGroup}
           onAddClaude={() => setClaudeDialogOpen(true)}
           onAddTerminal={() => setTerminalDialogOpen(true)}
+          onAddObserver={() => setObserverDialogOpen(true)}
           onLoadGroup={() => setLoadGroupOpen(true)}
           onManageProjects={() => setProjectsOpen(true)}
           onManageTerminals={() => setTerminalsOpen(true)}
+          onManageObservers={() => setObserversOpen(true)}
           onManagePlans={() => setPlansOpen(true)}
         />
 
@@ -473,6 +492,21 @@ const Dashboard = () => {
                               onOpenPlaceholder={handleOpenPlaceholder}
                               onOpenWindow={handleOpenWindow}
                               onStop={stopInstance}
+                              onMinimize={handleMinimize}
+                              onRemoveFromGroup={handleRemoveFromGroup}
+                            />
+                          ) : instance.type === 'observer' ? (
+                            <ObserverCard
+                              instance={instance}
+                              expanded={isExpanded}
+                              onToggleExpand={handleToggleExpand}
+                              onOpenPlaceholder={handleOpenPlaceholder}
+                              onOpenWindow={handleOpenWindow}
+                              onStop={stopInstance}
+                              onSendInput={handleSendInput}
+                              onSendResponse={handleSendResponse}
+                              onViewPlan={setViewingPlan}
+                              onViewInstructions={handleViewInstructions}
                               onMinimize={handleMinimize}
                               onRemoveFromGroup={handleRemoveFromGroup}
                             />
@@ -554,6 +588,19 @@ const Dashboard = () => {
         onCreate={handleCreateTerminal}
       />
 
+      <NewObserverDialog
+        open={observerDialogOpen}
+        onClose={() => setObserverDialogOpen(false)}
+        onCreate={handleCreateObserver}
+      />
+
+      <InstructionsDialog
+        open={!!instructionsDialog}
+        onClose={() => setInstructionsDialog(null)}
+        observerId={instructionsDialog?.observerId}
+        observerName={instructionsDialog?.observerName}
+      />
+
       <SaveGroupDialog
         open={saveGroupOpen}
         onClose={() => setSaveGroupOpen(false)}
@@ -571,6 +618,11 @@ const Dashboard = () => {
       <TerminalManager
         open={terminalsOpen}
         onClose={() => setTerminalsOpen(false)}
+      />
+
+      <ObserverManager
+        open={observersOpen}
+        onClose={() => setObserversOpen(false)}
       />
 
       <LoadGroupDialog

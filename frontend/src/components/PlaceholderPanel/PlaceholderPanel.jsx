@@ -9,12 +9,13 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import { ArrowFatLinesUp } from '@phosphor-icons/react';
 
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import useWebSocket from '@/hooks/useWebSocket';
 
 const PlaceholderSlot = ({
-  instanceId, instance, instances, onSelect, onClear, send,
+  instanceId, instance, instances, onSelect, onClear, send, siblingInstanceId,
 }) => {
   const termRef = useRef(null);
 
@@ -28,11 +29,17 @@ const PlaceholderSlot = ({
   useWebSocket(onMessage);
 
   // Subscribe/unsubscribe on instanceId change
+  // Only unsubscribe if the sibling placeholder isn't showing the same instance
+  const siblingRef = useRef(siblingInstanceId);
+  siblingRef.current = siblingInstanceId;
+
   useEffect(() => {
     if (!instanceId) return;
     send('subscribe', { instanceId });
     return () => {
-      send('unsubscribe', { instanceId });
+      if (siblingRef.current !== instanceId) {
+        send('unsubscribe', { instanceId });
+      }
     };
   }, [instanceId, send]);
 
@@ -48,7 +55,8 @@ const PlaceholderSlot = ({
     }
   }, [instanceId, send]);
 
-  const instanceList = Object.values(instances || {});
+  const instanceList = Object.values(instances || {})
+    .filter(inst => inst.id !== siblingInstanceId);
 
   const renderInstanceName = val => {
     const inst = instanceList.find(i => i.id === val);
@@ -99,7 +107,9 @@ const PlaceholderSlot = ({
               >
                 {inst.type === 'claude'
                   ? <AutoAwesomeIcon sx={{ fontSize: 13, color: '#CC7832' }} />
-                  : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
+                  : inst.type === 'observer'
+                    ? <ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" />
+                    : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
                 {inst.projectName || inst.name || inst.id.slice(0, 8)}
               </MenuItem>
             ))}
@@ -135,7 +145,9 @@ const PlaceholderSlot = ({
       >
         {instance?.type === 'claude'
           ? <AutoAwesomeIcon sx={{ fontSize: 14, color: '#CC7832', flexShrink: 0 }} />
-          : <TerminalIcon sx={{ fontSize: 14, color: '#808080', flexShrink: 0 }} />}
+          : instance?.type === 'observer'
+            ? <ArrowFatLinesUp size={14} weight="bold" color="#B07ACC" style={{ flexShrink: 0 }} />
+            : <TerminalIcon sx={{ fontSize: 14, color: '#808080', flexShrink: 0 }} />}
         <Typography sx={{
           fontSize: '0.75rem', color: '#A9B7C6', fontWeight: 500, flex: 1,
         }}
@@ -164,7 +176,9 @@ const PlaceholderSlot = ({
             >
               {inst.type === 'claude'
                 ? <AutoAwesomeIcon sx={{ fontSize: 13, color: '#CC7832' }} />
-                : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
+                : inst.type === 'observer'
+                  ? <ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" />
+                  : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
               {inst.projectName || inst.name || inst.id.slice(0, 8)}
             </MenuItem>
           ))}
@@ -202,6 +216,7 @@ const PlaceholderPanel = ({
         onSelect={onSelect1}
         onClear={onClear1}
         send={send}
+        siblingInstanceId={placeholder2Id}
       />
       <PlaceholderSlot
         instanceId={placeholder2Id}
@@ -210,6 +225,7 @@ const PlaceholderPanel = ({
         onSelect={onSelect2}
         onClear={onClear2}
         send={send}
+        siblingInstanceId={placeholder1Id}
       />
     </Box>
   );

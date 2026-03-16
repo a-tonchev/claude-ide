@@ -23,6 +23,7 @@ log(`MCP server starting. PID=${process.pid}`);
 
 const INSTANCE_ID = process.env.INSTANCE_ID;
 const PROJECT_ID = process.env.PROJECT_ID;
+const OBSERVER_ID = process.env.OBSERVER_ID;
 const API_URL = process.env.API_URL || 'http://localhost:6950';
 const API_PREFIX = process.env.API_PREFIX || '/api/v1';
 
@@ -153,6 +154,39 @@ const tools = {
     },
   },
 };
+
+// Observer-only tools — only available when OBSERVER_ID is set
+if (OBSERVER_ID) {
+  tools.getObserver = {
+    description: 'Get the observer instructions from the database. Returns { name, instructions }.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+    async handler() {
+      return apiPost('/observers/getInstructions', { observerId: OBSERVER_ID });
+    },
+  };
+
+  tools.setObserver = {
+    description: 'Save/overwrite the observer instructions in the database. Always write the complete instructions string.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        instructions: {
+          type: 'string',
+          description: 'The complete instructions string to save',
+        },
+      },
+      required: ['instructions'],
+    },
+    async handler({ instructions }) {
+      return apiPost('/observers/setInstructions', { observerId: OBSERVER_ID, instructions });
+    },
+  };
+
+  log(`Observer tools enabled for observer ${OBSERVER_ID}`);
+}
 
 // --- NDJSON stdio transport ---
 // Claude Code uses newline-delimited JSON, NOT Content-Length framing.

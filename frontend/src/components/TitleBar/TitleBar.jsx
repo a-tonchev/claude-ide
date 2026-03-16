@@ -10,13 +10,14 @@ import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArticleIcon from '@mui/icons-material/Article';
 import HexagonOutlinedIcon from '@mui/icons-material/HexagonOutlined';
 import Divider from '@mui/material/Divider';
 
 const TitleBar = ({
-  onNewGroup, onAddClaude, onAddTerminal, onLoadGroup, onManageProjects, onManageTerminals, onManagePlans,
+  onNewGroup, onAddClaude, onAddTerminal, onAddObserver, onLoadGroup, onManageProjects, onManageTerminals, onManageObservers, onManagePlans,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -100,6 +101,25 @@ const TitleBar = ({
         Add Terminal
       </Button>
 
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<ArrowFatLinesUp size={16} weight="bold" />}
+        onClick={onAddObserver}
+        sx={{
+          ml: 1,
+          borderColor: '#4E5254',
+          color: '#A9B7C6',
+          '&:hover': { borderColor: '#6897BB', bgcolor: '#313335' },
+          textTransform: 'none',
+          fontSize: '0.8rem',
+          px: 1.5,
+          py: 0.5,
+        }}
+      >
+        Add Observer
+      </Button>
+
       <Box sx={{ flex: 1 }} />
 
       <IconButton
@@ -134,6 +154,10 @@ const TitleBar = ({
         <MenuItem onClick={() => { setAnchorEl(null); onManageTerminals?.(); }}>
           <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
           Terminal Configs
+        </MenuItem>
+        <MenuItem onClick={() => { setAnchorEl(null); onManageObservers?.(); }}>
+          <ListItemIcon><ArrowFatLinesUp size={18} weight="bold" color="#B07ACC" /></ListItemIcon>
+          Observer Configs
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
         <MenuItem onClick={() => { setAnchorEl(null); onManagePlans?.(); }}>

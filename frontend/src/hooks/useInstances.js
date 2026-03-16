@@ -50,6 +50,12 @@ const useInstances = onMessage => {
     });
   }, [send]);
 
+  const createObserver = useCallback((name, observerId, cwd, groupId) => {
+    send('create_observer', {
+      name, observerId, cwd, groupId,
+    });
+  }, [send]);
+
   const sendUserResponse = useCallback((instanceId, choice) => {
     send('user_response', { instanceId, choice });
   }, [send]);
@@ -85,6 +91,7 @@ const useInstances = onMessage => {
     unsubscribeInstance,
     requestPlan,
     createTerminal,
+    createObserver,
     sendUserResponse,
     sendUserMessage,
     startGroup,

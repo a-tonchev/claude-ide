@@ -42,6 +42,10 @@ export const ApiEndpoints = {
   terminalsAdd: '/terminals/add',
   terminalsUpdate: '/terminals/update',
   terminalsDelete: '/terminals/delete',
+  observersAll: '/observers/all',
+  observersAdd: '/observers/add',
+  observersUpdate: '/observers/update',
+  observersDelete: '/observers/delete',
 };
 
 const getUrl = endpointPath => {

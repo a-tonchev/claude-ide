@@ -4,6 +4,9 @@ export function assignToPlaceholder(groupId, instanceId) {
   const placeholders = GroupStores.placeholdersStore.get();
   const gp = placeholders[groupId] || { placeholder1: null, placeholder2: null };
 
+  // Don't open the same instance in both placeholders
+  if (gp.placeholder1 === instanceId || gp.placeholder2 === instanceId) return 0;
+
   // Left panel is fixed — if empty, fill it first
   if (!gp.placeholder1) {
     setPlaceholder(groupId, 'placeholder1', instanceId);
