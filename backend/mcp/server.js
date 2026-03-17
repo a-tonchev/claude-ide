@@ -155,10 +155,48 @@ const tools = {
   },
 };
 
+// KeePass tools — available to ALL instances
+tools.listKeePassConfigs = {
+  description: 'List all KeePass database configurations. Returns { settings: [{ _id, name, dbPath, dbName, username, hasPassword, instructions }] }. Use the _id to call getKeePassCredentials.',
+  inputSchema: {
+    type: 'object',
+    properties: {},
+  },
+  async handler() {
+    return apiPost('/settings/all', { type: 'keepass' });
+  },
+};
+
+tools.getKeePassCredentials = {
+  description: 'Get decrypted KeePass database credentials by settings ID. Returns { credentials: { name, dbPath, dbName, username, password, instructions } } or { credentials: null }. For observers: if no settingsId is provided, automatically uses the observer\'s linked KeePass config.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      settingsId: {
+        type: 'string',
+        description: 'The _id of the KeePass settings to retrieve. Optional for observers (auto-resolved from observer config).',
+      },
+    },
+  },
+  async handler({ settingsId } = {}) {
+    let resolvedId = settingsId;
+    // For observers: auto-resolve from observer config if no settingsId provided
+    if (!resolvedId && OBSERVER_ID) {
+      const observer = await apiPost('/observers/getInstructions', { observerId: OBSERVER_ID });
+      resolvedId = observer?.data?.keepassSettingsId;
+    }
+    if (!resolvedId) {
+      return { credentials: null };
+    }
+    const result = await apiPost('/settings/getCredentials', { settingsId: resolvedId });
+    return result?.data || { credentials: null };
+  },
+};
+
 // Observer-only tools — only available when OBSERVER_ID is set
 if (OBSERVER_ID) {
   tools.getObserver = {
-    description: 'Get the observer instructions from the database. Returns { name, instructions }.',
+    description: 'Get the observer instructions from the database. Returns { name, instructions, keepassSettingsId, keepassEntryPath }.',
     inputSchema: {
       type: 'object',
       properties: {},

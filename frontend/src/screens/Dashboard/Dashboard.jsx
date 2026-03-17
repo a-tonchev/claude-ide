@@ -18,6 +18,7 @@ import NewInstanceDialog from '@/components/NewInstanceDialog/NewInstanceDialog'
 import NewTerminalDialog from '@/components/NewTerminalDialog/NewTerminalDialog';
 import NewObserverDialog from '@/components/NewObserverDialog/NewObserverDialog';
 import ObserverManager from '@/components/ObserverManager/ObserverManager';
+import KeePassSettingsDialog from '@/components/KeePassSettingsDialog/KeePassSettingsDialog';
 import InstructionsDialog from '@/components/InstructionsDialog/InstructionsDialog';
 import SaveGroupDialog from '@/components/SaveGroupDialog/SaveGroupDialog';
 import ProjectManager from '@/components/ProjectManager/ProjectManager';
@@ -49,6 +50,7 @@ const Dashboard = () => {
   const [projectsOpen, setProjectsOpen] = useState(false);
   const [terminalsOpen, setTerminalsOpen] = useState(false);
   const [observersOpen, setObserversOpen] = useState(false);
+  const [keepassOpen, setKeepassOpen] = useState(false);
   const [loadGroupOpen, setLoadGroupOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
@@ -423,6 +425,7 @@ const Dashboard = () => {
           onManageProjects={() => setProjectsOpen(true)}
           onManageTerminals={() => setTerminalsOpen(true)}
           onManageObservers={() => setObserversOpen(true)}
+          onManageKeePass={() => setKeepassOpen(true)}
           onManagePlans={() => setPlansOpen(true)}
         />
 
@@ -623,6 +626,11 @@ const Dashboard = () => {
       <ObserverManager
         open={observersOpen}
         onClose={() => setObserversOpen(false)}
+      />
+
+      <KeePassSettingsDialog
+        open={keepassOpen}
+        onClose={() => setKeepassOpen(false)}
       />
 
       <LoadGroupDialog

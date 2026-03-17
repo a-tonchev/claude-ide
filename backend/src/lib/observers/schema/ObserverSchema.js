@@ -1,7 +1,9 @@
 import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
 import ObserverSchemaFields from './ObserverSchemaFields';
 
-const { name, instructions, path } = ObserverSchemaFields;
+const {
+  name, instructions, path, keepassSettingsId, keepassEntryPath,
+} = ObserverSchemaFields;
 const { _id, date } = CommonSchemaFields;
 
 const ObserverSchema = {
@@ -13,6 +15,8 @@ const ObserverSchema = {
     name,
     instructions,
     path,
+    keepassSettingsId,
+    keepassEntryPath,
     updatedAt: date,
     createdAt: date,
   },

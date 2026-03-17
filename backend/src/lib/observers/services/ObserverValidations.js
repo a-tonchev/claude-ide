@@ -1,6 +1,8 @@
 import ObserverSchemaFields from '../schema/ObserverSchemaFields';
 
-const { name, instructions, path } = ObserverSchemaFields;
+const {
+  name, instructions, path, keepassSettingsId, keepassEntryPath,
+} = ObserverSchemaFields;
 
 const CreateObserverSchema = {
   bsonType: 'object',
@@ -10,6 +12,8 @@ const CreateObserverSchema = {
     name,
     instructions,
     path,
+    keepassSettingsId,
+    keepassEntryPath,
   },
 };
 
@@ -21,6 +25,8 @@ const UpdateObserverSchema = {
     name,
     instructions,
     path,
+    keepassSettingsId,
+    keepassEntryPath,
   },
 };
 

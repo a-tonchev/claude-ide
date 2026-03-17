@@ -13,11 +13,13 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArticleIcon from '@mui/icons-material/Article';
+import KeyIcon from '@mui/icons-material/Key';
 import HexagonOutlinedIcon from '@mui/icons-material/HexagonOutlined';
 import Divider from '@mui/material/Divider';
 
 const TitleBar = ({
-  onNewGroup, onAddClaude, onAddTerminal, onAddObserver, onLoadGroup, onManageProjects, onManageTerminals, onManageObservers, onManagePlans,
+  onNewGroup, onAddClaude, onAddTerminal, onAddObserver, onLoadGroup,
+  onManageProjects, onManageTerminals, onManageObservers, onManagePlans, onManageKeePass,
 }) => {
   const [anchorEl, setAnchorEl] = useState(null);
 
@@ -158,6 +160,10 @@ const TitleBar = ({
         <MenuItem onClick={() => { setAnchorEl(null); onManageObservers?.(); }}>
           <ListItemIcon><ArrowFatLinesUp size={18} weight="bold" color="#B07ACC" /></ListItemIcon>
           Observer Configs
+        </MenuItem>
+        <MenuItem onClick={() => { setAnchorEl(null); onManageKeePass?.(); }}>
+          <ListItemIcon><KeyIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
+          KeePass Credentials
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
         <MenuItem onClick={() => { setAnchorEl(null); onManagePlans?.(); }}>

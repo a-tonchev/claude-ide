@@ -6,6 +6,7 @@ import Plans from '#lib/plans/Plans';
 import Groups from '#lib/groups/Groups';
 import Terminals from '#lib/terminals/Terminals';
 import Observers from '#lib/observers/Observers';
+import Settings from '#lib/settings/Settings';
 import {
   createErrorResponse,
   createSuccessResponse,
@@ -18,7 +19,7 @@ import EmailServices from '#modules/email/EmailServices';
 
 const Config = {
   // All collections need to be stored here
-  collections: [Users, Authentications, Projects, Plans, Groups, Terminals, Observers],
+  collections: [Users, Authentications, Projects, Plans, Groups, Terminals, Observers, Settings],
 
   // All collections services need to be setup here
   setupLibs(ctx) {
@@ -29,6 +30,7 @@ const Config = {
     const { groups } = Groups.setupServices(ctx);
     const { terminals } = Terminals.setupServices(ctx);
     const { observers } = Observers.setupServices(ctx);
+    const { settings } = Settings.setupServices(ctx);
     return {
       users,
       authentications,
@@ -37,6 +39,7 @@ const Config = {
       groups,
       terminals,
       observers,
+      settings,
     };
   },
 

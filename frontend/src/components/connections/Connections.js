@@ -46,6 +46,10 @@ export const ApiEndpoints = {
   observersAdd: '/observers/add',
   observersUpdate: '/observers/update',
   observersDelete: '/observers/delete',
+  settingsAll: '/settings/all',
+  settingsAdd: '/settings/add',
+  settingsUpdate: '/settings/update',
+  settingsDelete: '/settings/delete',
 };
 
 const getUrl = endpointPath => {

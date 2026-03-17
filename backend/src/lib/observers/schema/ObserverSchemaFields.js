@@ -9,6 +9,12 @@ const ObserverSchemaFields = {
   path: {
     bsonType: 'string',
   },
+  keepassSettingsId: {
+    bsonType: 'string',
+  },
+  keepassEntryPath: {
+    bsonType: 'string',
+  },
 };
 
 export default ObserverSchemaFields;

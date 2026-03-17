@@ -7,10 +7,14 @@ const ObserverController = {
   },
 
   async create(ctx) {
-    const { name, instructions, path } = ctx.request.body;
+    const {
+      name, instructions, path, keepassSettingsId, keepassEntryPath,
+    } = ctx.request.body;
     const doc = { name };
     if (instructions !== undefined) doc.instructions = instructions;
     if (path !== undefined) doc.path = path;
+    if (keepassSettingsId !== undefined) doc.keepassSettingsId = keepassSettingsId;
+    if (keepassEntryPath !== undefined) doc.keepassEntryPath = keepassEntryPath;
     try {
       const result = await ctx.libS.observers.add(doc);
       return ctx.modS.responses.createSuccessResponse(ctx, {
@@ -72,6 +76,8 @@ const ObserverController = {
       return ctx.modS.responses.createSuccessResponse(ctx, {
         name: observer.name,
         instructions: observer.instructions || '',
+        keepassSettingsId: observer.keepassSettingsId || null,
+        keepassEntryPath: observer.keepassEntryPath || null,
       });
     } catch (err) {
       return ctx.modS.responses.createErrorResponse(
