@@ -22,6 +22,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HistoryIcon from '@mui/icons-material/History';
 
@@ -192,9 +193,14 @@ const ClaudeInstanceCard = ({
                         {userDisplay}
                       </Typography>
                       {isLongUser && (
-                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
-                          Click to read full message
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                            Click to read full message
+                          </Typography>
+                          {item.text.trim().endsWith('?') && (
+                            <HelpOutlineIcon sx={{ fontSize: 12, color: '#C5A5D6', pr: 0.5, pb: 0.5 }} />
+                          )}
+                        </Box>
                       )}
                     </Box>
                   </Box>
@@ -237,9 +243,14 @@ const ClaudeInstanceCard = ({
                         }}
                       />
                       {isLongMsg && (
-                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
-                          Click to read full message
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                            Click to read full message
+                          </Typography>
+                          {item.text.trim().endsWith('?') && (
+                            <HelpOutlineIcon sx={{ fontSize: 12, color: msgColor, pr: 0.5, pb: 0.5 }} />
+                          )}
+                        </Box>
                       )}
                     </Box>
                   </Box>
@@ -268,9 +279,14 @@ const ClaudeInstanceCard = ({
                         {!isLongMs && item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
                       </Typography>
                       {isLongMs && (
-                        <Typography sx={{ fontSize: '0.6rem', color: '#6897BB', fontStyle: 'italic' }}>
-                          Click to read full message
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                            Click to read full message
+                          </Typography>
+                          {milestoneText.trim().endsWith('?') && (
+                            <HelpOutlineIcon sx={{ fontSize: 12, color: '#7CB368', pr: 0.5, pb: 0.5 }} />
+                          )}
+                        </Box>
                       )}
                     </Box>
                   </Box>

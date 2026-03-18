@@ -14,6 +14,7 @@ import SendIcon from '@mui/icons-material/Send';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
@@ -308,12 +309,17 @@ const InstanceWindow = () => {
                           {userDisplayText}
                         </Typography>
                         {isLongUser && (
-                          <Typography sx={{
-                            fontSize: '0.7rem', color: '#6897BB', mt: 0.5, fontStyle: 'italic',
-                          }}
-                          >
-                            Click to read full message
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                            <Typography sx={{
+                              fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
+                            }}
+                            >
+                              Click to read full message
+                            </Typography>
+                            {item.text.trim().endsWith('?') && (
+                              <HelpOutlineIcon sx={{ fontSize: 14, color: '#C5A5D6', pr: 0.5, pb: 0.5 }} />
+                            )}
+                          </Box>
                         )}
                       </Box>
                     </Box>
@@ -365,15 +371,19 @@ const InstanceWindow = () => {
                           }}
                         />
                         {isLong && (
-                          <Typography sx={{
-                            fontSize: '0.7rem',
-                            color: '#6897BB',
-                            mt: 0.5,
-                            fontStyle: 'italic',
-                          }}
-                          >
-                            Click to read full message
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                            <Typography sx={{
+                              fontSize: '0.7rem',
+                              color: 'rgba(255,255,255,0.5)',
+                              fontStyle: 'italic',
+                            }}
+                            >
+                              Click to read full message
+                            </Typography>
+                            {item.text.trim().endsWith('?') && (
+                              <HelpOutlineIcon sx={{ fontSize: 14, color: msgColor, pr: 0.5, pb: 0.5 }} />
+                            )}
+                          </Box>
                         )}
                       </Box>
                     </Box>
@@ -418,12 +428,17 @@ const InstanceWindow = () => {
                         </Typography>
                       )}
                       {isLongMilestone && (
-                        <Typography sx={{
-                          fontSize: '0.7rem', color: '#6897BB', mt: 0.5, fontStyle: 'italic',
-                        }}
-                        >
-                          Click to read full message
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
+                          <Typography sx={{
+                            fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
+                          }}
+                          >
+                            Click to read full message
+                          </Typography>
+                          {milestoneText.trim().endsWith('?') && (
+                            <HelpOutlineIcon sx={{ fontSize: 14, color: '#7CB368', pr: 0.5, pb: 0.5 }} />
+                          )}
+                        </Box>
                       )}
                     </Box>
                   </Box>
