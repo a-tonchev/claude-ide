@@ -4,12 +4,15 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
+import Checkbox from '@mui/material/Checkbox';
+import Tooltip from '@mui/material/Tooltip';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
+import CastConnectedIcon from '@mui/icons-material/CastConnected';
 
-const SavedItemCard = ({ item, onStart, onRemove }) => {
+const SavedItemCard = ({ item, onStart, onRemove, onToggleRemote }) => {
   const isClaude = item.type === 'claude';
 
   return (
@@ -87,6 +90,20 @@ const SavedItemCard = ({ item, onStart, onRemove }) => {
         >
           <PlayArrowIcon sx={{ fontSize: 18 }} />
         </IconButton>
+        {isClaude && (
+          <Tooltip title="Remote control — access from phone via claude.ai/code" arrow>
+            <Box sx={{ display: 'flex', alignItems: 'center', ml: 0.5 }}>
+              <Checkbox
+                size="small"
+                checked={!!item.remote}
+                onChange={() => onToggleRemote?.(item)}
+                icon={<CastConnectedIcon sx={{ fontSize: 16, color: '#606366' }} />}
+                checkedIcon={<CastConnectedIcon sx={{ fontSize: 16, color: '#6897BB' }} />}
+                sx={{ p: 0.25 }}
+              />
+            </Box>
+          </Tooltip>
+        )}
         <Box sx={{ flex: 1 }} />
         <IconButton
           size="small"

@@ -373,7 +373,7 @@ const Dashboard = () => {
         }
       }
       if (!path) return;
-      createInstance(item.projectId, item.name, path, [], gid);
+      createInstance(item.projectId, item.name, path, [], gid, !!item.remote);
     } else {
       let { shell, command } = item;
       if (!shell) {
@@ -394,6 +394,12 @@ const Dashboard = () => {
   const handleRemoveSavedItem = useCallback(async item => {
     if (!activeGroupId || !activeGroup?.items) return;
     const newItems = activeGroup.items.filter(i => i !== item);
+    await updateGroupItems(activeGroupId, newItems);
+  }, [activeGroupId, activeGroup, updateGroupItems]);
+
+  const handleToggleRemote = useCallback(async item => {
+    if (!activeGroupId || !activeGroup?.items) return;
+    const newItems = activeGroup.items.map(i => (i === item ? { ...i, remote: !i.remote } : i));
     await updateGroupItems(activeGroupId, newItems);
   }, [activeGroupId, activeGroup, updateGroupItems]);
 
@@ -542,6 +548,7 @@ const Dashboard = () => {
                         item={item}
                         onStart={handleStartSavedItem}
                         onRemove={handleRemoveSavedItem}
+                        onToggleRemote={handleToggleRemote}
                       />
                     </Grid>
                   ))}

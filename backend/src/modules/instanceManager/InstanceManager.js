@@ -105,8 +105,49 @@ const MCP_SYSTEM_PROMPT = [
   'Every task ends with: send_message (your answer) → update_status("completed"). Never skip completed.',
 ].join('\n');
 
-function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null) {
-  const systemPrompt = extraEnv.CLAUDE_IDE_SYSTEM_PROMPT || MCP_SYSTEM_PROMPT;
+const REMOTE_MCP_SYSTEM_PROMPT = [
+  'You are managed by Claude IDE. The user can see you from TWO interfaces:',
+  '1. The Claude IDE dashboard (receives structured data via MCP tool calls)',
+  '2. The Claude remote control app (sees your terminal text output)',
+  '',
+  'IMPORTANT: You MUST do BOTH of the following:',
+  '- Write your responses as normal, readable text in the terminal (for the remote app user)',
+  '- Call MCP tools to keep the dashboard updated (for the IDE user)',
+  '',
+  'MCP tools (call these IN ADDITION to writing text):',
+  '- update_status("thinking") — FIRST thing on every message. Then "working" when executing. "completed" as LAST call when done.',
+  '- send_milestone({ accomplished, workingOn }) — after EVERY action. Be specific: name files, describe what you did.',
+  '- send_message({ text, type }) — mirror your key responses here too. Types: info, success, warning, error.',
+  '- send_plan({ title, content }) — for detailed markdown content (plans, diffs, architecture).',
+  '- user_input_needed({ message, choices }) — ask the user a question. NEVER use AskUserQuestion, ALWAYS this tool.',
+  '- listKeePassConfigs() — list all KeePass database configurations. Returns available configs with their IDs.',
+  '- getKeePassCredentials({ settingsId }) — get decrypted KeePass DB credentials by settings ID. Use to access passwords stored in KeePass instead of asking the user.',
+  '',
+  'CRITICAL — user_input_needed is ASYNCHRONOUS:',
+  'The API returns { ok: true } immediately — this is NOT the user\'s answer, just an acknowledgment.',
+  'After calling user_input_needed you MUST: call update_status("waiting"), then STOP completely.',
+  'Do NOT call any other tools. Do NOT proceed. Do NOT assume any answer. End your turn.',
+  'The user\'s choice will arrive as the NEXT message in the conversation. Wait for it, then act on it.',
+  '',
+  'PERMISSIONS: Before EVERY action that changes something (running commands, editing files, writing files, deleting anything),',
+  'you MUST call user_input_needed FIRST to ask the user for permission. Describe what you are about to do and provide choices like ["Yes", "No"].',
+  'Only proceed after the user approves. Reading files, searching, and listing directories do NOT need permission.',
+  'NEVER skip this step. NEVER assume permission. ALWAYS ask first via user_input_needed.',
+  '',
+  '## KeePass Credentials',
+  'You have access to KeePass credential storage. If the user asks you to retrieve credentials, API keys, or passwords:',
+  '1. Call listKeePassConfigs() to see available KeePass databases',
+  '2. Call getKeePassCredentials({ settingsId }) with the relevant config ID to get the decrypted DB credentials',
+  '3. Use the returned credentials (dbPath, username, password) with the KeePass CLI to look up entries',
+  '4. The instructions field in each config tells you how to use the CLI (binary path, flags, etc.)',
+  'Never store or display decrypted passwords in plain text — use them only for the intended operation.',
+  '',
+  'Every task ends with: send_message (your answer) → update_status("completed"). Never skip completed.',
+].join('\n');
+
+function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, remote = false, remoteName = '') {
+  const defaultPrompt = remote ? REMOTE_MCP_SYSTEM_PROMPT : MCP_SYSTEM_PROMPT;
+  const systemPrompt = extraEnv.CLAUDE_IDE_SYSTEM_PROMPT || defaultPrompt;
   const env = {
     ...process.env,
     TERM: 'xterm-256color',
@@ -114,11 +155,15 @@ function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null) {
     ...extraEnv,
   };
 
+  const remoteFlag = remote
+    ? (remoteName ? ` --remote-control "${remoteName.replace(/"/g, '\\"')}"` : ' --remote-control')
+    : '';
+
   if (platform === 'win32') {
     const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
     const psPath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
     const mcpFlag = mcpConfigPath ? ` --mcp-config "${mcpConfigPath}"` : '';
-    return pty.spawn(psPath, ['-NoLogo', '-Command', `claude --append-system-prompt $env:CLAUDE_IDE_SYSTEM_PROMPT${mcpFlag}`], {
+    return pty.spawn(psPath, ['-NoLogo', '-Command', `claude --append-system-prompt $env:CLAUDE_IDE_SYSTEM_PROMPT${mcpFlag}${remoteFlag}`], {
       name: 'xterm-256color',
       cwd,
       env,
@@ -126,7 +171,10 @@ function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null) {
   }
 
   const mcpArgs = mcpConfigPath ? ['--mcp-config', mcpConfigPath] : [];
-  return pty.spawn('claude', ['--append-system-prompt', systemPrompt, ...mcpArgs, ...args], {
+  const remoteArgs = remote
+    ? (remoteName ? ['--remote-control', remoteName] : ['--remote-control'])
+    : [];
+  return pty.spawn('claude', ['--append-system-prompt', systemPrompt, ...mcpArgs, ...remoteArgs, ...args], {
     name: 'xterm-256color',
     cwd,
     env,
@@ -321,7 +369,7 @@ function spawnTerminal(shell, command, cwd) {
 }
 
 const InstanceManager = {
-  create(projectId, projectName, rawCwd, args = []) {
+  create(projectId, projectName, rawCwd, args = [], { remote = false } = {}) {
     const cwd = normalizePath(rawCwd);
     if (!cwd || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
       throw new Error(`Invalid working directory: ${cwd} (original: ${rawCwd})`);
@@ -341,7 +389,7 @@ const InstanceManager = {
       INSTANCE_ID: id,
       PROJECT_ID: projectId,
     };
-    const ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath);
+    const ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath, remote, projectName);
 
     const instance = {
       id,
@@ -365,6 +413,7 @@ const InstanceManager = {
       groupId: null,
       shell: null,
       command: null,
+      remote,
     };
 
     instances.set(id, instance);
@@ -545,6 +594,7 @@ const InstanceManager = {
         groupId: instance.groupId,
         shell: instance.shell,
         command: instance.command,
+        remote: instance.remote || false,
       });
     }
     return result;

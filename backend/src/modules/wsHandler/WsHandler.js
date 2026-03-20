@@ -138,7 +138,7 @@ function wireInstance(ws, instance) {
 }
 
 function handleCreate(ws, message) {
-  const { projectId, name, path, args, groupId } = message;
+  const { projectId, name, path, args, groupId, remote } = message;
 
   if (!projectId || !path) {
     return sendJson(ws, { type: 'error', message: 'projectId and path are required' });
@@ -146,7 +146,7 @@ function handleCreate(ws, message) {
 
   let instance;
   try {
-    instance = InstanceManager.create(projectId, name || '', path, args || []);
+    instance = InstanceManager.create(projectId, name || '', path, args || [], { remote: !!remote });
   } catch (err) {
     console.error('Instance create failed:', err.message);
     return sendJson(ws, { type: 'error', message: err.message });
@@ -169,6 +169,7 @@ function handleCreate(ws, message) {
     instanceType: instance.type,
     groupId: instance.groupId,
     cwd: instance.cwd,
+    remote: instance.remote || false,
   });
 
   if (instance.groupId) {
@@ -467,7 +468,7 @@ function handleStartGroup(ws, message) {
     try {
       let instance;
       if (item.type === 'claude') {
-        instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', []);
+        instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', [], { remote: !!item.remote });
         InstanceManager.setGroupId(instance.id, groupId);
       } else if (item.type === 'observer') {
         instance = InstanceManager.createObserver(item.observerId, item.name || '', item.cwd || '', groupId);

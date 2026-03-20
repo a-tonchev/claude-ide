@@ -14,9 +14,9 @@ const useInstances = onMessage => {
 
   const { send } = useWebSocket(onMessage);
 
-  const createInstance = useCallback((projectId, name, path, args, groupId) => {
+  const createInstance = useCallback((projectId, name, path, args, groupId, remote) => {
     send('create', {
-      projectId, name, path, args, groupId,
+      projectId, name, path, args, groupId, remote: !!remote,
     });
   }, [send]);
 

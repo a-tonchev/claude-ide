@@ -81,11 +81,21 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
       if (onData) onData(data);
     });
 
+    // Scroll to bottom after every render (covers writes, fit, resize, reflow)
+    term.onRender(() => {
+      requestAnimationFrame(() => {
+        const viewport = containerRef.current?.querySelector('.xterm-viewport');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
+        }
+      });
+    });
+
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Window resize handler
-    const handleWindowResize = () => {
+    // Resize handler — refit terminal on container or window size change
+    const handleResize = () => {
       try {
         fitAddon.fit();
         if (onResize) {
@@ -96,10 +106,13 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
       }
     };
 
-    window.addEventListener('resize', handleWindowResize);
+    const resizeObserver = new ResizeObserver(handleResize);
+    resizeObserver.observe(containerRef.current);
+    window.addEventListener('resize', handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleWindowResize);
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       term.dispose();
       termRef.current = null;
       fitAddonRef.current = null;

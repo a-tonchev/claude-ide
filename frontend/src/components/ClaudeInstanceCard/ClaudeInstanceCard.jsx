@@ -25,6 +25,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HistoryIcon from '@mui/icons-material/History';
+import CastConnectedIcon from '@mui/icons-material/CastConnected';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import { useStoreValue } from '@/components/state/GlobalState';
@@ -144,6 +145,20 @@ const ClaudeInstanceCard = ({
           >
             {instance.projectName || instance.name}
           </Typography>
+          {instance.remote && (
+            <CastConnectedIcon
+              sx={{
+                fontSize: 14,
+                flexShrink: 0,
+                color: '#6897BB',
+                animation: 'remoteGlow 2s ease-in-out infinite',
+                '@keyframes remoteGlow': {
+                  '0%, 100%': { opacity: 0.4, filter: 'drop-shadow(0 0 2px #6897BB)' },
+                  '50%': { opacity: 1, filter: 'drop-shadow(0 0 6px #6897BB)' },
+                },
+              }}
+            />
+          )}
         </Box>
       </Box>
 
