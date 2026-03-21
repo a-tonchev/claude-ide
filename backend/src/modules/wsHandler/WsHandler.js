@@ -299,6 +299,15 @@ function handleInput(ws, message) {
   }
 }
 
+function cleanupPendingTimers(instanceId) {
+  cancelPendingSubmit(instanceId);
+  const enterTimer = pendingEnter.get(instanceId);
+  if (enterTimer) {
+    clearTimeout(enterTimer);
+    pendingEnter.delete(instanceId);
+  }
+}
+
 function handleStop(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
@@ -306,7 +315,7 @@ function handleStop(ws, message) {
   const instance = InstanceManager.get(instanceId);
   const groupId = instance?.groupId;
 
-  cancelPendingSubmit(instanceId);
+  cleanupPendingTimers(instanceId);
   const stopped = InstanceManager.stop(instanceId);
   if (stopped) {
     WsHandler.publish('global', { type: 'stopped', instanceId });
@@ -520,6 +529,7 @@ function handleStopGroup(ws, message) {
   const stoppedIds = InstanceManager.stopGroup(groupId);
 
   for (const instanceId of stoppedIds) {
+    cleanupPendingTimers(instanceId);
     WsHandler.publish(`instance_${instanceId}`, {
       type: 'stopped',
       instanceId,

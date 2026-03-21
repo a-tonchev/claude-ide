@@ -9,6 +9,11 @@ import SystemSettingsServices from '#modules/systemSettings/SystemSettingsServic
 const platform = os.platform();
 const instances = new Map();
 
+// Max items kept in memory per instance to prevent unbounded growth
+const MAX_MILESTONES = 100;
+const MAX_MESSAGES = 200;
+const MAX_USER_MESSAGES = 100;
+
 function normalizePath(inputPath) {
   if (platform === 'win32' && /^\/[a-zA-Z]\//.test(inputPath)) {
     const drive = inputPath[1].toUpperCase();
@@ -621,6 +626,9 @@ const InstanceManager = {
       timestamp: new Date(),
     };
     instance.milestones.push(milestone);
+    if (instance.milestones.length > MAX_MILESTONES) {
+      instance.milestones = instance.milestones.slice(-MAX_MILESTONES);
+    }
     return milestone;
   },
 
@@ -650,6 +658,9 @@ const InstanceManager = {
     if (!instance) return null;
     const msg = { text, timestamp: timestamp || new Date().toISOString() };
     instance.userMessages.push(msg);
+    if (instance.userMessages.length > MAX_USER_MESSAGES) {
+      instance.userMessages = instance.userMessages.slice(-MAX_USER_MESSAGES);
+    }
     return msg;
   },
 
@@ -659,6 +670,9 @@ const InstanceManager = {
     if (!instance.messages) instance.messages = [];
     const msg = { text, type: type || 'info', timestamp: new Date() };
     instance.messages.push(msg);
+    if (instance.messages.length > MAX_MESSAGES) {
+      instance.messages = instance.messages.slice(-MAX_MESSAGES);
+    }
     return msg;
   },
 
