@@ -81,19 +81,6 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
       if (onData) onData(data);
     });
 
-    // Throttled scroll-to-bottom after renders (covers writes, fit, resize, reflow)
-    let scrollRafId = null;
-    term.onRender(() => {
-      if (scrollRafId) return;
-      scrollRafId = requestAnimationFrame(() => {
-        scrollRafId = null;
-        const viewport = containerRef.current?.querySelector('.xterm-viewport');
-        if (viewport) {
-          viewport.scrollTop = viewport.scrollHeight;
-        }
-      });
-    });
-
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 

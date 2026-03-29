@@ -13,6 +13,7 @@ const instances = new Map();
 const MAX_MILESTONES = 100;
 const MAX_MESSAGES = 200;
 const MAX_USER_MESSAGES = 100;
+const MAX_PLANS = 50;
 
 function normalizePath(inputPath) {
   if (platform === 'win32' && /^\/[a-zA-Z]\//.test(inputPath)) {
@@ -83,7 +84,7 @@ const MCP_SYSTEM_PROMPT = [
   '- update_status("thinking") — FIRST thing on every message. Then "working" when executing. "completed" as LAST call when done.',
   '- send_milestone({ accomplished, workingOn }) — after EVERY action. Be specific: name files, describe what you did.',
   '- send_message({ text, type }) — for ALL responses, answers, results, explanations. Types: info, success, warning, error. This is how the user reads your output.',
-  '- send_plan({ title, content }) — for detailed markdown content (plans, diffs, architecture).',
+  '- send_plan({ title, content }) — ALWAYS use this for implementation plans, architecture overviews, or structured documents. NEVER use built-in EnterPlanMode/Plan tool — use send_plan instead. Before any non-trivial task, create a plan first. Content must be markdown.',
   '- user_input_needed({ message, choices }) — ask the user a question. NEVER use AskUserQuestion, ALWAYS this tool.',
   '- listKeePassConfigs() — list all KeePass database configurations. Returns available configs with their IDs.',
   '- getKeePassCredentials({ settingsId }) — get decrypted KeePass DB credentials by settings ID. Use to access passwords stored in KeePass instead of asking the user.',
@@ -123,7 +124,7 @@ const REMOTE_MCP_SYSTEM_PROMPT = [
   '- update_status("thinking") — FIRST thing on every message. Then "working" when executing. "completed" as LAST call when done.',
   '- send_milestone({ accomplished, workingOn }) — after EVERY action. Be specific: name files, describe what you did.',
   '- send_message({ text, type }) — mirror your key responses here too. Types: info, success, warning, error.',
-  '- send_plan({ title, content }) — for detailed markdown content (plans, diffs, architecture).',
+  '- send_plan({ title, content }) — ALWAYS use this for implementation plans, architecture overviews, or structured documents. NEVER use built-in EnterPlanMode/Plan tool — use send_plan instead. Before any non-trivial task, create a plan first. Content must be markdown.',
   '- user_input_needed({ message, choices }) — ask the user a question. NEVER use AskUserQuestion, ALWAYS this tool.',
   '- listKeePassConfigs() — list all KeePass database configurations. Returns available configs with their IDs.',
   '- getKeePassCredentials({ settingsId }) — get decrypted KeePass DB credentials by settings ID. Use to access passwords stored in KeePass instead of asking the user.',
@@ -199,7 +200,7 @@ const OBSERVER_INSTRUCTIONS = [
   '- update_status("thinking") — FIRST thing on every message. Then "working" when executing. "completed" as LAST call when done.',
   '- send_milestone({ accomplished, workingOn }) — after EVERY action. Be specific: name files, describe what you did.',
   '- send_message({ text, type }) — for ALL responses, answers, results, explanations. Types: info, success, warning, error. This is how the user reads your output.',
-  '- send_plan({ title, content }) — for detailed markdown content (plans, diffs, architecture).',
+  '- send_plan({ title, content }) — ALWAYS use this for implementation plans, architecture overviews, or structured documents. NEVER use built-in EnterPlanMode/Plan tool — use send_plan instead. Before any non-trivial task, create a plan first. Content must be markdown.',
   '- user_input_needed({ message, choices }) — ask the user a question. NEVER use AskUserQuestion, ALWAYS this tool.',
   '',
   'CRITICAL — user_input_needed is ASYNCHRONOUS:',
@@ -405,9 +406,7 @@ const InstanceManager = {
       pty: ptyProcess,
       status: 'running',
       startedAt: new Date(),
-      outputBuffer: '',
-      isCapturingPlan: false,
-      planPrompt: '',
+
       onData: null,
       onExit: null,
       milestones: [],
@@ -457,9 +456,7 @@ const InstanceManager = {
       pty: ptyProcess,
       status: 'running',
       startedAt: new Date(),
-      outputBuffer: '',
-      isCapturingPlan: false,
-      planPrompt: '',
+
       onData: null,
       onExit: null,
       milestones: [],
@@ -502,9 +499,7 @@ const InstanceManager = {
       pty: ptyProcess,
       status: 'running',
       startedAt: new Date(),
-      outputBuffer: '',
-      isCapturingPlan: false,
-      planPrompt: '',
+
       onData: null,
       onExit: null,
       milestones: [],
@@ -526,6 +521,12 @@ const InstanceManager = {
     if (!instance) return false;
 
     instance.status = 'exited';
+
+    // Clear idle timer from wireInstance (closure-scoped, exposed via instance)
+    if (instance.clearIdleTimer) {
+      instance.clearIdleTimer();
+      instance.clearIdleTimer = null;
+    }
 
     // Detach listeners first so we don't get spurious events during kill
     if (instance.onData) {
@@ -560,6 +561,15 @@ const InstanceManager = {
     return true;
   },
 
+  removeIfExited(instanceId) {
+    const instance = instances.get(instanceId);
+    if (instance && instance.status === 'exited') {
+      instances.delete(instanceId);
+      return true;
+    }
+    return false;
+  },
+
   write(instanceId, data) {
     const instance = instances.get(instanceId);
     if (!instance || instance.status === 'exited') return false;
@@ -590,7 +600,6 @@ const InstanceManager = {
         cwd: instance.cwd,
         status: instance.status,
         startedAt: instance.startedAt,
-        isCapturingPlan: instance.isCapturingPlan,
         milestones: instance.milestones,
         messages: instance.messages || [],
         pendingInput: instance.pendingInput,
@@ -681,6 +690,9 @@ const InstanceManager = {
     if (!instance) return null;
     const ref = { id, title, content: content || '' };
     instance.plans.push(ref);
+    if (instance.plans.length > MAX_PLANS) {
+      instance.plans = instance.plans.slice(-MAX_PLANS);
+    }
     return ref;
   },
 
@@ -720,31 +732,6 @@ const InstanceManager = {
     return stoppedIds;
   },
 
-  startPlanCapture(instanceId, prompt) {
-    const instance = instances.get(instanceId);
-    if (!instance) return false;
-
-    instance.isCapturingPlan = true;
-    instance.planPrompt = prompt || '';
-    instance.outputBuffer = '';
-    return true;
-  },
-
-  finishPlanCapture(instanceId) {
-    const instance = instances.get(instanceId);
-    if (!instance || !instance.isCapturingPlan) return null;
-
-    const result = {
-      prompt: instance.planPrompt,
-      content: instance.outputBuffer,
-    };
-
-    instance.isCapturingPlan = false;
-    instance.planPrompt = '';
-    instance.outputBuffer = '';
-
-    return result;
-  },
 };
 
 export default InstanceManager;

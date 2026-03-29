@@ -1,5 +1,9 @@
 const BasicConfig = {
-  SERVER_URL: import.meta.env.VITE_SERVER_URL,
+  SERVER_PROTOCOL: import.meta.env.VITE_SERVER_PROTOCOL || 'http',
+  SERVER_HOST: import.meta.env.VITE_SERVER_HOST || 'localhost',
+  SERVER_PORT: import.meta.env.VITE_SERVER_PORT || '',
+  SERVER_PATH: import.meta.env.VITE_SERVER_PATH || '/api',
+  HOST_SAME_URL: import.meta.env.VITE_HOST_SAME_URL === 'true',
   API_VERSION: import.meta.env.VITE_API_VERSION,
   SOFTWARE_VERSION: import.meta.env.VITE_SOFTWARE_VERSION
     ? parseFloat(import.meta.env.VITE_SOFTWARE_VERSION)
@@ -19,5 +23,13 @@ const BasicConfig = {
     text: 'myProject',
   },
 };
+
+export function getServerBaseUrl() {
+  const host = BasicConfig.HOST_SAME_URL
+    ? window.location.hostname
+    : BasicConfig.SERVER_HOST;
+  const port = BasicConfig.SERVER_PORT ? `:${BasicConfig.SERVER_PORT}` : '';
+  return `${BasicConfig.SERVER_PROTOCOL}://${host}${port}${BasicConfig.SERVER_PATH}`;
+}
 
 export default BasicConfig;

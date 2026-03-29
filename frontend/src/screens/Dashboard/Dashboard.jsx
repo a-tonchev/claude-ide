@@ -31,6 +31,7 @@ import UrlEnums from '@/components/connections/enums/UrlEnums';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import useInstances from '@/hooks/useInstances';
 import useGroups from '@/hooks/useGroups';
+import useMobile from '@/components/layout/hooks/useMobile';
 import { assignToPlaceholder } from '@/helpers/placeholderHelper';
 import {
   setPlaceholder, removeGroup, upsertGroup, initPlaceholders,
@@ -58,6 +59,7 @@ const Dashboard = () => {
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [minimizedCards, setMinimizedCards] = useState(new Set());
   const [wsGroupStatuses, setWsGroupStatuses] = useState({});
+  const { isMobile } = useMobile();
 
   const onWsMessage = useCallback(msg => {
     if (msg.type === 'ws_connected') setWsConnected(true);
@@ -161,9 +163,9 @@ const Dashboard = () => {
     return activeGroupId;
   }, [activeGroupId, createImplicitGroup]);
 
-  const handleCreateClaude = useCallback((projectId, name, path) => {
+  const handleCreateClaude = useCallback((projectId, name, path, remote) => {
     const gid = ensureGroup();
-    createInstance(projectId, name, path, [], gid);
+    createInstance(projectId, name, path, [], gid, remote);
   }, [createInstance, ensureGroup]);
 
   const handleCreateTerminal = useCallback((name, shell, command) => {
@@ -448,7 +450,13 @@ const Dashboard = () => {
         />
 
         {/* Cards Area + Minimized Sidebar */}
-        <Box sx={{ display: 'flex', flex: '0 0 auto', maxHeight: '40vh' }}>
+        <Box sx={{
+          display: 'flex',
+          flex: isMobile ? '1 1 auto' : '0 0 auto',
+          maxHeight: isMobile ? 'none' : '40vh',
+          overflow: isMobile ? 'auto' : undefined,
+        }}
+        >
           <Box sx={{
             flex: 1, overflow: 'auto', px: 2, py: 1.5, minWidth: 0,
           }}
@@ -572,18 +580,50 @@ const Dashboard = () => {
           showStop={activeGroupInstances.length > 0}
         />
 
-        {/* Placeholder Panel */}
-        <PlaceholderPanel
-          placeholder1Id={currentPlaceholders.placeholder1}
-          placeholder2Id={currentPlaceholders.placeholder2}
-          instances={instances}
-          onSelect1={id => setPlaceholder(activeGroupId, 'placeholder1', id)}
-          onSelect2={id => setPlaceholder(activeGroupId, 'placeholder2', id)}
-          onClear1={() => setPlaceholder(activeGroupId, 'placeholder1', null)}
-          onClear2={() => setPlaceholder(activeGroupId, 'placeholder2', null)}
-        />
-
-        <StatusBar instances={instances} wsConnected={wsConnected} />
+        {/* Placeholder Panel + StatusBar */}
+        {isMobile ? (
+          <>
+            {/* Spacer so cards area doesn't hide behind the fixed bottom */}
+            <Box sx={{ flexShrink: 0, height: '45vh' }} />
+            <Box sx={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '45vh',
+              bgcolor: '#2B2B2B',
+              borderTop: '1px solid #3C3F41',
+              display: 'flex',
+              flexDirection: 'column',
+              zIndex: 10,
+            }}
+            >
+              <PlaceholderPanel
+                placeholder1Id={currentPlaceholders.placeholder1}
+                placeholder2Id={currentPlaceholders.placeholder2}
+                instances={instances}
+                onSelect1={id => setPlaceholder(activeGroupId, 'placeholder1', id)}
+                onSelect2={id => setPlaceholder(activeGroupId, 'placeholder2', id)}
+                onClear1={() => setPlaceholder(activeGroupId, 'placeholder1', null)}
+                onClear2={() => setPlaceholder(activeGroupId, 'placeholder2', null)}
+              />
+              <StatusBar instances={instances} wsConnected={wsConnected} />
+            </Box>
+          </>
+        ) : (
+          <>
+            <PlaceholderPanel
+              placeholder1Id={currentPlaceholders.placeholder1}
+              placeholder2Id={currentPlaceholders.placeholder2}
+              instances={instances}
+              onSelect1={id => setPlaceholder(activeGroupId, 'placeholder1', id)}
+              onSelect2={id => setPlaceholder(activeGroupId, 'placeholder2', id)}
+              onClear1={() => setPlaceholder(activeGroupId, 'placeholder1', null)}
+              onClear2={() => setPlaceholder(activeGroupId, 'placeholder2', null)}
+            />
+            <StatusBar instances={instances} wsConnected={wsConnected} />
+          </>
+        )}
       </Box>
 
       <NewInstanceDialog

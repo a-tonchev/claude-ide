@@ -10,6 +10,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import TerminalIcon from '@mui/icons-material/Terminal';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -21,7 +22,8 @@ const TitleBar = ({
   onNewGroup, onAddClaude, onAddTerminal, onAddObserver, onLoadGroup,
   onManageProjects, onManageTerminals, onManageObservers, onManagePlans, onManageKeePass,
 }) => {
-  const [anchorEl, setAnchorEl] = useState(null);
+  const [settingsAnchor, setSettingsAnchor] = useState(null);
+  const [addAnchor, setAddAnchor] = useState(null);
 
   return (
     <Box
@@ -42,100 +44,31 @@ const TitleBar = ({
           color: '#A9B7C6',
           fontWeight: 600,
           fontSize: '1rem',
-          mr: 3,
+          mr: 2,
         }}
       >
         Claude IDE
       </Typography>
 
-      <Button
-        size="small"
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={onNewGroup}
-        sx={{
-          bgcolor: '#579945',
-          '&:hover': { bgcolor: '#68AD55' },
-          textTransform: 'none',
-          fontSize: '0.8rem',
-          px: 1.5,
-          py: 0.5,
-        }}
-      >
-        New Group
-      </Button>
-
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<SmartToyIcon sx={{ fontSize: 16 }} />}
-        onClick={onAddClaude}
-        sx={{
-          ml: 1.5,
-          borderColor: '#4E5254',
-          color: '#A9B7C6',
-          '&:hover': { borderColor: '#6897BB', bgcolor: '#313335' },
-          textTransform: 'none',
-          fontSize: '0.8rem',
-          px: 1.5,
-          py: 0.5,
-        }}
-      >
-        Add Claude
-      </Button>
-
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<TerminalIcon sx={{ fontSize: 16 }} />}
-        onClick={onAddTerminal}
-        sx={{
-          ml: 1,
-          borderColor: '#4E5254',
-          color: '#A9B7C6',
-          '&:hover': { borderColor: '#6897BB', bgcolor: '#313335' },
-          textTransform: 'none',
-          fontSize: '0.8rem',
-          px: 1.5,
-          py: 0.5,
-        }}
-      >
-        Add Terminal
-      </Button>
-
-      <Button
-        size="small"
-        variant="outlined"
-        startIcon={<ArrowFatLinesUp size={16} weight="bold" />}
-        onClick={onAddObserver}
-        sx={{
-          ml: 1,
-          borderColor: '#4E5254',
-          color: '#A9B7C6',
-          '&:hover': { borderColor: '#6897BB', bgcolor: '#313335' },
-          textTransform: 'none',
-          fontSize: '0.8rem',
-          px: 1.5,
-          py: 0.5,
-        }}
-      >
-        Add Observer
-      </Button>
-
-      <Box sx={{ flex: 1 }} />
-
       <IconButton
         size="small"
-        onClick={e => setAnchorEl(e.currentTarget)}
-        sx={{ color: '#808080' }}
+        onClick={e => setAddAnchor(e.currentTarget)}
+        sx={{
+          bgcolor: '#579945',
+          color: '#fff',
+          borderRadius: 1.5,
+          width: 32,
+          height: 32,
+          '&:hover': { bgcolor: '#68AD55' },
+        }}
       >
-        <SettingsIcon fontSize="small" />
+        <AddIcon sx={{ fontSize: 20 }} />
       </IconButton>
 
       <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={() => setAnchorEl(null)}
+        anchorEl={addAnchor}
+        open={Boolean(addAnchor)}
+        onClose={() => setAddAnchor(null)}
         PaperProps={{
           sx: {
             bgcolor: '#313335',
@@ -144,29 +77,70 @@ const TitleBar = ({
           },
         }}
       >
-        <MenuItem onClick={() => { setAnchorEl(null); onLoadGroup?.(); }}>
+        <MenuItem onClick={() => { setAddAnchor(null); onNewGroup?.(); }}>
+          <ListItemIcon><GroupAddIcon sx={{ fontSize: 18, color: '#7CB368' }} /></ListItemIcon>
+          New Group
+        </MenuItem>
+        <Divider sx={{ borderColor: '#3C3F41' }} />
+        <MenuItem onClick={() => { setAddAnchor(null); onAddClaude?.(); }}>
+          <ListItemIcon><SmartToyIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
+          Add Claude
+        </MenuItem>
+        <MenuItem onClick={() => { setAddAnchor(null); onAddTerminal?.(); }}>
+          <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
+          Add Terminal
+        </MenuItem>
+        <MenuItem onClick={() => { setAddAnchor(null); onAddObserver?.(); }}>
+          <ListItemIcon><ArrowFatLinesUp size={18} weight="bold" color="#B07ACC" /></ListItemIcon>
+          Add Observer
+        </MenuItem>
+      </Menu>
+
+      <Box sx={{ flex: 1 }} />
+
+      <IconButton
+        size="small"
+        onClick={e => setSettingsAnchor(e.currentTarget)}
+        sx={{ color: '#808080' }}
+      >
+        <SettingsIcon fontSize="small" />
+      </IconButton>
+
+      <Menu
+        anchorEl={settingsAnchor}
+        open={Boolean(settingsAnchor)}
+        onClose={() => setSettingsAnchor(null)}
+        PaperProps={{
+          sx: {
+            bgcolor: '#313335',
+            border: '1px solid #4E5254',
+            '& .MuiMenuItem-root': { fontSize: '0.85rem', color: '#A9B7C6' },
+          },
+        }}
+      >
+        <MenuItem onClick={() => { setSettingsAnchor(null); onLoadGroup?.(); }}>
           <ListItemIcon><FolderOpenIcon sx={{ fontSize: 18, color: '#7CB368' }} /></ListItemIcon>
           Open Saved Group
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
-        <MenuItem onClick={() => { setAnchorEl(null); onManageProjects?.(); }}>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManageProjects?.(); }}>
           <ListItemIcon><SmartToyIcon sx={{ fontSize: 18, color: '#6897BB' }} /></ListItemIcon>
           Claude Projects
         </MenuItem>
-        <MenuItem onClick={() => { setAnchorEl(null); onManageTerminals?.(); }}>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManageTerminals?.(); }}>
           <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
           Terminal Configs
         </MenuItem>
-        <MenuItem onClick={() => { setAnchorEl(null); onManageObservers?.(); }}>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManageObservers?.(); }}>
           <ListItemIcon><ArrowFatLinesUp size={18} weight="bold" color="#B07ACC" /></ListItemIcon>
           Observer Configs
         </MenuItem>
-        <MenuItem onClick={() => { setAnchorEl(null); onManageKeePass?.(); }}>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManageKeePass?.(); }}>
           <ListItemIcon><KeyIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
           KeePass Credentials
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
-        <MenuItem onClick={() => { setAnchorEl(null); onManagePlans?.(); }}>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManagePlans?.(); }}>
           <ListItemIcon><ArticleIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
           Plans
         </MenuItem>

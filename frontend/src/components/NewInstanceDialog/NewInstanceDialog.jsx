@@ -12,9 +12,12 @@ import {
   Typography,
   CircularProgress,
   Box,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
+import CastConnectedIcon from '@mui/icons-material/CastConnected';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 
@@ -22,10 +25,12 @@ const NewInstanceDialog = ({ open, onClose, onCreate }) => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
+  const [remote, setRemote] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setSelected(null);
+    setRemote(false);
     setLoading(true);
 
     Connections.postRequest(ApiEndpoints.projectsAll, {})
@@ -39,9 +44,9 @@ const NewInstanceDialog = ({ open, onClose, onCreate }) => {
 
   const handleCreate = useCallback(() => {
     if (!selected) return;
-    onCreate?.(selected._id, selected.name, selected.path);
+    onCreate?.(selected._id, selected.name, selected.path, remote);
     onClose?.();
-  }, [selected, onCreate, onClose]);
+  }, [selected, remote, onCreate, onClose]);
 
   return (
     <Dialog
@@ -126,6 +131,28 @@ const NewInstanceDialog = ({ open, onClose, onCreate }) => {
             ))}
           </List>
         )}
+        <FormControlLabel
+          control={(
+            <Checkbox
+              checked={remote}
+              onChange={e => setRemote(e.target.checked)}
+              size="small"
+              sx={{
+                color: '#6897BB',
+                '&.Mui-checked': { color: '#6897BB' },
+              }}
+            />
+          )}
+          label={(
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <CastConnectedIcon sx={{ fontSize: 16, color: remote ? '#6897BB' : '#606366' }} />
+              <Typography sx={{ fontSize: '0.85rem', color: remote ? '#A9B7C6' : '#808080' }}>
+                Remote control
+              </Typography>
+            </Box>
+          )}
+          sx={{ mt: 1, ml: 0 }}
+        />
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5 }}>
         <Button

@@ -93,7 +93,7 @@ const PlanController = {
   },
 
   async removeAll(ctx) {
-    await ctx.libS.plans.removeByQuery({ query: {}, multiple: false });
+    await ctx.libS.plans.removeByQuery({ query: {}, multiple: true });
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
 };

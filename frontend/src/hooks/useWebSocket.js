@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 import BasicConfig from '@/components/config/BasicConfig';
+import { getServerBaseUrl } from '@/components/config/BasicConfig';
 import {
   setInstances,
   upsertInstance,
@@ -27,7 +28,7 @@ const wsState = {
 };
 
 function getWsUrl() {
-  const serverUrl = `${BasicConfig.SERVER_URL}/${BasicConfig.API_VERSION}`;
+  const serverUrl = `${getServerBaseUrl()}/${BasicConfig.API_VERSION}`;
   return `${serverUrl.replace(/(http)(s)?:\/\//, 'ws$2://')}/ws`;
 }
 

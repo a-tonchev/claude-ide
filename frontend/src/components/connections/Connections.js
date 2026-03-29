@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 import BasicConfig from '@/components/config/BasicConfig';
+import { getServerBaseUrl } from '@/components/config/BasicConfig';
 import Storage from '@/components/storage/Storage';
 import StorageEnums from '@/components/storage/enums/StorageEnums';
 import i18n from '@/components/translations/i18n';
@@ -9,7 +10,7 @@ import tokenStore from './stores/tokenStore';
 import UrlEnums from './enums/UrlEnums';
 import History from './History';
 
-const baseURL = `${BasicConfig.SERVER_URL}/${BasicConfig.API_VERSION}`;
+const baseURL = `${getServerBaseUrl()}/${BasicConfig.API_VERSION}`;
 
 export const ApiEndpoints = {
   login: '/users/login',

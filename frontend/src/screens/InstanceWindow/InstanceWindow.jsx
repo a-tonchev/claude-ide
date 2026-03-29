@@ -8,9 +8,11 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import StopIcon from '@mui/icons-material/Stop';
-import SendIcon from '@mui/icons-material/Send';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -19,6 +21,8 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ArticleIcon from '@mui/icons-material/Article';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import PlansDialog from '@/components/PlansDialog/PlansDialog';
@@ -29,6 +33,7 @@ import {
   addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField,
 } from '@/stores/instanceAtoms';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
+import useMobile from '@/components/layout/hooks/useMobile';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#7CB368' },
@@ -50,6 +55,9 @@ const InstanceWindow = () => {
   const [viewingPlan, setViewingPlan] = useState(null);
   const [viewingMessage, setViewingMessage] = useState(null);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [feedExpanded, setFeedExpanded] = useState(false);
+  const [mobileTab, setMobileTab] = useState(0);
+  const { isMobile } = useMobile();
 
   const onMessage = useCallback(msg => {
     if (msg.type === 'output' && msg.instanceId === instanceId) {
@@ -86,14 +94,9 @@ const InstanceWindow = () => {
     kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
   }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
-  const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-  const lastMilestone = milestones.length > 0 ? milestones[milestones.length - 1] : null;
-  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-  const lastClaudeActivity = [lastMilestone?.timestamp, lastMessage?.timestamp]
-    .filter(Boolean).sort().pop();
-  const isThinking = lastUserMsg && instance?.status !== 'exited' && instance?.status !== 'completed'
-    && (!lastClaudeActivity || new Date(lastUserMsg.timestamp) > new Date(lastClaudeActivity));
+  const isProcessing = instance && !['ready', 'waiting', 'completed', 'plan_ready', 'exited'].includes(instance.status);
 
   useEffect(() => {
     if (instanceId) {
@@ -118,9 +121,20 @@ const InstanceWindow = () => {
     }
   }, [instance?.projectName, instance?.name, instance?.status]);
 
-  // Auto-scroll feed
+  // Auto-scroll feed to bottom only if user hasn't scrolled up
+  const userScrolledUp = useRef(false);
   useEffect(() => {
-    if (feedRef.current) {
+    const el = feedRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      userScrolledUp.current = !atBottom;
+    };
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+  useEffect(() => {
+    if (feedRef.current && !userScrolledUp.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
   }, [feed.length, pending]);
@@ -140,11 +154,11 @@ const InstanceWindow = () => {
   }, [inputText, instanceId, writeToInstance, sendUserMessage, instance?.type, instance?.status]);
 
   const handleKeyDown = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault();
       handleSend();
     }
-  }, [handleSend]);
+  }, [handleSend, isMobile]);
 
   const handleTerminalData = useCallback(data => {
     writeToInstance(instanceId, data);
@@ -161,13 +175,13 @@ const InstanceWindow = () => {
   }, [instanceId, sendUserResponse]);
 
   const handleOpenPlan = useCallback(plan => {
-    if (plan.id) {
+    if (plan.id && !isMobile) {
       const url = UrlEnums.PLAN_VIEW.replace(':planId', plan.id);
       window.open(url, `plan_${plan.id}`, 'width=900,height=700');
     } else {
       setViewingPlan(plan);
     }
-  }, []);
+  }, [isMobile]);
 
   if (!instance) {
     return (
@@ -182,7 +196,8 @@ const InstanceWindow = () => {
 
   return (
     <Box sx={{
-      display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: '#2B2B2B',
+      display: 'flex', flexDirection: 'column', height: '100dvh', bgcolor: '#2B2B2B',
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
     }}
     >
       {/* Header */}
@@ -232,10 +247,42 @@ const InstanceWindow = () => {
         </IconButton>
       </Box>
 
+      {/* Mobile tabs */}
+      {isMobile && instance.type === 'claude' && (
+        <Tabs
+          value={mobileTab}
+          onChange={(e, v) => setMobileTab(v)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 36,
+            bgcolor: '#1A1A1A',
+            borderBottom: '1px solid #3C3F41',
+            '& .MuiTab-root': {
+              minHeight: 36,
+              py: 0.5,
+              fontSize: '0.8rem',
+              color: '#808080',
+              textTransform: 'none',
+            },
+            '& .Mui-selected': { color: '#A9B7C6' },
+            '& .MuiTabs-indicator': { bgcolor: '#6897BB' },
+          }}
+        >
+          <Tab label="Messages" />
+          <Tab label="Terminal" />
+        </Tabs>
+      )}
+
       {/* Main area: Terminal (left) + Activity panel (right) */}
       <Box sx={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Terminal */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box sx={{
+          flex: 1,
+          minWidth: 0,
+          display: isMobile && instance.type === 'claude' && mobileTab !== 1 ? 'none' : 'flex',
+          flexDirection: 'column',
+        }}
+        >
           <TerminalWidget
             ref={termRef}
             onData={handleTerminalData}
@@ -246,11 +293,11 @@ const InstanceWindow = () => {
         {/* Activity panel (Claude instances only) */}
         {instance.type === 'claude' && (
           <Box sx={{
-            width: 440,
+            width: isMobile ? '100%' : 440,
             flexShrink: 0,
-            display: 'flex',
+            display: isMobile && mobileTab !== 0 ? 'none' : 'flex',
             flexDirection: 'column',
-            borderLeft: '1px solid #3C3F41',
+            borderLeft: isMobile ? 'none' : '1px solid #3C3F41',
             bgcolor: '#313335',
           }}
           >
@@ -261,7 +308,26 @@ const InstanceWindow = () => {
                 flex: 1, overflow: 'auto', px: 2, py: 1.5,
               }}
             >
-              {feed.length === 0 && !isThinking && (
+              {feed.length > 5 && (
+                <Box sx={{
+                  display: 'flex', alignItems: 'center', mb: 1, cursor: 'pointer',
+                }}
+                onClick={() => setFeedExpanded(!feedExpanded)}
+                >
+                  <Typography sx={{
+                    fontSize: '0.75rem', color: '#808080', flex: 1,
+                  }}
+                  >
+                    {feedExpanded ? 'Show less' : `${feed.length - 5} older messages`}
+                  </Typography>
+                  <IconButton size="small" sx={{ p: 0 }}>
+                    {feedExpanded
+                      ? <ExpandLessIcon sx={{ fontSize: 18, color: '#808080' }} />
+                      : <ExpandMoreIcon sx={{ fontSize: 18, color: '#808080' }} />}
+                  </IconButton>
+                </Box>
+              )}
+              {feed.length === 0 && !isProcessing && (
                 <Typography sx={{
                   color: '#606366', fontSize: '0.8rem', textAlign: 'center', mt: 4,
                 }}
@@ -270,7 +336,7 @@ const InstanceWindow = () => {
                 </Typography>
               )}
 
-              {feed.map((item, idx) => {
+              {visibleFeed.map((item, idx) => {
                 if (item.kind === 'user') {
                   const isLongUser = item.text && item.text.length > 250;
                   const userDisplayText = isLongUser
@@ -445,7 +511,7 @@ const InstanceWindow = () => {
                 );
               })}
 
-              {isThinking && (
+              {isProcessing && (
                 <Box sx={{
                   display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
                 }}
@@ -510,13 +576,13 @@ const InstanceWindow = () => {
                     <Chip
                       key={idx}
                       label={choice}
-                      size="small"
                       clickable
                       onClick={() => handleChoiceClick(choice)}
                       sx={{
                         bgcolor: '#214283',
                         color: '#A9B7C6',
-                        fontSize: '0.75rem',
+                        fontSize: '0.85rem',
+                        height: 32,
                         '&:hover': { bgcolor: '#2E5AA7' },
                       }}
                     />
@@ -527,7 +593,8 @@ const InstanceWindow = () => {
 
             {/* Input */}
             <Box sx={{
-              display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderTop: '1px solid #3C3F41',
+              px: 2, py: 1, borderTop: '1px solid #3C3F41',
+              flexShrink: 0, position: 'relative',
             }}
             >
               <TextField
@@ -543,11 +610,18 @@ const InstanceWindow = () => {
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     bgcolor: '#2B2B2B',
-                    fontSize: '0.8rem',
+                    fontSize: '0.9rem',
                     color: '#A9B7C6',
+                    borderRadius: '24px',
+                    pr: '44px',
+                    minHeight: 48,
                     '& fieldset': { borderColor: '#4E5254' },
                     '&:hover fieldset': { borderColor: '#6897BB' },
                     '&.Mui-focused fieldset': { borderColor: '#6897BB' },
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    py: 1.25,
+                    px: 2,
                   },
                 }}
               />
@@ -556,14 +630,19 @@ const InstanceWindow = () => {
                 onClick={handleSend}
                 disabled={instance.status === 'exited' || !inputText.trim()}
                 sx={{
-                  color: '#6897BB',
-                  bgcolor: 'rgba(104,151,187,0.15)',
-                  borderRadius: 2,
-                  '&:hover': { bgcolor: 'rgba(104,151,187,0.25)' },
+                  position: 'absolute',
+                  right: 24,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 32,
+                  height: 32,
+                  bgcolor: inputText.trim() ? '#6897BB' : 'transparent',
+                  color: inputText.trim() ? '#fff' : '#4E5254',
+                  '&:hover': { bgcolor: inputText.trim() ? '#89B8DE' : 'rgba(104,151,187,0.15)' },
                   '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
                 }}
               >
-                <SendIcon sx={{ fontSize: 16 }} />
+                <ArrowUpwardIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Box>
           </Box>

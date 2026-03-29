@@ -127,7 +127,7 @@ const tools = {
   },
 
   send_plan: {
-    description: 'Save a plan document',
+    description: 'Save an implementation plan to the dashboard. ALWAYS use this instead of built-in EnterPlanMode/Plan tools. Use before starting any non-trivial task to share your plan with the user. Content must be markdown.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -137,7 +137,7 @@ const tools = {
         },
         content: {
           type: 'string',
-          description: 'Full markdown content of the plan',
+          description: 'Full markdown content of the plan (implementation steps, architecture decisions, approach)',
         },
       },
       required: ['title', 'content'],

@@ -1,11 +1,13 @@
 import React, {
-  useRef, useEffect, useCallback,
+  useState, useRef, useEffect, useCallback,
 } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import CloseIcon from '@mui/icons-material/Close';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
@@ -13,6 +15,7 @@ import { ArrowFatLinesUp } from '@phosphor-icons/react';
 
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import useWebSocket from '@/hooks/useWebSocket';
+import useMobile from '@/components/layout/hooks/useMobile';
 
 const PlaceholderSlot = ({
   instanceId, instance, instances, onSelect, onClear, send, siblingInstanceId,
@@ -203,6 +206,73 @@ const PlaceholderPanel = ({
   placeholder1Id, placeholder2Id, instances, onSelect1, onSelect2, onClear1, onClear2,
 }) => {
   const { send } = useWebSocket();
+  const { isMobile } = useMobile();
+  const [activeTab, setActiveTab] = useState(0);
+
+  if (isMobile) {
+    return (
+      <Box sx={{
+        display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0,
+      }}
+      >
+        <Tabs
+          value={activeTab}
+          onChange={(e, v) => setActiveTab(v)}
+          variant="fullWidth"
+          sx={{
+            minHeight: 32,
+            bgcolor: '#1A1A1A',
+            '& .MuiTab-root': {
+              minHeight: 32,
+              py: 0.5,
+              fontSize: '0.75rem',
+              color: '#808080',
+              textTransform: 'none',
+            },
+            '& .Mui-selected': { color: '#A9B7C6' },
+            '& .MuiTabs-indicator': { bgcolor: '#6897BB' },
+          }}
+        >
+          <Tab label="Placeholder 1" />
+          <Tab label="Placeholder 2" />
+        </Tabs>
+        <Box sx={{ flex: 1, minHeight: 0, px: 1, py: 1, position: 'relative' }}>
+          <Box sx={{
+            display: activeTab === 0 ? 'flex' : 'none',
+            flexDirection: 'column',
+            height: '100%',
+          }}
+          >
+            <PlaceholderSlot
+              instanceId={placeholder1Id}
+              instance={instances?.[placeholder1Id]}
+              instances={instances}
+              onSelect={onSelect1}
+              onClear={onClear1}
+              send={send}
+              siblingInstanceId={placeholder2Id}
+            />
+          </Box>
+          <Box sx={{
+            display: activeTab === 1 ? 'flex' : 'none',
+            flexDirection: 'column',
+            height: '100%',
+          }}
+          >
+            <PlaceholderSlot
+              instanceId={placeholder2Id}
+              instance={instances?.[placeholder2Id]}
+              instances={instances}
+              onSelect={onSelect2}
+              onClear={onClear2}
+              send={send}
+              siblingInstanceId={placeholder1Id}
+            />
+          </Box>
+        </Box>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{

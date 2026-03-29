@@ -26,10 +26,12 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HistoryIcon from '@mui/icons-material/History';
 import CastConnectedIcon from '@mui/icons-material/CastConnected';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import { useStoreValue } from '@/components/state/GlobalState';
 import { InstanceStores, setInputDraft } from '@/stores/instanceAtoms';
+import useMobile from '@/components/layout/hooks/useMobile';
 
 const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#7CB368' },
@@ -56,6 +58,7 @@ const ClaudeInstanceCard = ({
   onMinimize,
   onRemoveFromGroup,
 }) => {
+  const { isMobile } = useMobile();
   const inputDrafts = useStoreValue(InstanceStores.inputDraftsStore);
   const inputText = inputDrafts[instance.id] || '';
   const [feedExpanded, setFeedExpanded] = useState(false);
@@ -79,33 +82,41 @@ const ClaudeInstanceCard = ({
     kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
   }));
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  const visibleFeed = feedExpanded || expanded ? feed : feed.slice(-5);
+  const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
-  // Check if Claude is "thinking" — user sent a message but no milestone/message came after it
-  const lastUserMsg = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-  const lastMilestone = milestones.length > 0 ? milestones[milestones.length - 1] : null;
-  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
-  const lastClaudeActivity = [lastMilestone?.timestamp, lastMessage?.timestamp]
-    .filter(Boolean).sort().pop();
-  const isThinking = lastUserMsg && instance.status !== 'exited' && instance.status !== 'completed'
-    && (!lastClaudeActivity || new Date(lastUserMsg.timestamp) > new Date(lastClaudeActivity));
+  const isProcessing = !['ready', 'waiting', 'completed', 'plan_ready', 'exited'].includes(instance.status);
 
-  // Auto-scroll feed to bottom
+  // Auto-scroll feed to bottom only if user hasn't scrolled up
+  const userScrolledUp = useRef(false);
   useEffect(() => {
-    if (feedRef.current) {
+    const el = feedRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+      userScrolledUp.current = !atBottom;
+    };
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, []);
+  useEffect(() => {
+    if (feedRef.current && !userScrolledUp.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
   }, [feed.length]);
 
-  const handleKeyDown = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (inputText.trim()) {
-        onSendInput(instance.id, `${inputText}\r`);
-        setInputDraft(instance.id, '');
-      }
+  const handleSend = useCallback(() => {
+    if (inputText.trim()) {
+      onSendInput(instance.id, `${inputText}\r`);
+      setInputDraft(instance.id, '');
     }
   }, [inputText, instance.id, onSendInput]);
+
+  const handleKeyDown = useCallback(e => {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend, isMobile]);
 
   return (
     <Card
@@ -172,7 +183,7 @@ const ClaudeInstanceCard = ({
         >
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, flexShrink: 0 }}>
             <Typography sx={{
-              fontSize: '0.65rem', color: '#808080', fontWeight: 600, flex: 1,
+              fontSize: '0.85rem', color: '#808080', fontWeight: 600, flex: 1,
             }}
             >
               ACTIVITY
@@ -204,12 +215,12 @@ const ClaudeInstanceCard = ({
                     }}
                     />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: '0.7rem', color: '#C5A5D6', lineHeight: 1.4 }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.4 }}>
                         {userDisplay}
                       </Typography>
                       {isLongUser && (
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                          <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
                             Click to read full message
                           </Typography>
                           {item.text.trim().endsWith('?') && (
@@ -245,21 +256,21 @@ const ClaudeInstanceCard = ({
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <MarkdownRenderer
                         content={msgDisplay}
-                        fontSize="0.7rem"
+                        fontSize="0.8rem"
                         sx={{
                           color: msgColor,
                           lineHeight: 1.4,
                           '& p': { mb: 0.25 },
                           '& p:last-child': { mb: 0 },
-                          '& pre': { p: 0.75, mb: 0.5, fontSize: '0.65rem' },
+                          '& pre': { p: 0.75, mb: 0.5, fontSize: '0.85rem' },
                           '& ul, & ol': { pl: 2, mb: 0.25 },
                           '& li': { mb: 0 },
-                          '& h1, & h2, & h3': { fontSize: '0.75rem', mt: 0.5, mb: 0.25 },
+                          '& h1, & h2, & h3': { fontSize: '0.85rem', mt: 0.5, mb: 0.25 },
                         }}
                       />
                       {isLongMsg && (
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                          <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
                             Click to read full message
                           </Typography>
                           {item.text.trim().endsWith('?') && (
@@ -289,13 +300,13 @@ const ClaudeInstanceCard = ({
                     }}
                     />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontSize: '0.7rem', color: '#A9B7C6', lineHeight: 1.4 }}>
+                      <Typography sx={{ fontSize: '0.8rem', color: '#A9B7C6', lineHeight: 1.4 }}>
                         <span style={{ color: '#7CB368' }}>{isLongMs ? msDisplay : item.accomplished}</span>
                         {!isLongMs && item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
                       </Typography>
                       {isLongMs && (
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography sx={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
+                          <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
                             Click to read full message
                           </Typography>
                           {milestoneText.trim().endsWith('?') && (
@@ -309,13 +320,13 @@ const ClaudeInstanceCard = ({
               }
             })}
           </Box>
-          {isThinking && (
+          {isProcessing && (
             <Box sx={{
               display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexShrink: 0,
             }}
             >
               <CircularProgress size={10} sx={{ color: '#6897BB' }} />
-              <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
+              <Typography sx={{ fontSize: '0.85rem', color: '#6897BB', fontStyle: 'italic' }}>
                 Processing...
               </Typography>
             </Box>
@@ -323,11 +334,11 @@ const ClaudeInstanceCard = ({
         </Box>
       )}
       {/* Show thinking indicator even when feed is empty (first message sent) */}
-      {feed.length === 0 && isThinking && (
+      {feed.length === 0 && isProcessing && (
         <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <CircularProgress size={10} sx={{ color: '#6897BB' }} />
-            <Typography sx={{ fontSize: '0.65rem', color: '#6897BB', fontStyle: 'italic' }}>
+            <Typography sx={{ fontSize: '0.85rem', color: '#6897BB', fontStyle: 'italic' }}>
               Claude is working...
             </Typography>
           </Box>
@@ -338,7 +349,7 @@ const ClaudeInstanceCard = ({
       {plans.length > 0 && (
         <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Typography sx={{ fontSize: '0.65rem', color: '#808080', fontWeight: 600 }}>
+            <Typography sx={{ fontSize: '0.85rem', color: '#808080', fontWeight: 600 }}>
               PLANS
             </Typography>
             {plans.length > 1 && (
@@ -354,7 +365,7 @@ const ClaudeInstanceCard = ({
           <Typography
             onClick={() => onViewPlan?.(plans[plans.length - 1])}
             sx={{
-              fontSize: '0.7rem',
+              fontSize: '0.8rem',
               color: '#6897BB',
               cursor: 'pointer',
               '&:hover': { textDecoration: 'underline' },
@@ -384,7 +395,7 @@ const ClaudeInstanceCard = ({
       >
         <Box sx={{ py: 0.5 }}>
           <Typography sx={{
-            fontSize: '0.65rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5,
+            fontSize: '0.85rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5,
           }}
           >
             ALL PLANS
@@ -394,7 +405,7 @@ const ClaudeInstanceCard = ({
               key={idx}
               onClick={() => { onViewPlan?.(plan); setPlansAnchorEl(null); }}
               sx={{
-                fontSize: '0.7rem',
+                fontSize: '0.8rem',
                 color: '#6897BB',
                 cursor: 'pointer',
                 px: 1.5,
@@ -420,13 +431,13 @@ const ClaudeInstanceCard = ({
               <Chip
                 key={idx}
                 label={choice}
-                size="small"
                 clickable
                 onClick={() => onSendResponse(instance.id, choice)}
                 sx={{
                   bgcolor: '#214283',
                   color: '#A9B7C6',
-                  fontSize: '0.7rem',
+                  fontSize: '0.85rem',
+                  height: 32,
                   '&:hover': { bgcolor: '#2E5AA7' },
                 }}
               />
@@ -436,7 +447,10 @@ const ClaudeInstanceCard = ({
       )}
 
       {/* Input */}
-      <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
+      <Box sx={{
+        px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0, position: 'relative',
+      }}
+      >
         <TextField
           fullWidth
           multiline
@@ -449,19 +463,41 @@ const ClaudeInstanceCard = ({
           onKeyDown={handleKeyDown}
           sx={{
             '& .MuiOutlinedInput-root': {
-              fontSize: '0.75rem',
+              fontSize: '0.85rem',
               bgcolor: '#2B2B2B',
               color: '#A9B7C6',
+              borderRadius: '24px',
+              pr: '40px',
+              minHeight: 40,
               '& fieldset': { borderColor: '#3C3F41' },
               '&:hover fieldset': { borderColor: '#6897BB' },
               '&.Mui-focused fieldset': { borderColor: '#6897BB' },
             },
             '& .MuiOutlinedInput-input': {
-              py: 0.75,
-              px: 1,
+              py: 1,
+              px: 1.5,
             },
           }}
         />
+        <IconButton
+          size="small"
+          onClick={handleSend}
+          disabled={instance.status === 'exited' || !inputText.trim()}
+          sx={{
+            position: 'absolute',
+            right: 20,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 28,
+            height: 28,
+            bgcolor: inputText.trim() ? '#6897BB' : 'transparent',
+            color: inputText.trim() ? '#fff' : '#4E5254',
+            '&:hover': { bgcolor: inputText.trim() ? '#89B8DE' : 'rgba(104,151,187,0.15)' },
+            '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
+          }}
+        >
+          <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+        </IconButton>
       </Box>
 
       {/* Buttons */}

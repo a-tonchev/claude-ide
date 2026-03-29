@@ -21,9 +21,8 @@ export default ({ mode }) => {
         name: 'open-browser',
         configureServer(server) {
           server.httpServer?.once('listening', () => {
-            const host = process.env.VITE_DEV_HOST || 'localhost';
             const { port } = server.httpServer.address();
-            exec(`start http://${host}:${port}`);
+            exec(`start http://localhost:${port}`);
           });
         },
       },

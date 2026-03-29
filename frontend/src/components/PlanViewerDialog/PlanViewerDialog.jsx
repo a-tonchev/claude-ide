@@ -13,8 +13,10 @@ import ArticleIcon from '@mui/icons-material/Article';
 
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
+import useMobile from '@/components/layout/hooks/useMobile';
 
 const PlanViewerDialog = ({ open, onClose, plan }) => {
+  const { isMobile } = useMobile();
   const [viewMode, setViewMode] = useState('rendered');
 
   if (!plan) return null;
@@ -31,12 +33,13 @@ const PlanViewerDialog = ({ open, onClose, plan }) => {
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
         sx: {
           bgcolor: '#2B2B2B',
           color: '#A9B7C6',
-          border: '1px solid #4E5254',
-          maxHeight: '85vh',
+          border: isMobile ? 'none' : '1px solid #4E5254',
+          maxHeight: isMobile ? '100%' : '85vh',
         },
       }}
     >

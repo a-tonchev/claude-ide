@@ -28,7 +28,6 @@ const InstanceView = () => {
     stopInstance,
     subscribeInstance,
     unsubscribeInstance,
-    requestPlan,
   } = useInstances(message => {
     if (message.type === 'output' && message.instanceId === instanceId) {
       termRef.current?.write(message.data);
@@ -59,10 +58,6 @@ const InstanceView = () => {
   const handleSend = useCallback(text => {
     writeToInstance(instanceId, `${text}\r`);
   }, [instanceId, writeToInstance]);
-
-  const handlePlan = useCallback(prompt => {
-    requestPlan(instanceId, prompt);
-  }, [instanceId, requestPlan]);
 
   const handleStop = useCallback(() => {
     stopInstance(instanceId);
@@ -182,7 +177,6 @@ const InstanceView = () => {
         {/* Input bar */}
         <InputBar
           onSend={handleSend}
-          onPlan={handlePlan}
           disabled={status === 'exited'}
         />
       </Box>

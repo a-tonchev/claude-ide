@@ -10,6 +10,9 @@ const connectedClients = new Set();
 // How long (ms) with no PTY output before we consider a Claude instance idle
 const IDLE_TIMEOUT_MS = 15000;
 
+// Reusable TextDecoder for WebSocket messages
+const utf8decoder = new TextDecoder();
+
 // Strip ANSI escape codes from terminal output
 function stripAnsi(str) {
   // eslint-disable-next-line no-control-regex
@@ -70,6 +73,9 @@ function wireInstance(ws, instance) {
     }
   }
 
+  // Expose cleanup so InstanceManager.stop() can clear it
+  instance.clearIdleTimer = clearIdleTimer;
+
   function resetIdleTimer() {
     clearIdleTimer();
     if (instance.type !== 'claude' && instance.type !== 'observer') return;
@@ -88,10 +94,6 @@ function wireInstance(ws, instance) {
   }
 
   instance.onData = instance.pty.onData(data => {
-    if (instance.isCapturingPlan) {
-      instance.outputBuffer += data;
-    }
-
     // Reset idle timer on any output
     resetIdleTimer();
 
@@ -120,6 +122,7 @@ function wireInstance(ws, instance) {
 
   instance.onExit = instance.pty.onExit(({ exitCode }) => {
     clearIdleTimer();
+    cleanupPendingTimers(instance.id);
     const uptime = Date.now() - instance.startedAt.getTime();
     if (uptime < 3000) {
       console.warn(`Instance ${instance.id} (${instance.type}/${instance.projectName}) exited after ${uptime}ms with code ${exitCode}`);
@@ -134,6 +137,11 @@ function wireInstance(ws, instance) {
     });
 
     broadcastGroupStatus(instance.id);
+
+    // Clean up instance from the Map after a delay so clients receive the exit status
+    setTimeout(() => {
+      InstanceManager.removeIfExited(instance.id);
+    }, 5000);
   });
 }
 
@@ -340,32 +348,6 @@ function handleResize(ws, message) {
   InstanceManager.resize(instanceId, cols, rows);
 }
 
-function handlePlan(ws, message) {
-  const { instanceId, prompt } = message;
-  if (!instanceId || !prompt) return;
-
-  InstanceManager.startPlanCapture(instanceId, prompt);
-
-  const planInput = [
-    'Create a detailed implementation plan in markdown for the following task.',
-    'Structure it with:',
-    '- A clear title as # heading',
-    '- Overview section',
-    '- Phases or steps with ## headings',
-    '- Specific file changes needed',
-    '- Acceptance criteria or definition of done',
-    '',
-    `Task: ${prompt}`,
-  ].join('\n');
-
-  InstanceManager.write(instanceId, planInput);
-  const planTimer = setTimeout(() => {
-    pendingEnter.delete(instanceId);
-    InstanceManager.write(instanceId, '\r');
-  }, ENTER_DELAY_MS);
-  pendingEnter.set(instanceId, planTimer);
-}
-
 function handleSubscribe(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
@@ -563,7 +545,6 @@ const messageHandlers = {
   input: handleInput,
   stop: handleStop,
   resize: handleResize,
-  plan: handlePlan,
   list: handleList,
   subscribe: handleSubscribe,
   unsubscribe: handleUnsubscribe,
@@ -620,7 +601,6 @@ const WsHandler = {
 
       message: (ws, message, isBinary) => {
         try {
-          const utf8decoder = new TextDecoder();
           const raw = new Uint8Array(message);
           const parsed = JSON.parse(utf8decoder.decode(raw));
           const { type } = parsed;

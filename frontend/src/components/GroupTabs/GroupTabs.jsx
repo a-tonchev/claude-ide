@@ -70,15 +70,21 @@ const GroupTabs = ({
         onChange={(_, idx) => onSelect(groups[idx]?.id)}
         variant="scrollable"
         scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
           minHeight: 40,
           '& .MuiTab-root': {
             minHeight: 40,
             textTransform: 'none',
             color: '#808080',
+            px: { xs: 1, sm: 2 },
             '&.Mui-selected': { color: '#A9B7C6' },
           },
           '& .MuiTabs-indicator': { bgcolor: '#6897BB' },
+          '& .MuiTabScrollButton-root': {
+            color: '#808080',
+            '&.Mui-disabled': { opacity: 0.3 },
+          },
         }}
       >
         {groups.map(group => {

@@ -114,6 +114,13 @@ export const removeInstance = instanceId => {
   if (InstanceStores.activeInstanceIdStore.get() === instanceId) {
     InstanceStores.activeInstanceIdStore.set(null);
   }
+
+  // Clean up input draft for this instance
+  const drafts = InstanceStores.inputDraftsStore.get();
+  if (instanceId in drafts) {
+    const { [instanceId]: _d, ...restDrafts } = drafts;
+    InstanceStores.inputDraftsStore.set(restDrafts);
+  }
 };
 
 export const setActiveInstanceId = id => {

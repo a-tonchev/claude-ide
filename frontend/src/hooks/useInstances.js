@@ -40,10 +40,6 @@ const useInstances = onMessage => {
     send('unsubscribe', { instanceId });
   }, [send]);
 
-  const requestPlan = useCallback((instanceId, prompt) => {
-    send('plan', { instanceId, prompt });
-  }, [send]);
-
   const createTerminal = useCallback((name, shell, command, groupId) => {
     send('create_terminal', {
       name, shell, command, groupId,
@@ -89,7 +85,6 @@ const useInstances = onMessage => {
     resizeInstance,
     subscribeInstance,
     unsubscribeInstance,
-    requestPlan,
     createTerminal,
     createObserver,
     sendUserResponse,
