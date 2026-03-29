@@ -115,8 +115,11 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
       sx={{
         flex: 1,
         width: '100%',
+        height: '100%',
         bgcolor: '#2B2B2B',
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
         '& .xterm': {
           height: '100%',
           padding: '8px',

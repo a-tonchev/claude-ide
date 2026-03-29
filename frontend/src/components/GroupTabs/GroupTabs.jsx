@@ -4,7 +4,6 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -134,19 +133,25 @@ const GroupTabs = ({
                     />
                   )}
                   {onClose && !group.virtual && (
-                    <IconButton
-                      size="small"
+                    <Box
+                      component="span"
                       onClick={e => { e.stopPropagation(); onClose(group.id); }}
                       title="Close group"
                       sx={{
-                        p: 0.25,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         ml: 0.25,
+                        width: 18,
+                        height: 18,
                         color: '#606366',
+                        cursor: 'pointer',
+                        borderRadius: '2px',
                         '&:hover': { color: '#A9B7C6', bgcolor: 'rgba(104,151,187,0.15)' },
                       }}
                     >
                       <CloseIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
+                    </Box>
                   )}
                 </Box>
               )}
