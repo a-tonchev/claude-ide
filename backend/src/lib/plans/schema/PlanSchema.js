@@ -2,7 +2,7 @@ import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
 import PlanSchemaFields from './PlanSchemaFields';
 
 const {
-  project_id, instance_id, title, prompt, content, status,
+  project_id, instance_id, title, prompt, content, status, seen,
 } = PlanSchemaFields;
 
 const { _id, date } = CommonSchemaFields;
@@ -19,6 +19,7 @@ const PlanSchema = {
     prompt,
     content,
     status,
+    seen,
     updatedAt: date,
     createdAt: date,
   },

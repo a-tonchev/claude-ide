@@ -17,7 +17,8 @@
       "WebFetch",
       "WebSearch",
       "Task",
-      "NotebookEdit"
+      "NotebookEdit",
+      "mcp__claude_ai_Documentation_MCP__write_note"
     ]
   },
   "enableAllProjectMcpServers": true,

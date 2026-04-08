@@ -39,6 +39,7 @@ const PlanController = {
         prompt: prompt || '',
         content,
         status: status || PlanStatuses.DRAFT,
+        seen: false,
       });
 
       // Store plan reference on the in-memory instance and broadcast
@@ -47,6 +48,7 @@ const PlanController = {
           id: result.insertedId.toString(),
           title: title || '',
           content: content || '',
+          seen: false,
         });
 
         WsHandler.publish(`instance_${instance_id}`, {
@@ -55,6 +57,7 @@ const PlanController = {
           planId: result.insertedId.toString(),
           title: title || '',
           content: content || '',
+          seen: false,
         });
       }
 
@@ -75,6 +78,30 @@ const PlanController = {
     const { _id, ...fields } = ctx.request.body;
     try {
       await ctx.libS.plans.update({ _id, ...fields });
+      return ctx.modS.responses.createSuccessResponse(ctx);
+    } catch (err) {
+      return ctx.modS.responses.createErrorResponse(
+        ctx,
+        ctx.modS.responses.CustomErrors.BAD_REQUEST,
+        {},
+        err,
+      );
+    }
+  },
+
+  async markSeen(ctx) {
+    const { _id, instance_id } = ctx.request.body;
+    try {
+      await ctx.libS.plans.update({ _id, seen: true });
+
+      if (instance_id) {
+        const instance = InstanceManager.get(instance_id);
+        if (instance) {
+          const planRef = instance.plans.find(p => p.id === _id);
+          if (planRef) planRef.seen = true;
+        }
+      }
+
       return ctx.modS.responses.createSuccessResponse(ctx);
     } catch (err) {
       return ctx.modS.responses.createErrorResponse(

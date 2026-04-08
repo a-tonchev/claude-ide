@@ -30,7 +30,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import { useStoreValue } from '@/components/state/GlobalState';
-import { InstanceStores, setInputDraft } from '@/stores/instanceAtoms';
+import { InstanceStores, setInputDraft, markPlanSeen } from '@/stores/instanceAtoms';
 import useMobile from '@/components/layout/hooks/useMobile';
 
 const STATUS_CONFIG = {
@@ -84,7 +84,7 @@ const ClaudeInstanceCard = ({
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
-  const isProcessing = !['ready', 'waiting', 'completed', 'plan_ready', 'exited'].includes(instance.status);
+  const isProcessing = ['thinking', 'planning', 'working'].includes(instance.status);
 
   // Auto-scroll feed to bottom only if user hasn't scrolled up
   const userScrolledUp = useRef(false);
@@ -339,7 +339,7 @@ const ClaudeInstanceCard = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             <CircularProgress size={10} sx={{ color: '#6897BB' }} />
             <Typography sx={{ fontSize: '0.85rem', color: '#6897BB', fontStyle: 'italic' }}>
-              Claude is working...
+              Processing...
             </Typography>
           </Box>
         </Box>
@@ -362,18 +362,49 @@ const ClaudeInstanceCard = ({
               </IconButton>
             )}
           </Box>
-          <Typography
-            onClick={() => onViewPlan?.(plans[plans.length - 1])}
+          <Box
+            onClick={() => {
+              const lp = plans[plans.length - 1];
+              if (!lp.seen) markPlanSeen(instance.id, lp.id);
+              onViewPlan?.(lp);
+            }}
+            onMouseEnter={() => {
+              const lp = plans[plans.length - 1];
+              if (!lp.seen) markPlanSeen(instance.id, lp.id);
+            }}
             sx={{
-              fontSize: '0.8rem',
-              color: '#6897BB',
+              display: 'flex', alignItems: 'center', gap: 0.75,
               cursor: 'pointer',
-              '&:hover': { textDecoration: 'underline' },
-              lineHeight: 1.4,
+              '&:hover .plan-title': { textDecoration: 'underline' },
             }}
           >
-            {plans[plans.length - 1].title || 'Untitled Plan'}
-          </Typography>
+            <Box
+              className="plan-dot"
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: '#CC7832',
+                flexShrink: 0,
+                opacity: plans[plans.length - 1].seen !== false ? 0.4 : undefined,
+                animation: plans[plans.length - 1].seen !== false ? 'none' : 'planPulse 2s ease-in-out infinite',
+                '@keyframes planPulse': {
+                  '0%, 100%': { opacity: 0.4, transform: 'scale(1)' },
+                  '50%': { opacity: 1, transform: 'scale(1.3)' },
+                },
+              }}
+            />
+            <Typography
+              className="plan-title"
+              sx={{
+                fontSize: '0.8rem',
+                color: '#6897BB',
+                lineHeight: 1.4,
+              }}
+            >
+              {plans[plans.length - 1].title || 'Untitled Plan'}
+            </Typography>
+          </Box>
         </Box>
       )}
       <Popover

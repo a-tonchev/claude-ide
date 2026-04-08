@@ -154,6 +154,7 @@ function handleMessage(event) {
             id: message.planId,
             title: message.title,
             content: message.content || '',
+            seen: false,
           });
           break;
 

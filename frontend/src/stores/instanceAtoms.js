@@ -1,4 +1,5 @@
 import GlobalStateHelper from '@/components/state/GlobalStateHelper';
+import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 
 export const InstanceStores = {
   instancesStore: null,
@@ -205,6 +206,18 @@ export const addPlanToInstance = (instanceId, plan) => {
       plans: [...(existing.plans || []), plan],
     },
   });
+};
+
+export const markPlanSeen = (instanceId, planId) => {
+  const current = InstanceStores.instancesStore.get();
+  const existing = current[instanceId];
+  if (!existing) return;
+  const plans = (existing.plans || []).map(p => (p.id === planId ? { ...p, seen: true } : p));
+  InstanceStores.instancesStore.set({
+    ...current,
+    [instanceId]: { ...existing, plans },
+  });
+  Connections.postRequest(ApiEndpoints.plansMarkSeen, { _id: planId, instance_id: instanceId });
 };
 
 export const reassignInstancesToGroup = (oldGroupId, newGroupId) => {

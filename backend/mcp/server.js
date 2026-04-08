@@ -185,6 +185,16 @@ tools.getKeePassCredentials = {
       const observer = await apiPost('/observers/getInstructions', { observerId: OBSERVER_ID });
       resolvedId = observer?.data?.keepassSettingsId;
     }
+    // Fallback: if still no ID, auto-resolve when only one KeePass config exists
+    if (!resolvedId) {
+      const allConfigs = await apiPost('/settings/all', { type: 'keepass' });
+      const configs = allConfigs?.data?.settings || allConfigs?.settings || [];
+      if (configs.length === 1) {
+        resolvedId = configs[0]._id;
+      } else if (configs.length > 1) {
+        return { credentials: null, availableConfigs: configs, message: 'Multiple KeePass configs found. Pass settingsId to select one.' };
+      }
+    }
     if (!resolvedId) {
       return { credentials: null };
     }
@@ -193,37 +203,50 @@ tools.getKeePassCredentials = {
   },
 };
 
-// Observer-only tools — only available when OBSERVER_ID is set
-if (OBSERVER_ID) {
-  tools.getObserver = {
-    description: 'Get the observer instructions from the database. Returns { name, instructions, keepassSettingsId, keepassEntryPath }.',
-    inputSchema: {
-      type: 'object',
-      properties: {},
-    },
-    async handler() {
-      return apiPost('/observers/getInstructions', { observerId: OBSERVER_ID });
-    },
-  };
-
-  tools.setObserver = {
-    description: 'Save/overwrite the observer instructions in the database. Always write the complete instructions string.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        instructions: {
-          type: 'string',
-          description: 'The complete instructions string to save',
-        },
+// Observer tools — available to all instances
+tools.getObserver = {
+  description: 'Get the observer instructions from the database. Returns { name, instructions, keepassSettingsId, keepassEntryPath }. If no observerId is provided, uses the OBSERVER_ID environment variable.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      observerId: {
+        type: 'string',
+        description: 'The observer ID to fetch. Optional — defaults to OBSERVER_ID env var.',
       },
-      required: ['instructions'],
     },
-    async handler({ instructions }) {
-      return apiPost('/observers/setInstructions', { observerId: OBSERVER_ID, instructions });
-    },
-  };
+  },
+  async handler({ observerId } = {}) {
+    const id = observerId || OBSERVER_ID;
+    if (!id) return { error: 'No observerId provided and OBSERVER_ID not set' };
+    return apiPost('/observers/getInstructions', { observerId: id });
+  },
+};
 
-  log(`Observer tools enabled for observer ${OBSERVER_ID}`);
+tools.setObserver = {
+  description: 'Save/overwrite the observer instructions in the database. Always write the complete instructions string.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      observerId: {
+        type: 'string',
+        description: 'The observer ID to update. Optional — defaults to OBSERVER_ID env var.',
+      },
+      instructions: {
+        type: 'string',
+        description: 'The complete instructions string to save',
+      },
+    },
+    required: ['instructions'],
+  },
+  async handler({ observerId, instructions }) {
+    const id = observerId || OBSERVER_ID;
+    if (!id) return { error: 'No observerId provided and OBSERVER_ID not set' };
+    return apiPost('/observers/setInstructions', { observerId: id, instructions });
+  },
+};
+
+if (OBSERVER_ID) {
+  log(`Observer auto-resolve enabled for observer ${OBSERVER_ID}`);
 }
 
 // --- NDJSON stdio transport ---

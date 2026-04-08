@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
 import { Marked } from 'marked';
 import hljs from 'highlight.js';
@@ -339,15 +339,106 @@ const markdownBaseStyles = {
   },
 };
 
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
+  document.body.removeChild(ta);
+  return ok;
+}
+
+const COPY_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+const CHECK_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+
 const MarkdownRenderer = ({ content, fontSize = '0.85rem', sx = {} }) => {
   const renderedHtml = useMemo(() => markedInstance.parse(content || ''), [content]);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const container = boxRef.current;
+    if (!container) return;
+
+    const pres = container.querySelectorAll('pre');
+    const cleanups = [];
+
+    for (const pre of pres) {
+      if (pre.querySelector('.copy-code-btn')) continue;
+      pre.style.position = 'relative';
+
+      const btn = document.createElement('button');
+      btn.className = 'copy-code-btn';
+      btn.innerHTML = COPY_ICON;
+      btn.title = 'Copy code';
+
+      const handleClick = () => {
+        const code = pre.querySelector('code');
+        const text = code ? code.textContent : pre.textContent;
+
+        const onSuccess = () => {
+          btn.innerHTML = CHECK_ICON;
+          setTimeout(() => { btn.innerHTML = COPY_ICON; }, 1500);
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
+            fallbackCopy(text) && onSuccess();
+          });
+        } else {
+          fallbackCopy(text) && onSuccess();
+        }
+      };
+
+      btn.addEventListener('click', handleClick);
+      pre.appendChild(btn);
+      cleanups.push(() => {
+        btn.removeEventListener('click', handleClick);
+        btn.remove();
+      });
+    }
+
+    return () => cleanups.forEach(fn => fn());
+  }, [renderedHtml]);
 
   return (
     <Box
+      ref={boxRef}
       dangerouslySetInnerHTML={{ __html: renderedHtml }}
       sx={{
         ...markdownBaseStyles,
         fontSize,
+        '& pre .copy-code-btn': {
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          bgcolor: '#3C3F41',
+          border: '1px solid #4E5254',
+          borderRadius: '4px',
+          color: '#808080',
+          cursor: 'pointer',
+          p: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0,
+          transition: 'opacity 0.2s, color 0.2s, background-color 0.2s',
+          '&:hover': {
+            bgcolor: '#4E5254',
+            color: '#A9B7C6',
+          },
+        },
+        '& pre:hover .copy-code-btn': {
+          opacity: 1,
+        },
+        '@media (hover: none)': {
+          '& pre .copy-code-btn': {
+            opacity: 1,
+          },
+        },
         ...sx,
       }}
     />

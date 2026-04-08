@@ -30,6 +30,11 @@ const PlanRoutes = createBasicRoutes({
     },
     {
       method: 'post',
+      path: '/markSeen',
+      handler: PlanController.markSeen,
+    },
+    {
+      method: 'post',
       path: '/delete',
       handler: PlanController.remove,
     },

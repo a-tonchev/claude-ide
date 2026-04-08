@@ -8,6 +8,7 @@ import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
+import Popover from '@mui/material/Popover';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -23,6 +24,7 @@ import TerminalIcon from '@mui/icons-material/Terminal';
 import ArticleIcon from '@mui/icons-material/Article';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import HistoryIcon from '@mui/icons-material/History';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import PlansDialog from '@/components/PlansDialog/PlansDialog';
@@ -30,7 +32,7 @@ import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useInstances from '@/hooks/useInstances';
 import {
-  addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField,
+  addUserMessage, addClaudeMessage, setPendingInput, updateInstanceField, markPlanSeen,
 } from '@/stores/instanceAtoms';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import useMobile from '@/components/layout/hooks/useMobile';
@@ -55,6 +57,7 @@ const InstanceWindow = () => {
   const [viewingPlan, setViewingPlan] = useState(null);
   const [viewingMessage, setViewingMessage] = useState(null);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [plansAnchorEl, setPlansAnchorEl] = useState(null);
   const [feedExpanded, setFeedExpanded] = useState(false);
   const [mobileTab, setMobileTab] = useState(0);
   const { isMobile } = useMobile();
@@ -96,7 +99,7 @@ const InstanceWindow = () => {
   feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
   const visibleFeed = feedExpanded ? feed : feed.slice(-5);
 
-  const isProcessing = instance && !['ready', 'waiting', 'completed', 'plan_ready', 'exited'].includes(instance.status);
+  const isProcessing = ['thinking', 'planning', 'working'].includes(instance?.status);
 
   useEffect(() => {
     if (instanceId) {
@@ -248,7 +251,7 @@ const InstanceWindow = () => {
       </Box>
 
       {/* Mobile tabs */}
-      {isMobile && instance.type === 'claude' && (
+      {isMobile && (instance.type === 'claude' || instance.type === 'observer') && (
         <Tabs
           value={mobileTab}
           onChange={(e, v) => setMobileTab(v)}
@@ -290,8 +293,8 @@ const InstanceWindow = () => {
           />
         </Box>
 
-        {/* Activity panel (Claude instances only) */}
-        {instance.type === 'claude' && (
+        {/* Activity panel (Claude and Observer instances) */}
+        {(instance.type === 'claude' || instance.type === 'observer') && (
           <Box sx={{
             width: isMobile ? '100%' : 440,
             flexShrink: 0,
@@ -524,46 +527,105 @@ const InstanceWindow = () => {
               )}
             </Box>
 
-            {/* Plans section */}
+            {/* Plans — show only the last plan; history icon opens full list */}
             {plans.length > 0 && (
               <Box sx={{ px: 2, py: 1, borderTop: '1px solid #3C3F41' }}>
-                <Typography sx={{
-                  fontSize: '0.65rem', color: '#808080', fontWeight: 600, mb: 0.5,
-                }}
-                >PLANS
-                </Typography>
-                {plans.map((plan, idx) => (
-                  <Box
-                    key={idx}
-                    sx={{
-                      display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.25,
-                    }}
-                  >
-                    <Typography
-                      onClick={() => handleOpenPlan(plan)}
-                      sx={{
-                        fontSize: '0.75rem',
-                        color: '#6897BB',
-                        cursor: 'pointer',
-                        flex: 1,
-                        '&:hover': { textDecoration: 'underline' },
-                      }}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Typography sx={{
+                    fontSize: '0.75rem', color: '#808080', fontWeight: 600,
+                  }}
+                  >PLANS
+                  </Typography>
+                  {plans.length > 1 && (
+                    <IconButton
+                      size="small"
+                      onClick={e => setPlansAnchorEl(e.currentTarget)}
+                      sx={{ p: 0, ml: 'auto' }}
                     >
-                      {plan.title || 'Untitled Plan'}
-                    </Typography>
-                    {plan.id && (
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenPlan(plan)}
-                        sx={{ p: 0.25, color: '#808080', '&:hover': { color: '#6897BB' } }}
-                      >
-                        <OpenInNewIcon sx={{ fontSize: 12 }} />
-                      </IconButton>
-                    )}
-                  </Box>
-                ))}
+                      <HistoryIcon sx={{ fontSize: 16, color: '#808080' }} />
+                    </IconButton>
+                  )}
+                </Box>
+                <Box
+                  onClick={() => {
+                    const lp = plans[plans.length - 1];
+                    if (!lp.seen) markPlanSeen(instanceId, lp.id);
+                    handleOpenPlan(lp);
+                  }}
+                  onMouseEnter={() => {
+                    const lp = plans[plans.length - 1];
+                    if (!lp.seen) markPlanSeen(instanceId, lp.id);
+                  }}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.75,
+                    cursor: 'pointer',
+                    '&:hover .plan-title': { textDecoration: 'underline' },
+                  }}
+                >
+                  <Box
+                    className="plan-dot"
+                    sx={{
+                      width: 6, height: 6, borderRadius: '50%', bgcolor: '#CC7832', flexShrink: 0,
+                      opacity: plans[plans.length - 1].seen !== false ? 0.4 : undefined,
+                      animation: plans[plans.length - 1].seen !== false ? 'none' : 'planPulse 2s ease-in-out infinite',
+                      '@keyframes planPulse': {
+                        '0%, 100%': { opacity: 0.4, transform: 'scale(1)' },
+                        '50%': { opacity: 1, transform: 'scale(1.3)' },
+                      },
+                    }}
+                  />
+                  <Typography
+                    className="plan-title"
+                    sx={{ fontSize: '0.8rem', color: '#6897BB', lineHeight: 1.4 }}
+                  >
+                    {plans[plans.length - 1].title || 'Untitled Plan'}
+                  </Typography>
+                </Box>
               </Box>
             )}
+            <Popover
+              open={Boolean(plansAnchorEl)}
+              anchorEl={plansAnchorEl}
+              onClose={() => setPlansAnchorEl(null)}
+              anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+              transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+              PaperProps={{
+                sx: {
+                  bgcolor: '#313335',
+                  border: '1px solid #4E5254',
+                  maxHeight: 300,
+                  overflowY: 'auto',
+                  minWidth: 200,
+                  maxWidth: 350,
+                },
+              }}
+            >
+              <Box sx={{ py: 0.5 }}>
+                <Typography sx={{
+                  fontSize: '0.75rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5,
+                }}
+                >
+                  ALL PLANS
+                </Typography>
+                {plans.map((plan, idx) => (
+                  <Typography
+                    key={idx}
+                    onClick={() => { handleOpenPlan(plan); setPlansAnchorEl(null); }}
+                    sx={{
+                      fontSize: '0.8rem',
+                      color: '#6897BB',
+                      cursor: 'pointer',
+                      px: 1.5,
+                      py: 0.5,
+                      '&:hover': { bgcolor: '#3C3F41' },
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {plan.title || 'Untitled Plan'}
+                  </Typography>
+                ))}
+              </Box>
+            </Popover>
 
             {/* Pending choices */}
             {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
@@ -571,7 +633,7 @@ const InstanceWindow = () => {
                 px: 2, py: 1, borderTop: '1px solid #3C3F41', bgcolor: '#3C3F41',
               }}
               >
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                   {pending.choices.map((choice, idx) => (
                     <Chip
                       key={idx}
@@ -581,8 +643,8 @@ const InstanceWindow = () => {
                       sx={{
                         bgcolor: '#214283',
                         color: '#A9B7C6',
-                        fontSize: '0.85rem',
-                        height: 32,
+                        fontSize: '0.9rem',
+                        height: 36,
                         '&:hover': { bgcolor: '#2E5AA7' },
                       }}
                     />

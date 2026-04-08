@@ -119,7 +119,7 @@ const GroupTabs = ({
                       size="small"
                       label={`${terminals} term`}
                       sx={{
-                        height: 18, fontSize: '0.65rem', bgcolor: '#4E5254', color: '#808080',
+                        height: 18, fontSize: '0.65rem', bgcolor: '#2D4A3722', color: '#5A8A6A',
                       }}
                     />
                   )}

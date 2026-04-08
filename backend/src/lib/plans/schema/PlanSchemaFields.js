@@ -21,6 +21,9 @@ const PlanSchemaFields = {
     bsonType: 'string',
     enum: Object.values(PlanStatuses),
   },
+  seen: {
+    bsonType: 'bool',
+  },
 };
 
 export default PlanSchemaFields;

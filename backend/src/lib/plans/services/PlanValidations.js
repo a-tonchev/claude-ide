@@ -1,7 +1,7 @@
 import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
 import PlanSchemaFields from '../schema/PlanSchemaFields';
 
-const { title, prompt, content, status } = PlanSchemaFields;
+const { title, prompt, content, status, seen } = PlanSchemaFields;
 
 const CreatePlanSchema = {
   bsonType: 'object',
@@ -26,6 +26,7 @@ const UpdatePlanSchema = {
     prompt,
     content,
     status,
+    seen,
   },
 };
 
