@@ -16,12 +16,14 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import BookmarkRemoveOutlinedIcon from '@mui/icons-material/BookmarkRemoveOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
 
 import useConfirm from '@/components/dialogs/hooks/useConfirm';
 import { fetchFeedPage } from '@/hooks/useInstanceFeed';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const PREVIEW_PAGE_SIZE = 10;
 const LONG_TEXT_LENGTH = 300;
@@ -144,6 +146,8 @@ const RememberedFeed = ({ instanceId }) => {
 const RememberedRow = ({
   record, groups, onResume, onRemove,
 }) => {
+  // Only saved instances are listed while running; they can't be started twice
+  const { running } = record;
   const group = groups.find(g => g.id === record.groupId);
   const [expanded, setExpanded] = useState(false);
   const [groupId, setGroupId] = useState(group ? group.id : NEW_GROUP);
@@ -193,6 +197,15 @@ const RememberedRow = ({
         >
           {record.title || record.projectName || 'Untitled instance'}
         </Typography>
+        {running && (
+          <Chip
+            size="small"
+            label="running"
+            sx={{
+              height: 18, fontSize: '0.65rem', color: '#7CB368', bgcolor: '#7CB36826',
+            }}
+          />
+        )}
         <Typography sx={{ fontSize: '0.75rem', color: '#808080' }}>
           {record.messageCount} message{record.messageCount === 1 ? '' : 's'}
         </Typography>
@@ -232,52 +245,85 @@ const RememberedRow = ({
         display: 'flex', alignItems: 'center', gap: 1, px: 1.5, pb: 1.25, flexWrap: 'wrap',
       }}
       >
-        <TextField
-          select
-          size="small"
-          label="Start in group"
-          value={groupId}
-          onChange={e => setGroupId(e.target.value)}
-          sx={{ minWidth: 200, flex: 1 }}
-        >
-          <MenuItem value={NEW_GROUP}>New group</MenuItem>
-          {groups.map(g => (
-            <MenuItem key={g.id} value={g.id}>
-              {g.saved ? g.name : `${g.name} (unsaved)`}
-            </MenuItem>
-          ))}
-        </TextField>
-        <Button
-          variant="contained"
-          size="small"
-          disabled={starting}
-          onClick={handleStart}
-          startIcon={starting
-            ? <CircularProgress size={14} color="inherit" />
-            : <PlayArrowIcon sx={{ fontSize: 16 }} />}
-          sx={{
-            bgcolor: '#579945', textTransform: 'none', '&:hover': { bgcolor: '#68AD55' },
+        {running ? (
+          <Typography sx={{
+            fontSize: '0.78rem', color: '#808080', flex: 1, minWidth: 200,
           }}
-        >
-          Start again
-        </Button>
+          >
+            Running now. Stopping it keeps it here.
+          </Typography>
+        ) : (
+          <>
+            <TextField
+              select
+              size="small"
+              label="Start in group"
+              value={groupId}
+              onChange={e => setGroupId(e.target.value)}
+              sx={{ minWidth: 200, flex: 1 }}
+            >
+              <MenuItem value={NEW_GROUP}>New group</MenuItem>
+              {groups.map(g => (
+                <MenuItem key={g.id} value={g.id}>
+                  {g.saved ? g.name : `${g.name} (unsaved)`}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Button
+              variant="contained"
+              size="small"
+              disabled={starting}
+              onClick={handleStart}
+              startIcon={starting
+                ? <CircularProgress size={14} color="inherit" />
+                : <PlayArrowIcon sx={{ fontSize: 16 }} />}
+              sx={{
+                bgcolor: '#579945', textTransform: 'none', '&:hover': { bgcolor: '#68AD55' },
+              }}
+            >
+              Start again
+            </Button>
+          </>
+        )}
         <Button
           size="small"
           disabled={starting}
           onClick={() => onRemove(record)}
-          startIcon={<DeleteOutlineIcon sx={{ fontSize: 16 }} />}
-          sx={{ color: '#BC3F3C', textTransform: 'none', '&:hover': { bgcolor: 'rgba(188,63,60,0.1)' } }}
+          startIcon={running
+            ? <BookmarkRemoveOutlinedIcon sx={{ fontSize: 16 }} />
+            : <DeleteOutlineIcon sx={{ fontSize: 16 }} />}
+          sx={{
+            color: running ? '#808080' : '#BC3F3C',
+            textTransform: 'none',
+            '&:hover': { bgcolor: running ? 'rgba(255,255,255,0.06)' : 'rgba(188,63,60,0.1)' },
+          }}
         >
-          Remove
+          {running ? 'Unsave' : 'Remove'}
         </Button>
       </Box>
     </Box>
   );
 };
 
+const MODES = {
+  remembered: {
+    title: 'Remembered instances',
+    intro: 'Instances that are not running. Start one again to continue its conversation, or remove it for good.',
+    empty: 'No remembered instances.',
+  },
+  saved: {
+    title: 'Saved instances',
+    intro: 'Kept until you remove them here, even after Stop, Delete group or a restart. '
+      + 'Start one again to continue its conversation.',
+    empty: 'No saved instances. Use the bookmark on a card to save one.',
+  },
+};
+
+// mode "remembered": instances that stopped; "saved": bookmarked ones, running or not
 const RememberedInstancesDialog = ({
-  open, onClose, instances, loading, groups, onResume, onRemove,
+  open, onClose, instances, loading, groups, onResume, onRemove, mode = 'remembered',
 }) => {
+  const text = MODES[mode] || MODES.remembered;
   const { openDialog: openRemoveConfirm, ConfirmDialog: RemoveConfirmDialog } = useConfirm();
   const [error, setError] = useState('');
 
@@ -285,7 +331,13 @@ const RememberedInstancesDialog = ({
     if (open) setError('');
   }, [open]);
 
-  const handleRemove = useCallback(record => {
+  const handleRemove = useCallback(async record => {
+    // Running saved instance: only the bookmark goes
+    if (record.running) {
+      const result = await onRemove(record);
+      if (!result?.ok) setError(result?.errorMessage || 'Could not unsave the instance. Try again.');
+      return;
+    }
     const label = record.title || record.projectName || 'this instance';
     openRemoveConfirm(
       `Remove "${label}"? Its messages are deleted for good. Its plans stay in the Plans dialog.`,
@@ -303,23 +355,17 @@ const RememberedInstancesDialog = ({
         onClose={onClose}
         maxWidth="md"
         fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: '#2B2B2B',
-            border: '1px solid #4E5254',
-            borderRadius: 3,
-          },
-        }}
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle sx={{
           color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 0.5,
         }}
         >
-          Remembered instances
+          {text.title}
         </DialogTitle>
         <DialogContent>
           <Typography sx={{ color: '#808080', fontSize: 13, mb: 1.5 }}>
-            Instances that are not running. Start one again to continue its conversation, or remove it for good.
+            {text.intro}
           </Typography>
           {error && <Alert severity="error" sx={{ mb: 1.5 }}>{error}</Alert>}
           {loading && instances.length === 0 && (
@@ -332,7 +378,7 @@ const RememberedInstancesDialog = ({
               py: 4, textAlign: 'center', bgcolor: '#313335', borderRadius: 2, border: '1px solid #3C3F41',
             }}
             >
-              <Typography sx={{ color: '#808080', fontSize: 14 }}>No remembered instances.</Typography>
+              <Typography sx={{ color: '#808080', fontSize: 14 }}>{text.empty}</Typography>
             </Box>
           )}
           {instances.map(record => (

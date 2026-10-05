@@ -65,27 +65,42 @@ const InstanceStore = {
     return records().findOne({ _id: id });
   },
 
-  async deleteRecord(id) {
+  // Deletes the record, its messages and its attachments. A saved record is left alone
+  // unless `force` (removing it from the Saved list): the check and the delete are one
+  // operation, so a save racing a Stop can't lose it. Returns whether it was deleted.
+  async deleteRecord(id, { force = false } = {}) {
+    const filter = force ? { _id: id } : { _id: id, saved: { $ne: true } };
+    const { deletedCount } = await records().deleteOne(filter);
+    if (!deletedCount) return false;
     await messages().deleteMany({ instanceId: id });
-    await records().deleteOne({ _id: id });
     await FileStore.deleteInstanceDirs([id]);
+    return true;
+  },
+
+  // Returns whether a record matched
+  async setSaved(id, saved) {
+    const { matchedCount } = await records().updateOne(
+      { _id: id },
+      { $set: { saved: !!saved, updatedAt: new Date() } },
+    );
+    return matchedCount > 0;
   },
 
   // Deleting a group removes the remembered instances that belonged to it, messages
-  // included. Running ones (excludeIds) are removed by their own manual stop.
+  // included. Running ones (excludeIds) are removed by their own manual stop; saved ones stay.
   async deleteRecordsInGroup(groupId, excludeIds = []) {
-    const ids = await records().distinct('_id', { groupId, _id: { $nin: excludeIds } });
+    const ids = await records().distinct('_id', { groupId, _id: { $nin: excludeIds }, saved: { $ne: true } });
     if (!ids.length) return 0;
     await messages().deleteMany({ instanceId: { $in: ids } });
-    const result = await records().deleteMany({ _id: { $in: ids } });
+    const result = await records().deleteMany({ _id: { $in: ids }, saved: { $ne: true } });
     await FileStore.deleteInstanceDirs(ids);
     return result.deletedCount;
   },
 
-  // Every record except excludeIds (the running ones), with its message count, most
-  // recently active first.
-  async listRecords(excludeIds = []) {
-    const docs = await records().find({ _id: { $nin: excludeIds } }).toArray();
+  // The records that aren't running, plus every saved one (running or not), with their
+  // message count, most recently active first.
+  async listRecords(runningIds = []) {
+    const docs = await records().find({ $or: [{ _id: { $nin: runningIds } }, { saved: true }] }).toArray();
     if (!docs.length) return [];
     const stats = await messages().aggregate([
       { $match: { instanceId: { $in: docs.map(d => d._id) } } },

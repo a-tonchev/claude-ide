@@ -121,6 +121,11 @@ function handleMessage(event) {
           updateInstanceField(message.instanceId, 'title', message.title || null);
           break;
 
+        // The bookmark on a card: saved instances survive manual stops and group deletes
+        case 'saved_update':
+          updateInstanceField(message.instanceId, 'saved', !!message.saved);
+          break;
+
         // "Move to group…": the instance now belongs to another group
         case 'group_changed': {
           const movedInst = InstanceStores.instancesStore.get()[message.instanceId];

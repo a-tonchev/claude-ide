@@ -20,7 +20,7 @@ import HistoryIcon from '@mui/icons-material/History';
 
 import ChatInput from '@/components/ChatInput/ChatInput';
 import {
-  CARD_COLORS, FeedItem, HeaderMeta, PendingChoices, StatusMark, cardSx, latestQuestion,
+  CARD_COLORS, FeedItem, HeaderMeta, PendingChoices, SaveToggle, StatusMark, cardSx, latestQuestion,
 } from '@/components/CardParts/CardParts';
 import { FileDropZone } from '@/components/Attachments/Attachments';
 import useAttachments from '@/hooks/useAttachments';
@@ -43,6 +43,7 @@ const ClaudeInstanceCard = ({
   onMinimize,
   onMoveToGroup,
   onRename,
+  onToggleSaved,
   fill = false,
 }) => {
   const inputText = useStoreFamilyValue(InstanceStores.inputDraftFamilyStore, instance.id);
@@ -404,6 +405,9 @@ const ClaudeInstanceCard = ({
           >
             <StatusMark status={instance.status} />
           </Box>
+          {onToggleSaved && (
+            <SaveToggle saved={instance.saved} onToggle={() => onToggleSaved(instance.id, !instance.saved)} />
+          )}
           <IconButton
             size="small"
             onClick={e => onMoveToGroup?.(instance.id, e.currentTarget)}

@@ -185,7 +185,7 @@ const FileStore = {
     return [
       '## Attached files',
       `Files the user attaches in the dashboard are saved in: ${own}`,
-      'Their full paths are added to the user\'s message ("Attached files: …"). Open them with your file tools;',
+      'Their full paths are added at the end of the user\'s message, after the words Attached files. Open them with your file tools;',
       'images are images (screenshots, mockups) — look at them.',
       'That folder belongs to this instance and is DELETED when the instance is stopped.',
       '',

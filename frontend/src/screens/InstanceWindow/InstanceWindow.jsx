@@ -25,7 +25,7 @@ import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import ChatInput from '@/components/ChatInput/ChatInput';
 import {
-  CARD_COLORS, FeedItem, PendingChoices, StatusMark, latestQuestion,
+  CARD_COLORS, FeedItem, PendingChoices, SaveToggle, StatusMark, latestQuestion,
 } from '@/components/CardParts/CardParts';
 import { FileDropZone } from '@/components/Attachments/Attachments';
 import useAttachments from '@/hooks/useAttachments';
@@ -72,6 +72,7 @@ const InstanceWindow = () => {
     sendUserMessage,
     stopInstance,
     renameInstance,
+    setInstanceSaved,
   } = useInstances(onMessage);
 
   const instance = instances?.[instanceId];
@@ -246,6 +247,13 @@ const InstanceWindow = () => {
           color={CARD_COLORS.strong}
         />
         <StatusMark status={instance.status} />
+        {(instance.type === 'claude' || instance.type === 'observer') && (
+          <SaveToggle
+            saved={instance.saved}
+            size={18}
+            onToggle={() => setInstanceSaved(instanceId, !instance.saved)}
+          />
+        )}
         <IconButton
           size="small"
           onClick={() => window.location.reload()}

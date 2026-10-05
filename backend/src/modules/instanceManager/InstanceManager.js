@@ -311,7 +311,10 @@ function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launch
     ...process.env,
     TERM: 'xterm-256color',
     ...extraEnv,
-    CLAUDE_IDE_SYSTEM_PROMPT: systemPrompt,
+    // Windows PowerShell 5 passes $env:CLAUDE_IDE_SYSTEM_PROMPT to claude without escaping
+    // double quotes: one inside the prompt splits it, and the words after it reach Claude as
+    // its first message. Launch-flag instructions are user text, so quotes are swapped here.
+    CLAUDE_IDE_SYSTEM_PROMPT: platform === 'win32' ? systemPrompt.replace(/"/g, "'") : systemPrompt,
     ...(filesDir ? { CLAUDE_IDE_FILES_DIR: filesDir } : {}),
   });
 
@@ -513,6 +516,7 @@ const InstanceManager = {
       projectId,
       projectName,
       title: record?.title || null,
+      saved: !!record?.saved,
       cwd,
       pty: ptyProcess,
       status: 'running',
@@ -574,6 +578,7 @@ const InstanceManager = {
       projectId: observerId,
       projectName: name || 'Observer',
       title: record?.title || null,
+      saved: !!record?.saved,
       cwd,
       pty: ptyProcess,
       status: 'running',
@@ -670,7 +675,10 @@ const InstanceManager = {
       instance.onExit = null;
     }
 
+    // A kept record (saved, or not a manual stop) needs Codex's session id to resume
+    if (!discard || instance.saved) InstanceManager.detectCodexSession(instanceId, { force: true });
     instances.delete(instanceId);
+    // deleteRecord skips saved records, so a save racing this stop can't lose one
     if (discard) persist(instance, () => InstanceStore.deleteRecord(instanceId));
     if (!shuttingDown) stopWslProcesses(instance);
     if (alreadyExited) return true;
@@ -744,6 +752,7 @@ const InstanceManager = {
       projectId: instance.projectId,
       projectName: instance.projectName,
       title: instance.title || null,
+      saved: !!instance.saved,
       cwd: instance.cwd,
       status: instance.status,
       startedAt: instance.startedAt,
@@ -773,6 +782,16 @@ const InstanceManager = {
     const instance = instances.get(instanceId);
     if (!instance) return false;
     instance.status = status;
+    return true;
+  },
+
+  // Saved instances survive manual stops and group deletes. The write joins the record's
+  // queue, so saving right after a start lands after the insert.
+  setSaved(instanceId, saved) {
+    const instance = instances.get(instanceId);
+    if (!instance || !isRemembered(instance)) return false;
+    instance.saved = !!saved;
+    persist(instance, () => InstanceStore.setSaved(instanceId, instance.saved));
     return true;
   },
 

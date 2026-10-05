@@ -21,6 +21,9 @@ export const STATUS_CONFIG = {
 // Stopping an AI instance deletes it for good; stopping a terminal just closes it.
 export const stopConfirmText = instance => {
   const label = getInstanceTitle(instance) || 'this instance';
+  if (instance?.saved) {
+    return `Stop "${label}"? It stays in Saved with its messages, and you can start it again from there.`;
+  }
   return instance?.type === 'claude' || instance?.type === 'observer'
     ? `Stop "${label}"? The instance and its messages are deleted for good.`
     : `Stop "${label}"? This will close the terminal.`;

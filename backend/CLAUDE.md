@@ -46,10 +46,11 @@ to the dashboard over uWebSockets.js. Built on rest-api-boilerplate.
 `input` and `user_message` take optional `attachments` (stored file ids): `input` appends their
 paths to the text, `user_message` stores them on the feed item.
 Client → Server: create, create_observer, create_terminal, resume, input, stop, stop_group,
-start_group, resize, list, subscribe, unsubscribe, user_response, user_message, rename, move_group
+start_group, resize, list, subscribe, unsubscribe, user_response, user_message, rename, move_group,
+set_saved
 Server → Client: instances, created, group_started, instance_state, output, status, status_update,
 title_update, feed_item, user_input_needed, pending_cleared, plan_saved, stopped, group_stopped,
-group_status, group_changed, start_failed, remembered_changed, error
+group_status, group_changed, start_failed, remembered_changed, saved_update, error
 
 ## More
 Root `CLAUDE.md` and `LIVE-AND-PERSISTENT-INSTANCES-PLAN.md`.

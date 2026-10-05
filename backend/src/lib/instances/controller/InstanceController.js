@@ -94,7 +94,8 @@ const InstanceController = {
   // Instances that exist in the database but aren't running: they exited on their
   // own, or were running when the backend stopped.
   async getRemembered(ctx) {
-    const records = await InstanceStore.listRecords(InstanceManager.runningIds());
+    const running = new Set(InstanceManager.runningIds());
+    const records = await InstanceStore.listRecords([...running]);
     return ctx.modS.responses.createSuccessResponse(ctx, {
       instances: records.map(r => ({
         id: r._id,
@@ -107,6 +108,8 @@ const InstanceController = {
         groupId: r.groupId,
         hasSession: !!r.sessionId,
         resumeError: r.resumeError || null,
+        saved: !!r.saved,
+        running: running.has(r._id),
         messageCount: r.messageCount,
         startedAt: r.startedAt,
         lastActiveAt: r.lastActiveAt,
@@ -137,14 +140,19 @@ const InstanceController = {
     });
   },
 
-  // Removing a remembered instance is a manual stop: record and messages are deleted,
-  // plans are kept.
+  // Remove from the Remembered or Saved list. A stopped instance is deleted for good
+  // (record, messages, attachments; plans are kept). A running saved one is only unsaved.
   async removeRemembered(ctx) {
     const { instanceId } = ctx.request.body;
     if (!instanceId || typeof instanceId !== 'string') return badRequest(ctx, 'instanceId is required');
-    if (InstanceManager.get(instanceId)) return badRequest(ctx, 'This instance is running. Stop it from its card instead.');
-
-    await InstanceStore.deleteRecord(instanceId);
+    const running = InstanceManager.get(instanceId);
+    if (running) {
+      if (!running.saved) return badRequest(ctx, 'This instance is running. Stop it from its card instead.');
+      InstanceManager.setSaved(instanceId, false);
+      WsHandler.publish('global', { type: 'saved_update', instanceId, saved: false });
+    } else {
+      await InstanceStore.deleteRecord(instanceId, { force: true });
+    }
     WsHandler.publish('global', { type: 'remembered_changed' });
     return ctx.modS.responses.createSuccessResponse(ctx);
   },

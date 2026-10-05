@@ -96,6 +96,10 @@ hot-reloads and never touches the backend or its PTYs.
 - The title bar's remembered-instances icon lists them. Start again resumes the session under the
   same instance id in any group: Claude with `--resume` (or `--session-id` if it never talked),
   Codex with `codex resume <id>` using the id detected from its rollout file.
+- **Saved instances** (🔖 on a card or in the instance window; record field `saved`): kept through
+  manual Stop, Stop all, Delete group and restarts, listed under the title bar's Saved icon, and
+  deleted only by Remove there (a running one is just unsaved). Every record delete checks
+  `saved` in the same query (`InstanceStore.deleteRecord`, `deleteRecordsInGroup`).
 - Groups are stored from creation, unsaved ones as drafts (`draft: true`), so a group's id never
   changes; X only hides a tab. Design notes: `LIVE-AND-PERSISTENT-INSTANCES-PLAN.md`.
 - Tests: `node --test "tests/*.test.mjs"` (Node 24 needs the glob) covers the orphan sweep and

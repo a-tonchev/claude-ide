@@ -3,6 +3,9 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import BookmarkIcon from '@mui/icons-material/Bookmark';
+import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
+import IconButton from '@mui/material/IconButton';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import { FeedAttachments } from '@/components/Attachments/Attachments';
@@ -73,6 +76,20 @@ export const StatusMark = ({ status, dotOnly = false }) => {
     </Box>
   );
 };
+
+// Bookmark: a saved instance is kept through manual stops, group deletes and restarts
+export const SaveToggle = ({ saved, onToggle, size = 16 }) => (
+  <IconButton
+    size="small"
+    onClick={onToggle}
+    title={saved ? 'Saved — click to unsave' : 'Save this instance (kept until you remove it from Saved)'}
+    aria-label={saved ? 'Unsave instance' : 'Save instance'}
+    aria-pressed={!!saved}
+    sx={{ color: saved ? '#6897BB' : '#808080', '&:hover': { color: '#89B8DE' } }}
+  >
+    {saved ? <BookmarkIcon sx={{ fontSize: size }} /> : <BookmarkBorderIcon sx={{ fontSize: size }} />}
+  </IconButton>
+);
 
 // Provider and similar facts on the right of a card header
 export const HeaderMeta = ({ children }) => (

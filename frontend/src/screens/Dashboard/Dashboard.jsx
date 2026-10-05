@@ -86,6 +86,7 @@ const Dashboard = () => {
   const [loadGroupOpen, setLoadGroupOpen] = useState(false);
   const [plansOpen, setPlansOpen] = useState(false);
   const [rememberedOpen, setRememberedOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
   const [viewingPlan, setViewingPlan] = useState(null);
   const [wsConnected, setWsConnected] = useState(false);
   const [instanceError, setInstanceError] = useState('');
@@ -114,6 +115,11 @@ const Dashboard = () => {
     remove: removeRemembered,
   } = useRememberedInstances();
 
+  // The backend lists the stopped instances plus every saved one (running or not).
+  // Remembered shows the unsaved ones, Saved the bookmarked ones.
+  const rememberedOnly = useMemo(() => rememberedInstances.filter(r => !r.saved), [rememberedInstances]);
+  const savedInstances = useMemo(() => rememberedInstances.filter(r => r.saved), [rememberedInstances]);
+
   // Remembered instances with a resume on its way, so a second click can't start one twice
   const resumingIds = useRef(new Set());
 
@@ -140,6 +146,7 @@ const Dashboard = () => {
     createInstance,
     stopInstance,
     renameInstance,
+    setInstanceSaved,
     writeToInstance,
     sendUserResponse,
     sendUserMessage,
@@ -426,14 +433,23 @@ const Dashboard = () => {
   }, [activeGroupId, neighbourTab, instanceList, stopInstance, deleteGroup, setActiveGroupId]);
 
   // Deleting a group also deletes its running and remembered instances, messages included.
+  // Saved instances are kept.
   const confirmDeleteGroup = useCallback(groupId => {
     const label = groups[groupId]?.name || 'this group';
-    const running = instanceList.filter(i => i.groupId === groupId).length;
-    const remembered = rememberedInstances.filter(r => r.groupId === groupId).length;
+    const runningInGroup = instanceList.filter(i => i.groupId === groupId);
+    const running = runningInGroup.filter(i => !i.saved).length;
+    const remembered = rememberedOnly.filter(r => r.groupId === groupId).length;
+    const savedIds = new Set([
+      ...runningInGroup.filter(i => i.saved).map(i => i.id),
+      ...savedInstances.filter(r => r.groupId === groupId).map(r => r.id),
+    ]);
     const counts = [running && `${running} running`, remembered && `${remembered} remembered`].filter(Boolean);
     const detail = counts.length ? ` Its instances (${counts.join(', ')}) and their messages are deleted too.` : '';
-    openStopConfirm(`Delete "${label}" permanently?${detail}`, () => handleDeleteGroup(groupId));
-  }, [groups, instanceList, rememberedInstances, openStopConfirm, handleDeleteGroup]);
+    const kept = savedIds.size
+      ? ` ${savedIds.size} saved instance${savedIds.size === 1 ? ' is' : 's are'} kept in Saved.`
+      : '';
+    openStopConfirm(`Delete "${label}" permanently?${detail}${kept}`, () => handleDeleteGroup(groupId));
+  }, [groups, instanceList, rememberedOnly, savedInstances, openStopConfirm, handleDeleteGroup]);
 
   // Bring a remembered instance back, in the picked group or a new draft named after it.
   const handleResumeRemembered = useCallback(async (record, groupId) => {
@@ -665,6 +681,7 @@ const Dashboard = () => {
         onViewInstructions={instance.type === 'observer' ? handleViewInstructions : undefined}
         onMoveToGroup={handleOpenMoveMenu}
         onRename={renameInstance}
+        onToggleSaved={setInstanceSaved}
         {...desktopOnly}
       />
     );
@@ -752,8 +769,10 @@ const Dashboard = () => {
           onManageKeePass={() => setKeepassOpen(true)}
           onManageLaunchFlags={() => setLaunchFlagsOpen(true)}
           onManagePlans={() => setPlansOpen(true)}
-          rememberedCount={rememberedInstances.length}
+          rememberedCount={rememberedOnly.length}
           onOpenRemembered={() => setRememberedOpen(true)}
+          savedCount={savedInstances.length}
+          onOpenSaved={() => setSavedOpen(true)}
           groupSelector={isMobile ? (
             <>
               <MobileGroupPicker
@@ -977,7 +996,18 @@ const Dashboard = () => {
       <RememberedInstancesDialog
         open={rememberedOpen}
         onClose={() => setRememberedOpen(false)}
-        instances={rememberedInstances}
+        instances={rememberedOnly}
+        loading={rememberedLoading}
+        groups={groupList}
+        onResume={handleResumeRemembered}
+        onRemove={handleRemoveRemembered}
+      />
+
+      <RememberedInstancesDialog
+        mode="saved"
+        open={savedOpen}
+        onClose={() => setSavedOpen(false)}
+        instances={savedInstances}
         loading={rememberedLoading}
         groups={groupList}
         onResume={handleResumeRemembered}

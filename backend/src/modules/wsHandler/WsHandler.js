@@ -414,16 +414,45 @@ function cleanupPendingTimers(instanceId) {
 }
 
 // A manual stop: the instance is gone for good, record and messages included.
+// Save or unsave an AI instance, running or remembered. Every window updates its bookmark,
+// and the Remembered/Saved lists refresh.
+async function handleSetSaved(ws, message) {
+  const { instanceId } = message;
+  const saved = !!message.saved;
+  if (!instanceId || typeof instanceId !== 'string') return;
+  const running = InstanceManager.get(instanceId);
+  let ok;
+  if (running) {
+    ok = InstanceManager.setSaved(instanceId, saved);
+  } else {
+    try {
+      ok = await InstanceStore.setSaved(instanceId, saved);
+    } catch (err) {
+      console.error(`[instance ${instanceId}] saved flag not stored:`, err.message);
+      ok = false;
+    }
+  }
+  if (!ok) {
+    sendJson(ws, { type: 'error', message: 'This instance can not be saved (only AI instances can).' });
+    return;
+  }
+  WsHandler.publish('global', { type: 'saved_update', instanceId, saved });
+  WsHandler.publish('global', { type: 'remembered_changed' });
+}
+
 function handleStop(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
 
   const groupId = InstanceManager.get(instanceId)?.groupId;
+  const wasSaved = !!InstanceManager.get(instanceId)?.saved;
 
   cleanupPendingTimers(instanceId);
   if (InstanceManager.stop(instanceId, { discard: true })) {
     WsHandler.publish('global', { type: 'stopped', instanceId });
     if (groupId) publishGroupStatus(groupId);
+    // A saved instance stays: the Saved list shows it as stopped now
+    if (wasSaved) WsHandler.publish('global', { type: 'remembered_changed' });
   }
 }
 
@@ -562,8 +591,10 @@ function handleStopGroup(ws, message) {
   const { groupId } = message;
   if (!groupId) return;
 
+  const anySaved = InstanceManager.getByGroupId(groupId).some(i => i.saved);
   const stoppedIds = InstanceManager.stopGroup(groupId, { discard: true });
   stoppedIds.forEach(cleanupPendingTimers);
+  if (anySaved) WsHandler.publish('global', { type: 'remembered_changed' });
 
   WsHandler.publish('global', {
     type: 'group_stopped',
@@ -636,6 +667,7 @@ const messageHandlers = {
   user_response: handleUserResponse,
   user_message: handleUserMessage,
   rename: handleRename,
+  set_saved: handleSetSaved,
   move_group: handleMoveGroup,
   start_group: handleStartGroup,
   stop_group: handleStopGroup,

@@ -36,6 +36,11 @@ const useInstances = onMessage => {
     send('rename', { instanceId, title });
   }, [send]);
 
+  // Save or unsave an AI instance (running or remembered)
+  const setInstanceSaved = useCallback((instanceId, saved) => {
+    send('set_saved', { instanceId, saved });
+  }, [send]);
+
   // attachments: stored file ids; the backend adds their paths to the text the AI gets
   const writeToInstance = useCallback((instanceId, data, attachments) => {
     send('input', attachments?.length ? { instanceId, data, attachments } : { instanceId, data });
@@ -101,6 +106,7 @@ const useInstances = onMessage => {
     createInstance,
     stopInstance,
     renameInstance,
+    setInstanceSaved,
     writeToInstance,
     resizeInstance,
     subscribeInstance,

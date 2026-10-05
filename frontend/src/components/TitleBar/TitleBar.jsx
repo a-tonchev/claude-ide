@@ -12,6 +12,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import RestoreIcon from '@mui/icons-material/Restore';
+import BookmarksOutlinedIcon from '@mui/icons-material/BookmarksOutlined';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -25,7 +26,7 @@ import useMobile from '@/components/layout/hooks/useMobile';
 const TitleBar = ({
   onNewGroup, onAddAI, onAddTerminal, onAddObserver, onLoadGroup,
   onManageProjects, onManageTerminals, onManageObservers, onManagePlans, onManageKeePass,
-  onManageLaunchFlags, rememberedCount = 0, onOpenRemembered, groupSelector = null,
+  onManageLaunchFlags, rememberedCount = 0, onOpenRemembered, savedCount = 0, onOpenSaved, groupSelector = null,
 }) => {
   const { isMobile } = useMobile();
   const [settingsAnchor, setSettingsAnchor] = useState(null);
@@ -111,9 +112,27 @@ const TitleBar = ({
 
       <IconButton
         size="small"
+        onClick={onOpenSaved}
+        title={savedCount ? `Saved instances (${savedCount})` : 'Saved instances'}
+        aria-label="Saved instances"
+        sx={{ color: '#808080', mr: 0.5, ml: groupSelector ? 0.5 : 0 }}
+      >
+        <Badge
+          badgeContent={savedCount}
+          color="primary"
+          max={99}
+          sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}
+        >
+          <BookmarksOutlinedIcon fontSize="small" />
+        </Badge>
+      </IconButton>
+
+      <IconButton
+        size="small"
         onClick={onOpenRemembered}
         title={rememberedCount ? `Remembered instances (${rememberedCount})` : 'Remembered instances'}
-        sx={{ color: '#808080', mr: 0.5, ml: groupSelector ? 0.5 : 0 }}
+        aria-label="Remembered instances"
+        sx={{ color: '#808080', mr: 0.5 }}
       >
         <Badge
           badgeContent={rememberedCount}

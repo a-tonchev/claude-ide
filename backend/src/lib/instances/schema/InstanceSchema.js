@@ -25,6 +25,8 @@ const InstanceSchema = {
     status: { bsonType: 'string' },
     pendingInput: { bsonType: ['object', 'null'] },
     resumeError: nullableString,
+    // Saved instances are never deleted by Stop, Delete group or restarts, only from the Saved list
+    saved: { bsonType: 'bool' },
     startedAt: date,
     lastActiveAt: date,
     createdAt: date,
