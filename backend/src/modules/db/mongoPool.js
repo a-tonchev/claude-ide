@@ -9,6 +9,12 @@ const { MongoClient } = mongodb;
 
 let databasesEnsured = false;
 
+// Db handle for code that runs outside the HTTP route context (e.g. the
+// WebSocket handler). Set once when mongoPool() is called at startup.
+let sharedDb = null;
+
+export const getSharedDb = () => sharedDb;
+
 const mongoPool = connOptions => {
   const { uri: mongoUrl, dbName } = connOptions;
 
@@ -19,6 +25,8 @@ const mongoPool = connOptions => {
       maxPoolSize: 500,
       minPoolSize: 1,
     });
+
+    sharedDb = client.db(dbName);
 
     if (!databasesEnsured) {
       databasesEnsured = true;

@@ -1,5 +1,12 @@
 import SystemSettingsServices from '#modules/systemSettings/SystemSettingsServices';
 import InstanceManager from '#modules/instanceManager/InstanceManager';
+import InstanceStore from '#modules/instanceStore/InstanceStore';
+import DatabaseHelpers from '#modules/db/DatabaseHelpers';
+import { getSharedDb } from '#modules/db/mongoPool';
+import SettingsEnums from '#lib/settings/enums/SettingsEnums';
+import GroupEnums from '#lib/groups/enums/GroupEnums';
+import { FeedKinds } from '#lib/instances/enums/InstanceEnums';
+import FileStore from '#modules/files/FileStore';
 
 const prefix = SystemSettingsServices.getRoutePrefix();
 const wsPath = `${prefix}/ws`;
@@ -9,6 +16,9 @@ const connectedClients = new Set();
 
 // How long (ms) with no PTY output before we consider a Claude instance idle
 const IDLE_TIMEOUT_MS = 15000;
+
+// An instance (new or resumed) that exits this quickly never really started.
+const START_FAILURE_WINDOW_MS = 10000;
 
 // Reusable TextDecoder for WebSocket messages
 const utf8decoder = new TextDecoder();
@@ -39,29 +49,78 @@ function subscribeAllClients(instanceId) {
   }
 }
 
-// Compute and broadcast current status summary for an instance's group
-function broadcastGroupStatus(instanceId) {
-  const instance = InstanceManager.get(instanceId);
-  if (!instance || !instance.groupId) return;
-
-  const groupInstances = InstanceManager.getByGroupId(instance.groupId);
+// Status counts of a group's running AI instances, for the tab chips
+function publishGroupStatus(groupId) {
   const statuses = {};
-  for (const inst of groupInstances) {
+  for (const inst of InstanceManager.getByGroupId(groupId)) {
     if ((inst.type === 'claude' || inst.type === 'observer') && inst.status !== 'exited') {
       const s = inst.status || 'running';
       statuses[s] = (statuses[s] || 0) + 1;
     }
   }
+  WsHandler.publish('global', { type: 'group_status', groupId, statuses });
+}
 
-  WsHandler.publish('global', {
-    type: 'group_status',
-    groupId: instance.groupId,
-    statuses,
-  });
+function broadcastGroupStatus(instanceId) {
+  const instance = InstanceManager.get(instanceId);
+  if (instance?.groupId) publishGroupStatus(instance.groupId);
+}
+
+// Tell every client about an instance's status, including the group tab counts
+function publishStatus(instanceId, status) {
+  WsHandler.publish(`instance_${instanceId}`, { type: 'status_update', instanceId, status });
+  broadcastGroupStatus(instanceId);
+}
+
+function setStatus(instanceId, status) {
+  InstanceManager.updateStatus(instanceId, status);
+  publishStatus(instanceId, status);
+}
+
+// Store a feed item (user message, Claude message, milestone) and push the stored
+// item to every client. If the database write fails the item is still shown live,
+// but it won't be there after a reload.
+async function recordFeedItem(instanceId, item) {
+  let stored;
+  try {
+    stored = await InstanceStore.addFeedItem(instanceId, item);
+  } catch (err) {
+    console.error(`[instance ${instanceId}] feed item not saved:`, err.message);
+    stored = {
+      ...item, id: `unsaved-${Date.now()}-${Math.random().toString(36).slice(2)}`, timestamp: new Date(),
+    };
+  }
+  WsHandler.publish(`instance_${instanceId}`, { type: 'feed_item', instanceId, item: stored });
+  return stored;
+}
+
+// Launch flags are settings docs (type launchFlag). Clients send ids only; the
+// args and instructions are read here so a client can't dictate what gets
+// appended to the command line. Order follows the ids as sent.
+async function resolveLaunchFlags(flagIds) {
+  const ids = Array.isArray(flagIds) ? flagIds.filter(id => typeof id === 'string') : [];
+  if (!ids.length) return [];
+  const db = getSharedDb();
+  if (!db) return [];
+  const objectIds = DatabaseHelpers.getObjectIds(ids).filter(Boolean);
+  const docs = await db.collection(SettingsEnums.COLLECTION_NAME)
+    .find({ _id: { $in: objectIds }, type: SettingsEnums.TYPES.LAUNCH_FLAG })
+    .toArray();
+  const byId = new Map(docs.map(d => [d._id.toString(), d]));
+  return ids
+    .map(id => byId.get(id))
+    .filter(Boolean)
+    .map(d => ({
+      id: d._id.toString(),
+      name: d.name,
+      args: d.args || '',
+      instructions: d.instructions || '',
+    }));
 }
 
 function wireInstance(ws, instance) {
-  ws.subscribe(`instance_${instance.id}`);
+  // The creating socket may have closed while launch flags were resolved.
+  if (!ws.isClosed) ws.subscribe(`instance_${instance.id}`);
 
   // Idle detection for Claude instances
   let idleTimer = null;
@@ -81,15 +140,7 @@ function wireInstance(ws, instance) {
     if (instance.type !== 'claude' && instance.type !== 'observer') return;
     idleTimer = setTimeout(() => {
       // Only transition if currently in an active state
-      if (['working', 'thinking'].includes(instance.status)) {
-        instance.status = 'ready';
-        WsHandler.publish(`instance_${instance.id}`, {
-          type: 'status_update',
-          instanceId: instance.id,
-          status: 'ready',
-        });
-        broadcastGroupStatus(instance.id);
-      }
+      if (['working', 'thinking'].includes(instance.status)) setStatus(instance.id, 'ready');
     }, IDLE_TIMEOUT_MS);
   }
 
@@ -99,18 +150,10 @@ function wireInstance(ws, instance) {
 
     // Quick prompt detection for Claude instances: if output contains
     // the Claude Code prompt indicator, transition to ready immediately
-    if ((instance.type === 'claude' || instance.type === 'observer') && ['working', 'thinking', 'running'].includes(instance.status)) {
+    if (instance.provider !== 'codex' && (instance.type === 'claude' || instance.type === 'observer') && ['working', 'thinking', 'running'].includes(instance.status)) {
       const clean = stripAnsi(data);
       // Claude Code shows ">" or "❯" at start of line when waiting for input
-      if (/(?:^|\n)\s*[>❯]\s*$/.test(clean)) {
-        instance.status = 'ready';
-        WsHandler.publish(`instance_${instance.id}`, {
-          type: 'status_update',
-          instanceId: instance.id,
-          status: 'ready',
-        });
-        broadcastGroupStatus(instance.id);
-      }
+      if (/(?:^|\n)\s*[>❯]\s*$/.test(clean)) setStatus(instance.id, 'ready');
     }
 
     WsHandler.publish(`instance_${instance.id}`, {
@@ -123,11 +166,31 @@ function wireInstance(ws, instance) {
   instance.onExit = instance.pty.onExit(({ exitCode }) => {
     clearIdleTimer();
     cleanupPendingTimers(instance.id);
+    InstanceManager.detectCodexSession(instance.id, { force: true });
+
+    // An instance that ends this soon never really started; its remembered entry says so.
     const uptime = Date.now() - instance.startedAt.getTime();
-    if (uptime < 3000) {
+    let startError = null;
+    if (uptime < START_FAILURE_WINDOW_MS) {
+      const seconds = Math.round(uptime / 1000);
       console.warn(`Instance ${instance.id} (${instance.type}/${instance.projectName}) exited after ${uptime}ms with code ${exitCode}`);
+      startError = instance.resumed
+        ? `The session could not be resumed (exited with code ${exitCode} after ${seconds}s).`
+        : `The instance stopped right after starting (exit code ${exitCode} after ${seconds}s). `
+          + 'Check that the CLI is installed and its launch flags are valid.';
     }
-    instance.status = 'exited';
+    InstanceManager.markExited(instance.id, { resumeError: startError });
+    // Said out loud, so a card that can't start (e.g. a bad launch flag) doesn't fail silently
+    if (startError && instance.type !== 'terminal') {
+      WsHandler.publish('global', {
+        type: 'start_failed',
+        instanceId: instance.id,
+        savedItemId: instance.savedItemId || null,
+        groupId: instance.groupId,
+        name: instance.title || instance.projectName,
+        message: startError,
+      });
+    }
 
     WsHandler.publish(`instance_${instance.id}`, {
       type: 'status',
@@ -138,15 +201,44 @@ function wireInstance(ws, instance) {
 
     broadcastGroupStatus(instance.id);
 
-    // Clean up instance from the Map after a delay so clients receive the exit status
+    // Keep the card a moment so clients see the exit, then hand AI instances over
+    // to the remembered list. Exited terminals stay until the page reloads.
     setTimeout(() => {
-      InstanceManager.removeIfExited(instance.id);
+      if (InstanceManager.removeIfExited(instance.id) && instance.type !== 'terminal') {
+        WsHandler.publish('global', { type: 'stopped', instanceId: instance.id, remembered: true });
+        WsHandler.publish('global', { type: 'remembered_changed' });
+      }
     }, 5000);
   });
 }
 
-function handleCreate(ws, message) {
-  const { projectId, name, path, args, groupId, remote } = message;
+// Wire a new or resumed instance and announce it to every client.
+function announce(ws, instance) {
+  wireInstance(ws, instance);
+  subscribeAllClients(instance.id);
+  WsHandler.publish('global', {
+    ...InstanceManager.toPublic(instance),
+    type: 'created',
+    instanceId: instance.id,
+    instanceType: instance.type,
+  });
+  broadcastGroupStatus(instance.id);
+}
+
+// The running instances, with the client subscribed to each one's topic so it
+// receives status_update, feed_item, etc.
+function sendInstanceList(ws) {
+  const list = InstanceManager.list();
+  for (const inst of list) {
+    ws.subscribe(`instance_${inst.id}`);
+  }
+  sendJson(ws, { type: 'instances', list });
+}
+
+async function handleCreate(ws, message) {
+  const {
+    projectId, name, path, args, groupId, flagIds, provider = 'claude', savedItemId = null,
+  } = message;
 
   if (!projectId || !path) {
     return sendJson(ws, { type: 'error', message: 'projectId and path are required' });
@@ -154,35 +246,16 @@ function handleCreate(ws, message) {
 
   let instance;
   try {
-    instance = InstanceManager.create(projectId, name || '', path, args || [], { remote: !!remote });
+    const launchFlags = provider === 'claude' ? await resolveLaunchFlags(flagIds) : [];
+    instance = InstanceManager.create(projectId, name || '', path, args || [], {
+      launchFlags, provider, savedItemId, groupId: groupId || null,
+    });
   } catch (err) {
     console.error('Instance create failed:', err.message);
     return sendJson(ws, { type: 'error', message: err.message });
   }
 
-  if (groupId) {
-    InstanceManager.setGroupId(instance.id, groupId);
-  }
-
-  wireInstance(ws, instance);
-
-  // Subscribe ALL connected clients to this new instance
-  subscribeAllClients(instance.id);
-
-  WsHandler.publish('global', {
-    type: 'created',
-    instanceId: instance.id,
-    projectId: instance.projectId,
-    projectName: instance.projectName,
-    instanceType: instance.type,
-    groupId: instance.groupId,
-    cwd: instance.cwd,
-    remote: instance.remote || false,
-  });
-
-  if (instance.groupId) {
-    broadcastGroupStatus(instance.id);
-  }
+  announce(ws, instance);
 }
 
 function handleCreateObserver(ws, message) {
@@ -200,30 +273,13 @@ function handleCreateObserver(ws, message) {
     return sendJson(ws, { type: 'error', message: err.message });
   }
 
-  if (groupId) {
-    InstanceManager.setGroupId(instance.id, groupId);
-  }
-
-  wireInstance(ws, instance);
-  subscribeAllClients(instance.id);
-
-  WsHandler.publish('global', {
-    type: 'created',
-    instanceId: instance.id,
-    projectId: instance.projectId,
-    projectName: instance.projectName,
-    instanceType: instance.type,
-    groupId: instance.groupId,
-    cwd: instance.cwd,
-  });
-
-  if (instance.groupId) {
-    broadcastGroupStatus(instance.id);
-  }
+  announce(ws, instance);
 }
 
 function handleCreateTerminal(ws, message) {
-  const { name, shell, command, cwd, groupId } = message;
+  const {
+    name, shell, command, cwd, groupId, savedItemId,
+  } = message;
 
   if (!shell) {
     return sendJson(ws, { type: 'error', message: 'shell is required' });
@@ -231,27 +287,55 @@ function handleCreateTerminal(ws, message) {
 
   let instance;
   try {
-    instance = InstanceManager.createTerminal({ name, shell, command, cwd, groupId });
+    instance = InstanceManager.createTerminal({
+      name, shell, command, cwd, groupId, savedItemId,
+    });
   } catch (err) {
     console.error('Terminal create failed:', err.message);
     return sendJson(ws, { type: 'error', message: err.message });
   }
 
-  wireInstance(ws, instance);
+  announce(ws, instance);
+}
 
-  // Subscribe ALL connected clients to this new instance
-  subscribeAllClients(instance.id);
+// Bring a remembered instance back: same id (so its messages and plans follow),
+// same session, in the group the user picked.
+async function handleResume(ws, message) {
+  const { recordId, groupId = null } = message;
+  if (!recordId) {
+    return sendJson(ws, { type: 'error', message: 'recordId is required' });
+  }
 
-  WsHandler.publish('global', {
-    type: 'created',
-    instanceId: instance.id,
-    projectName: instance.projectName,
-    instanceType: instance.type,
-    groupId: instance.groupId,
-    cwd: instance.cwd,
-    shell: instance.shell,
-    command: instance.command,
-  });
+  const record = await InstanceStore.getRecord(recordId);
+  if (!record) {
+    return sendJson(ws, { type: 'error', message: 'This instance no longer exists.' });
+  }
+
+  let instance;
+  try {
+    const launchFlags = record.type !== 'observer' && record.provider === 'claude'
+      ? await resolveLaunchFlags(record.flagIds)
+      : [];
+    // Checked after the last await: from here create() runs synchronously, so two resume
+    // requests for the same record can't both start it.
+    if (InstanceManager.get(recordId)) {
+      return sendJson(ws, { type: 'error', message: 'This instance is already running.' });
+    }
+    instance = record.type === 'observer'
+      ? InstanceManager.createObserver(record.projectId, record.projectName, record.cwd, groupId, { record })
+      : InstanceManager.create(record.projectId, record.projectName || '', record.cwd, [], {
+        launchFlags, provider: record.provider, savedItemId: record.savedItemId || null, groupId, record,
+      });
+  } catch (err) {
+    console.error('Instance resume failed:', err.message);
+    await InstanceStore.updateRecord(recordId, { resumeError: err.message })
+      .catch(saveErr => console.error(`[instance ${recordId}] resume error not saved:`, saveErr.message));
+    WsHandler.publish('global', { type: 'remembered_changed' });
+    return sendJson(ws, { type: 'error', message: err.message });
+  }
+
+  announce(ws, instance);
+  WsHandler.publish('global', { type: 'remembered_changed' });
 }
 
 // Delay between writing text and \r so ConPTY forwards them as
@@ -274,9 +358,21 @@ function cancelPendingSubmit(instanceId) {
   }
 }
 
+// Attachments reach the AI as their full paths, added to the message it is sent
+function withAttachmentPaths(instanceId, text, attachmentIds) {
+  const files = FileStore.describe(instanceId, attachmentIds);
+  if (!files.length) return text;
+  const list = files.map(f => `"${f.path}"`).join(', ');
+  return `${text}\n\nAttached files: ${list}`;
+}
+
 function handleInput(ws, message) {
-  const { instanceId, data } = message;
+  const { instanceId, attachments } = message;
+  let { data } = message;
   if (!instanceId || data === undefined) return;
+  if (Array.isArray(attachments) && attachments.length && data.endsWith('\r')) {
+    data = `${withAttachmentPaths(instanceId, data.slice(0, -1), attachments)}\r`;
+  }
 
   // Cancel any pending submit-enter for this instance on new input.
   cancelPendingSubmit(instanceId);
@@ -316,29 +412,17 @@ function cleanupPendingTimers(instanceId) {
   }
 }
 
+// A manual stop: the instance is gone for good, record and messages included.
 function handleStop(ws, message) {
   const { instanceId } = message;
   if (!instanceId) return;
 
-  const instance = InstanceManager.get(instanceId);
-  const groupId = instance?.groupId;
+  const groupId = InstanceManager.get(instanceId)?.groupId;
 
   cleanupPendingTimers(instanceId);
-  const stopped = InstanceManager.stop(instanceId);
-  if (stopped) {
+  if (InstanceManager.stop(instanceId, { discard: true })) {
     WsHandler.publish('global', { type: 'stopped', instanceId });
-    // Update group tab status after removing the instance
-    if (groupId) {
-      const remaining = InstanceManager.getByGroupId(groupId);
-      const statuses = {};
-      for (const inst of remaining) {
-        if ((inst.type === 'claude' || inst.type === 'observer') && inst.status !== 'exited') {
-          const s = inst.status || 'running';
-          statuses[s] = (statuses[s] || 0) + 1;
-        }
-      }
-      WsHandler.publish('global', { type: 'group_status', groupId, statuses });
-    }
+    if (groupId) publishGroupStatus(groupId);
   }
 }
 
@@ -359,36 +443,9 @@ function handleSubscribe(ws, message) {
 
   ws.subscribe(`instance_${instanceId}`);
 
-  // Send full instance state so popup windows get all data
-  sendJson(ws, {
-    type: 'instance_state',
-    instance: {
-      id: instance.id,
-      type: instance.type,
-      projectId: instance.projectId,
-      projectName: instance.projectName,
-      cwd: instance.cwd,
-      status: instance.status,
-      startedAt: instance.startedAt,
-      milestones: instance.milestones,
-      messages: instance.messages || [],
-      pendingInput: instance.pendingInput,
-      userMessages: instance.userMessages,
-      plans: instance.plans,
-      groupId: instance.groupId,
-      shell: instance.shell,
-      command: instance.command,
-    },
-  });
-}
-
-function handleList(ws) {
-  const instancesList = InstanceManager.list();
-  // Re-subscribe in case this is a reconnect (open handler handles initial subscribe)
-  for (const inst of instancesList) {
-    ws.subscribe(`instance_${inst.id}`);
-  }
-  sendJson(ws, { type: 'instances', list: instancesList });
+  // Full instance state so popup windows get all data. The feed and plans are
+  // loaded from the database by the client.
+  sendJson(ws, { type: 'instance_state', instance: InstanceManager.toPublic(instance) });
 }
 
 function handleUnsubscribe(ws, message) {
@@ -406,7 +463,7 @@ function handleUserResponse(ws, message) {
     return sendJson(ws, { type: 'error', message: 'Instance not found' });
   }
 
-  InstanceManager.addUserMessage(instanceId, choice);
+  recordFeedItem(instanceId, { kind: FeedKinds.USER, text: choice });
   cancelPendingSubmit(instanceId);
   InstanceManager.write(instanceId, choice);
   const choiceTimer = setTimeout(() => {
@@ -416,29 +473,27 @@ function handleUserResponse(ws, message) {
   pendingEnter.set(instanceId, choiceTimer);
 
   InstanceManager.clearPendingInput(instanceId);
-  InstanceManager.updateStatus(instanceId, 'working');
-
   WsHandler.publish(`instance_${instanceId}`, {
     type: 'pending_cleared',
     instanceId,
   });
-
-  WsHandler.publish(`instance_${instanceId}`, {
-    type: 'status_update',
-    instanceId,
-    status: 'working',
-  });
+  setStatus(instanceId, 'working');
 }
 
 function handleUserMessage(ws, message) {
-  const { instanceId, text, timestamp } = message;
+  const { instanceId, text, attachments } = message;
   if (!instanceId || !text) return;
-  InstanceManager.addUserMessage(instanceId, text, timestamp);
+  const instance = InstanceManager.get(instanceId);
+  if (!instance) return;
+
+  // The feed shows attachments as files, not as the paths the AI gets
+  const files = FileStore.describe(instanceId, attachments).map(({ path: filePath, ...file }) => file);
+  recordFeedItem(instanceId, { kind: FeedKinds.USER, text, attachments: files });
+  InstanceManager.detectCodexSession(instanceId);
 
   // If there was a pending input (multiple-choice prompt), clear it on the backend
   // so reconnects don't resurrect stale choices.
-  const instance = InstanceManager.get(instanceId);
-  if (instance && instance.pendingInput) {
+  if (instance.pendingInput) {
     InstanceManager.clearPendingInput(instanceId);
     WsHandler.publish(`instance_${instanceId}`, {
       type: 'pending_cleared',
@@ -447,7 +502,7 @@ function handleUserMessage(ws, message) {
   }
 }
 
-function handleStartGroup(ws, message) {
+async function handleStartGroup(ws, message) {
   const { groupId, items } = message;
   if (!groupId || !items || !items.length) {
     return sendJson(ws, { type: 'error', message: 'groupId and items are required' });
@@ -459,8 +514,11 @@ function handleStartGroup(ws, message) {
     try {
       let instance;
       if (item.type === 'claude') {
-        instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', [], { remote: !!item.remote });
-        InstanceManager.setGroupId(instance.id, groupId);
+        // eslint-disable-next-line no-await-in-loop
+        const launchFlags = (item.provider || 'claude') === 'claude' ? await resolveLaunchFlags(item.flagIds) : [];
+        instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', [], {
+          launchFlags, provider: item.provider || 'claude', savedItemId: item.id || null, groupId,
+        });
       } else if (item.type === 'observer') {
         instance = InstanceManager.createObserver(item.observerId, item.name || '', item.cwd || '', groupId);
       } else if (item.type === 'terminal') {
@@ -470,6 +528,7 @@ function handleStartGroup(ws, message) {
           command: item.command,
           cwd: item.cwd,
           groupId,
+          savedItemId: item.id || null,
         });
       }
 
@@ -478,13 +537,7 @@ function handleStartGroup(ws, message) {
         // Subscribe ALL connected clients to this new instance
         subscribeAllClients(instance.id);
         createdInstances.push({
-          instanceId: instance.id,
-          type: instance.type,
-          name: instance.projectName,
-          projectId: instance.projectId,
-          cwd: instance.cwd,
-          shell: instance.shell,
-          command: instance.command,
+          ...InstanceManager.toPublic(instance), instanceId: instance.id, name: instance.projectName,
         });
       }
     } catch (err) {
@@ -498,60 +551,92 @@ function handleStartGroup(ws, message) {
     instances: createdInstances,
   });
 
-  // Broadcast initial group status so tabs show it immediately
-  if (createdInstances.length > 0) {
-    broadcastGroupStatus(createdInstances[0].instanceId);
-  }
+  // Group status so tabs show it immediately
+  if (createdInstances.length > 0) publishGroupStatus(groupId);
 }
 
+// "Stop all" on a group is a manual stop for every instance in it. group_stopped
+// carries the ids, so clients remove each instance from that one message.
 function handleStopGroup(ws, message) {
   const { groupId } = message;
   if (!groupId) return;
 
-  const stoppedIds = InstanceManager.stopGroup(groupId);
-
-  for (const instanceId of stoppedIds) {
-    cleanupPendingTimers(instanceId);
-    WsHandler.publish(`instance_${instanceId}`, {
-      type: 'stopped',
-      instanceId,
-    });
-  }
+  const stoppedIds = InstanceManager.stopGroup(groupId, { discard: true });
+  stoppedIds.forEach(cleanupPendingTimers);
 
   WsHandler.publish('global', {
     type: 'group_stopped',
     groupId,
     stoppedIds,
   });
-
-  // All instances stopped — clear group status
-  WsHandler.publish('global', { type: 'group_status', groupId, statuses: {} });
+  publishGroupStatus(groupId);
 }
 
-function handleReassignGroup(ws, message) {
-  const { oldGroupId, newGroupId } = message;
-  if (!oldGroupId || !newGroupId) return;
-
-  const instances = InstanceManager.getByGroupId(oldGroupId);
-  for (const instance of instances) {
-    InstanceManager.setGroupId(instance.id, newGroupId);
+// "Move to group…" on a running card. The instance's record follows, so it stays in the
+// new group after a refresh, a restart or a resume.
+async function handleMoveGroup(ws, message) {
+  const { instanceId, groupId } = message;
+  if (!instanceId || typeof groupId !== 'string') {
+    return sendJson(ws, { type: 'error', message: 'instanceId and groupId are required' });
   }
+
+  const groupObjectId = DatabaseHelpers.getObjectId(groupId);
+  const group = groupObjectId && await getSharedDb()?.collection(GroupEnums.COLLECTION_NAME)
+    .findOne({ _id: groupObjectId }, { projection: { _id: 1 } });
+  if (!group) {
+    return sendJson(ws, { type: 'error', message: 'The selected group no longer exists.' });
+  }
+
+  // After the await: the instance may have stopped meanwhile
+  const moved = InstanceManager.setGroup(instanceId, groupId);
+  if (!moved) {
+    return sendJson(ws, { type: 'error', message: 'This instance is no longer running.' });
+  }
+
+  WsHandler.publish('global', {
+    type: 'group_changed', instanceId, groupId, previousGroupId: moved.previousGroupId,
+  });
+  if (moved.previousGroupId) publishGroupStatus(moved.previousGroupId);
+  publishGroupStatus(groupId);
+}
+
+// Titles are saved on the instance record, so they survive a resume.
+// Empty title = reset to default.
+function handleRename(ws, message) {
+  const { instanceId, title } = message;
+  if (!instanceId || typeof title !== 'string') return;
+
+  const instance = InstanceManager.get(instanceId);
+  if (!instance) {
+    return sendJson(ws, { type: 'error', message: 'Instance not found' });
+  }
+
+  const trimmed = title.trim().slice(0, 120);
+  InstanceManager.setTitle(instanceId, trimmed || null);
+
+  WsHandler.publish(`instance_${instanceId}`, {
+    type: 'title_update',
+    instanceId,
+    title: trimmed || null,
+  });
 }
 
 const messageHandlers = {
   create: handleCreate,
   create_observer: handleCreateObserver,
   create_terminal: handleCreateTerminal,
+  resume: handleResume,
   input: handleInput,
   stop: handleStop,
   resize: handleResize,
-  list: handleList,
+  list: sendInstanceList,
   subscribe: handleSubscribe,
   unsubscribe: handleUnsubscribe,
   user_response: handleUserResponse,
   user_message: handleUserMessage,
+  rename: handleRename,
+  move_group: handleMoveGroup,
   start_group: handleStartGroup,
-  reassign_group: handleReassignGroup,
   stop_group: handleStopGroup,
 };
 
@@ -590,13 +675,7 @@ const WsHandler = {
         ws.isClosed = false;
         connectedClients.add(ws);
         ws.subscribe('global');
-        const instancesList = InstanceManager.list();
-        // Auto-subscribe to all existing instance topics so the client
-        // receives status_update, milestone, claude_message, etc.
-        for (const inst of instancesList) {
-          ws.subscribe(`instance_${inst.id}`);
-        }
-        sendJson(ws, { type: 'instances', list: instancesList });
+        sendInstanceList(ws);
       },
 
       message: (ws, message, isBinary) => {
@@ -607,7 +686,14 @@ const WsHandler = {
 
           const handler = messageHandlers[type];
           if (handler) {
-            handler(ws, parsed);
+            // create / start_group / resume are async (they read from the DB)
+            const result = handler(ws, parsed);
+            if (result && typeof result.catch === 'function') {
+              result.catch(err => {
+                console.error(`WsHandler ${type} failed:`, err);
+                sendJson(ws, { type: 'error', message: err.message || 'Request failed' });
+              });
+            }
           } else {
             sendJson(ws, { type: 'error', message: `Unknown message type: ${type}` });
           }
@@ -631,5 +717,7 @@ const WsHandler = {
   },
 };
 
-export { broadcastGroupStatus };
+export {
+  broadcastGroupStatus, publishStatus, recordFeedItem, setStatus,
+};
 export default WsHandler;

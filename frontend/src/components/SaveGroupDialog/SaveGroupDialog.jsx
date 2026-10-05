@@ -12,6 +12,8 @@ import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
 import SaveIcon from '@mui/icons-material/Save';
 
+import { getAiProvider, matchesSavedItem, runsInOtherGroup } from '@/helpers/aiHelper';
+
 const SaveGroupDialog = ({
   open, onClose, onSave, group, instances, isUpdate,
 }) => {
@@ -24,16 +26,16 @@ const SaveGroupDialog = ({
     }
   }, [open, group?.name]);
 
-  const groupInstances = Object.values(instances || {}).filter(
-    i => i.groupId === group?.id,
-  );
+  const allInstances = Object.values(instances || {});
+  const groupInstances = allInstances.filter(i => i.groupId === group?.id);
+
+  // A card whose instance was moved to another group is dropped from this one
+  const movedAway = item => runsInOtherGroup(item, group?.id, allInstances);
 
   // Items from the saved group that don't have a running instance
-  const savedOnlyItems = (group?.items || []).filter(item => !groupInstances.some(inst => {
-    if (inst.type !== item.type) return false;
-    if (inst.type === 'claude') return inst.projectId === item.projectId;
-    return (inst.projectName || inst.name) === item.name && inst.shell === item.shell;
-  }));
+  const savedOnlyItems = (group?.items || []).filter(
+    item => !groupInstances.some(inst => matchesSavedItem(inst, item)) && !movedAway(item),
+  );
 
   const handleSave = () => {
     // Build items from saved group items + running instances
@@ -46,6 +48,7 @@ const SaveGroupDialog = ({
       usedInstanceIds.add(inst.id);
       if (inst.type === 'terminal') {
         items.push({
+          id: inst.savedItemId || undefined,
           type: 'terminal',
           name: inst.projectName || inst.name,
           shell: inst.shell,
@@ -53,8 +56,16 @@ const SaveGroupDialog = ({
           cwd: inst.cwd,
         });
       } else {
+        const flagIds = (inst.launchFlags || []).map(f => f.id);
         items.push({
-          type: 'claude', projectId: inst.projectId, name: inst.projectName || inst.name, path: inst.cwd,
+          ...existingItems.find(item => matchesSavedItem(inst, item)),
+          id: inst.savedItemId || undefined,
+          type: 'claude',
+          provider: getAiProvider(inst),
+          projectId: inst.projectId,
+          name: inst.projectName || inst.name,
+          path: inst.cwd,
+          flagIds: flagIds.length ? flagIds : existingItems.find(item => matchesSavedItem(inst, item))?.flagIds,
         });
       }
     });
@@ -62,11 +73,12 @@ const SaveGroupDialog = ({
     // Keep saved items that don't have a running instance (stopped items)
     existingItems.forEach(item => {
       const alreadyCovered = items.some(i => {
+        if (item.id) return i.id === item.id;
         if (i.type !== item.type) return false;
-        if (i.type === 'claude') return i.projectId === item.projectId;
+        if (i.type === 'claude') return i.projectId === item.projectId && getAiProvider(i) === getAiProvider(item);
         return i.name === item.name && i.shell === item.shell;
       });
-      if (!alreadyCovered) items.push(item);
+      if (!alreadyCovered && !movedAway(item)) items.push(item);
     });
 
     // Strip null/undefined values from each item to avoid schema validation errors
@@ -104,7 +116,7 @@ const SaveGroupDialog = ({
           This group contains:
         </Typography>
         <List dense sx={{ bgcolor: '#2B2B2B', borderRadius: 1, border: '1px solid #3C3F41' }}>
-          {groupInstances.length === 0 && (
+          {groupInstances.length === 0 && savedOnlyItems.length === 0 && (
             <ListItem>
               <ListItemText
                 primary="No instances"
@@ -116,7 +128,7 @@ const SaveGroupDialog = ({
             <ListItem key={inst.id}>
               <Chip
                 size="small"
-                label={inst.type === 'terminal' ? 'Terminal' : 'Claude'}
+                label={inst.type === 'terminal' ? 'Terminal' : getAiProvider(inst) === 'codex' ? 'Codex' : 'Claude'}
                 sx={{
                   mr: 1,
                   height: 20,
@@ -135,7 +147,7 @@ const SaveGroupDialog = ({
             <ListItem key={`saved-${idx}`}>
               <Chip
                 size="small"
-                label={item.type === 'terminal' ? 'Terminal' : 'Claude'}
+                label={item.type === 'terminal' ? 'Terminal' : getAiProvider(item) === 'codex' ? 'Codex' : 'Claude'}
                 sx={{
                   mr: 1,
                   height: 20,

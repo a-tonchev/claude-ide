@@ -8,8 +8,11 @@ import setupMainRoute from './routes/setup/setupMainRoute';
 import setupCorsPreflightRoute from './routes/setup/setupCorsPreflightRoute';
 import setupRouteHandlers from './routes/setup/setupRouteHandlers';
 import setupNotFoundRoute from './routes/setup/setupNotFoundRoute';
+import setupFileRoutes from './routes/setup/setupFileRoutes';
 import WsHandler from '#modules/wsHandler/WsHandler';
 import InstanceManager from '#modules/instanceManager/InstanceManager';
+import InstanceStore from '#modules/instanceStore/InstanceStore';
+import { ensureMcpConfig, setMcpApiPort } from '../mcp/setupMcp.js';
 
 const settingsToUse = SystemSettingsServices.getSettings();
 
@@ -18,7 +21,40 @@ const mongoSetup = mongoPool({
   dbName: settingsToUse.dbName,
 });
 
-const port = Number(process.env.PORT || 6950);
+// Each install (live, dev) sets its port in its own settings.js. A PORT variable is not
+// read: spawned instances inherit this environment, and project dev servers inside them
+// use PORT. CLAUDE_IDE_PORT overrides the setting when needed. The port reaches the MCP
+// config through a setter for the same reason.
+const port = Number(process.env.CLAUDE_IDE_PORT || settingsToUse.port || 6950);
+setMcpApiPort(port);
+// Write mcp-config.json now rather than at the first instance: a rewrite then would
+// restart the dev server (nodemon) and kill that instance.
+try {
+  ensureMcpConfig();
+} catch (err) {
+  console.error('[startup] MCP config not written:', err.message);
+}
+
+// Leftovers from earlier runs (MCP servers, ownerless chrome-devtools-mcp, WSL terminal
+// programs), cleaned up in the background.
+InstanceManager.sweepStartupOrphans();
+
+// Nothing runs yet, so empty unreferenced drafts and feed items without an instance are leftovers.
+InstanceStore.deleteUnreferencedDraftGroups()
+  .then(count => {
+    if (count) console.info(`[startup] removed ${count} unused draft group(s)`);
+  })
+  .catch(err => console.error('[startup] draft group cleanup failed:', err.message));
+InstanceStore.deleteOrphanFileDirs()
+  .then(count => {
+    if (count) console.info(`[startup] removed ${count} orphaned attachment folder(s)`);
+  })
+  .catch(err => console.error('[startup] attachment folder cleanup failed:', err.message));
+InstanceStore.deleteOrphanMessages()
+  .then(count => {
+    if (count) console.info(`[startup] removed ${count} orphaned feed item(s)`);
+  })
+  .catch(err => console.error('[startup] feed item cleanup failed:', err.message));
 
 const app = uWebSockets.App();
 
@@ -29,6 +65,8 @@ setupMainRoute(app);
 setupCorsPreflightRoute(app);
 
 WsHandler.setup(app);
+
+setupFileRoutes(app);
 
 setupRouteHandlers(app, mongoSetup);
 
@@ -67,6 +105,12 @@ function gracefulShutdown(signal) {
 
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+// pm2 can't deliver signals on Windows; with shutdown_with_message it sends this instead.
+if (process.send) {
+  process.on('message', msg => {
+    if (msg === 'shutdown') gracefulShutdown('pm2 shutdown');
+  });
+}
 process.on('uncaughtException', err => {
   console.error('Uncaught exception:', err);
   gracefulShutdown('uncaughtException');

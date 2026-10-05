@@ -22,6 +22,10 @@ const SettingsSchemaFields = {
   instructions: {
     bsonType: 'string',
   },
+  // launchFlag: command-line text appended after `claude`
+  args: {
+    bsonType: 'string',
+  },
 };
 
 export default SettingsSchemaFields;

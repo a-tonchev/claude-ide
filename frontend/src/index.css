@@ -11,3 +11,13 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Fluid phone type (owner, 2026-09-30, same as Metrik): below 640px the rem
+   base grows with the screen width — 15px at 320px and below, 18px from
+   430px. MUI typography and every rem size scale with it; px sizes do not.
+   Desktop stays 16px. */
+@media (max-width: 639px) {
+  html {
+    font-size: clamp(15px, calc(6.27px + 2.727vw), 18px);
+  }
+}

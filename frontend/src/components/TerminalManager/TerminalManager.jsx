@@ -156,7 +156,7 @@ const TerminalManager = ({ open, onClose }) => {
       }}
       >
         <TerminalIcon sx={{ color: '#6897BB' }} />
-        Terminal Configs
+        Terminal Instances
       </DialogTitle>
       <DialogContent>
         {/* Add / Edit form */}

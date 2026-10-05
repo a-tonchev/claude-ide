@@ -1,1 +1,7 @@
-{}
+{
+  "private": true,
+  "scripts": {
+    "deploy:live": "node scripts/deploy-live.mjs",
+    "db:copy-dev": "node scripts/copy-db.mjs"
+  }
+}

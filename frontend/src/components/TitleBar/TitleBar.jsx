@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
+import Badge from '@mui/material/Badge';
 import IconButton from '@mui/material/IconButton';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -11,17 +11,23 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import GroupAddIcon from '@mui/icons-material/GroupAdd';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArticleIcon from '@mui/icons-material/Article';
 import KeyIcon from '@mui/icons-material/Key';
+import TuneIcon from '@mui/icons-material/Tune';
 import HexagonOutlinedIcon from '@mui/icons-material/HexagonOutlined';
 import Divider from '@mui/material/Divider';
 
+import useMobile from '@/components/layout/hooks/useMobile';
+
 const TitleBar = ({
-  onNewGroup, onAddClaude, onAddTerminal, onAddObserver, onLoadGroup,
+  onNewGroup, onAddAI, onAddTerminal, onAddObserver, onLoadGroup,
   onManageProjects, onManageTerminals, onManageObservers, onManagePlans, onManageKeePass,
+  onManageLaunchFlags, rememberedCount = 0, onOpenRemembered, groupSelector = null,
 }) => {
+  const { isMobile } = useMobile();
   const [settingsAnchor, setSettingsAnchor] = useState(null);
   const [addAnchor, setAddAnchor] = useState(null);
 
@@ -30,25 +36,28 @@ const TitleBar = ({
       sx={{
         display: 'flex',
         alignItems: 'center',
-        px: 2,
-        py: 1,
+        px: isMobile ? 1 : 2,
+        py: isMobile ? 0.5 : 1,
         bgcolor: '#1A1A1A',
         borderBottom: '1px solid #3C3F41',
         minHeight: 48,
       }}
     >
-      <HexagonOutlinedIcon sx={{ color: '#6897BB', mr: 1, fontSize: 24 }} />
-      <Typography
-        variant="h6"
-        sx={{
-          color: '#A9B7C6',
-          fontWeight: 600,
-          fontSize: '1rem',
-          mr: 2,
-        }}
-      >
-        Claude IDE
-      </Typography>
+      <HexagonOutlinedIcon sx={{ color: '#6897BB', mr: isMobile ? 0 : 1, fontSize: isMobile ? 22 : 24 }} />
+      {/* On mobile the group picker takes the title's place (and the spacer's) */}
+      {groupSelector || (
+        <Typography
+          variant="h6"
+          sx={{
+            color: '#A9B7C6',
+            fontWeight: 600,
+            fontSize: '1rem',
+            mr: 2,
+          }}
+        >
+          Claude IDE
+        </Typography>
+      )}
 
       <IconButton
         size="small"
@@ -82,9 +91,9 @@ const TitleBar = ({
           New Group
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
-        <MenuItem onClick={() => { setAddAnchor(null); onAddClaude?.(); }}>
+        <MenuItem onClick={() => { setAddAnchor(null); onAddAI?.(); }}>
           <ListItemIcon><SmartToyIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
-          Add Claude
+          Add AI
         </MenuItem>
         <MenuItem onClick={() => { setAddAnchor(null); onAddTerminal?.(); }}>
           <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
@@ -96,7 +105,23 @@ const TitleBar = ({
         </MenuItem>
       </Menu>
 
-      <Box sx={{ flex: 1 }} />
+      {!groupSelector && <Box sx={{ flex: 1 }} />}
+
+      <IconButton
+        size="small"
+        onClick={onOpenRemembered}
+        title={rememberedCount ? `Remembered instances (${rememberedCount})` : 'Remembered instances'}
+        sx={{ color: '#808080', mr: 0.5, ml: groupSelector ? 0.5 : 0 }}
+      >
+        <Badge
+          badgeContent={rememberedCount}
+          color="warning"
+          max={99}
+          sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', height: 16, minWidth: 16 } }}
+        >
+          <RestoreIcon fontSize="small" />
+        </Badge>
+      </IconButton>
 
       <IconButton
         size="small"
@@ -125,19 +150,23 @@ const TitleBar = ({
         <Divider sx={{ borderColor: '#3C3F41' }} />
         <MenuItem onClick={() => { setSettingsAnchor(null); onManageProjects?.(); }}>
           <ListItemIcon><SmartToyIcon sx={{ fontSize: 18, color: '#6897BB' }} /></ListItemIcon>
-          Claude Projects
+          AI Instances
         </MenuItem>
         <MenuItem onClick={() => { setSettingsAnchor(null); onManageTerminals?.(); }}>
           <ListItemIcon><TerminalIcon sx={{ fontSize: 18, color: '#808080' }} /></ListItemIcon>
-          Terminal Configs
+          Terminal Instances
         </MenuItem>
         <MenuItem onClick={() => { setSettingsAnchor(null); onManageObservers?.(); }}>
           <ListItemIcon><ArrowFatLinesUp size={18} weight="bold" color="#B07ACC" /></ListItemIcon>
-          Observer Configs
+          Observer Instances
         </MenuItem>
         <MenuItem onClick={() => { setSettingsAnchor(null); onManageKeePass?.(); }}>
           <ListItemIcon><KeyIcon sx={{ fontSize: 18, color: '#CC7832' }} /></ListItemIcon>
           KeePass Credentials
+        </MenuItem>
+        <MenuItem onClick={() => { setSettingsAnchor(null); onManageLaunchFlags?.(); }}>
+          <ListItemIcon><TuneIcon sx={{ fontSize: 18, color: '#6897BB' }} /></ListItemIcon>
+          Launch Flags
         </MenuItem>
         <Divider sx={{ borderColor: '#3C3F41' }} />
         <MenuItem onClick={() => { setSettingsAnchor(null); onManagePlans?.(); }}>

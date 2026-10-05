@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-import BasicConfig from '@/components/config/BasicConfig';
-import { getServerBaseUrl } from '@/components/config/BasicConfig';
+import BasicConfig, { getServerBaseUrl } from '@/components/config/BasicConfig';
 import Storage from '@/components/storage/Storage';
 import StorageEnums from '@/components/storage/enums/StorageEnums';
 import i18n from '@/components/translations/i18n';
@@ -52,6 +51,9 @@ export const ApiEndpoints = {
   settingsAdd: '/settings/add',
   settingsUpdate: '/settings/update',
   settingsDelete: '/settings/delete',
+  instancesFeed: '/instances/feed',
+  instancesRemembered: '/instances/remembered',
+  instancesRememberedRemove: '/instances/remembered/remove',
 };
 
 const getUrl = endpointPath => {
@@ -83,7 +85,12 @@ const connectionSuccessResponse = response => {
     console.info(response);
   }
   if (!response || !response.data?.ok) {
-    return { ok: false };
+    return {
+      ok: false,
+      errorCode: response?.data?.code,
+      errorMessage: response?.data?.message,
+      errorData: response?.data?.data,
+    };
   }
 
   return {

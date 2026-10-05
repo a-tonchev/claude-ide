@@ -1,7 +1,7 @@
 import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
 import GroupSchemaFields from './GroupSchemaFields';
 
-const { name, items } = GroupSchemaFields;
+const { name, draft, items } = GroupSchemaFields;
 const { _id, date } = CommonSchemaFields;
 
 const GroupSchema = {
@@ -11,6 +11,7 @@ const GroupSchema = {
   properties: {
     _id,
     name,
+    draft,
     items,
     updatedAt: date,
     createdAt: date,

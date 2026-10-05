@@ -1,6 +1,5 @@
 import DatabaseHelpers from '#modules/db/DatabaseHelpers';
 import WsHandler from '#modules/wsHandler/WsHandler';
-import InstanceManager from '#modules/instanceManager/InstanceManager';
 import { PlanStatuses } from '../enums/PlanEnums';
 
 const PlanController = {
@@ -42,15 +41,8 @@ const PlanController = {
         seen: false,
       });
 
-      // Store plan reference on the in-memory instance and broadcast
+      // Cards load an instance's plans from this collection; tell open ones about the new plan
       if (instance_id) {
-        InstanceManager.addPlanReference(instance_id, {
-          id: result.insertedId.toString(),
-          title: title || '',
-          content: content || '',
-          seen: false,
-        });
-
         WsHandler.publish(`instance_${instance_id}`, {
           type: 'plan_saved',
           instanceId: instance_id,
@@ -90,18 +82,9 @@ const PlanController = {
   },
 
   async markSeen(ctx) {
-    const { _id, instance_id } = ctx.request.body;
+    const { _id } = ctx.request.body;
     try {
       await ctx.libS.plans.update({ _id, seen: true });
-
-      if (instance_id) {
-        const instance = InstanceManager.get(instance_id);
-        if (instance) {
-          const planRef = instance.plans.find(p => p.id === _id);
-          if (planRef) planRef.seen = true;
-        }
-      }
-
       return ctx.modS.responses.createSuccessResponse(ctx);
     } catch (err) {
       return ctx.modS.responses.createErrorResponse(

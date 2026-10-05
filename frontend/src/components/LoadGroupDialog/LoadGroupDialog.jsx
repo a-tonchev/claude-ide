@@ -28,7 +28,8 @@ const LoadGroupDialog = ({
     Connections.postRequest(ApiEndpoints.groupsAll, {})
       .then(result => {
         if (result?.ok) {
-          setGroups(result.data.groups || []);
+          // Drafts are unsaved groups; only saved ones can be opened from here
+          setGroups((result.data.groups || []).filter(g => !g.draft));
         }
       })
       .finally(() => setLoading(false));

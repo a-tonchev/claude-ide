@@ -34,7 +34,7 @@ const OnBoardingServices = {
       clientNumber: await this.makeUniqueClientNumber(ctx),
       profile: profile || {},
       settings: {
-        language: language || 'de',
+        language: language || 'en',
       },
       updatedAt: ctx.modS.date.getNow(),
       createdAt: ctx.modS.date.getNow(),

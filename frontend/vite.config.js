@@ -32,6 +32,8 @@ export default ({ mode }) => {
         strategies: 'injectManifest',
         injectRegister: null,
         filename: 'service-worker.js',
+        // The main bundle is over workbox's 2 MiB default, which fails the production build.
+        injectManifest: { maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
       }),
       // eslintPlugin({ eslintOptions: { cache: false } }),
     ],
@@ -54,7 +56,8 @@ export default ({ mode }) => {
     },
     server: {
       host: process.env.VITE_DEV_HOST || 'localhost',
-      port: process.env.VITE_DEV_PORT || 3010,
+      // 3010 is the live UI; dev must never fall back onto it
+      port: process.env.VITE_DEV_PORT || 3030,
       open: false,
       fs: {
         // Allow serving files from one level up to the project root

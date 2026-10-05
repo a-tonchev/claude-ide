@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useStoreValue } from '@/components/state/GlobalState';
 import {
@@ -14,9 +14,17 @@ const useInstances = onMessage => {
 
   const { send } = useWebSocket(onMessage);
 
-  const createInstance = useCallback((projectId, name, path, args, groupId, remote) => {
+  const createInstance = useCallback((projectId, name, path, args, groupId, flagIds, options = {}) => {
+    const { provider = 'claude', savedItemId } = options;
     send('create', {
-      projectId, name, path, args, groupId, remote: !!remote,
+      projectId,
+      name,
+      path,
+      args,
+      groupId,
+      flagIds: Array.isArray(flagIds) ? flagIds : [],
+      provider,
+      savedItemId,
     });
   }, [send]);
 
@@ -24,8 +32,13 @@ const useInstances = onMessage => {
     send('stop', { instanceId });
   }, [send]);
 
-  const writeToInstance = useCallback((instanceId, data) => {
-    send('input', { instanceId, data });
+  const renameInstance = useCallback((instanceId, title) => {
+    send('rename', { instanceId, title });
+  }, [send]);
+
+  // attachments: stored file ids; the backend adds their paths to the text the AI gets
+  const writeToInstance = useCallback((instanceId, data, attachments) => {
+    send('input', attachments?.length ? { instanceId, data, attachments } : { instanceId, data });
   }, [send]);
 
   const resizeInstance = useCallback((instanceId, cols, rows) => {
@@ -36,13 +49,11 @@ const useInstances = onMessage => {
     send('subscribe', { instanceId });
   }, [send]);
 
-  const unsubscribeInstance = useCallback(instanceId => {
-    send('unsubscribe', { instanceId });
-  }, [send]);
-
-  const createTerminal = useCallback((name, shell, command, groupId) => {
+  // savedItemId: the saved card this terminal starts from, or a fresh id that becomes the
+  // card's id if the group is saved with it.
+  const createTerminal = useCallback((name, shell, command, groupId, savedItemId) => {
     send('create_terminal', {
-      name, shell, command, groupId,
+      name, shell, command, groupId, savedItemId,
     });
   }, [send]);
 
@@ -56,8 +67,10 @@ const useInstances = onMessage => {
     send('user_response', { instanceId, choice });
   }, [send]);
 
-  const sendUserMessage = useCallback((instanceId, text, timestamp) => {
-    send('user_message', { instanceId, text, timestamp });
+  const sendUserMessage = useCallback((instanceId, text, timestamp, attachments) => {
+    send('user_message', {
+      instanceId, text, timestamp, ...(attachments?.length ? { attachments } : {}),
+    });
   }, [send]);
 
   const startGroup = useCallback((groupId, items) => {
@@ -68,11 +81,17 @@ const useInstances = onMessage => {
     send('stop_group', { groupId });
   }, [send]);
 
-  const reassignGroup = useCallback((oldGroupId, newGroupId) => {
-    send('reassign_group', { oldGroupId, newGroupId });
+  // Start a remembered instance again (same id and session) in the given group.
+  const resumeInstance = useCallback((recordId, groupId) => {
+    send('resume', { recordId, groupId });
   }, [send]);
 
-  const instanceList = Object.values(instances || {});
+  // Move a running instance to another group for good (its record follows).
+  const moveInstance = useCallback((instanceId, groupId) => {
+    send('move_group', { instanceId, groupId });
+  }, [send]);
+
+  const instanceList = useMemo(() => Object.values(instances || {}), [instances]);
 
   return {
     instances,
@@ -81,17 +100,18 @@ const useInstances = onMessage => {
     setActiveInstanceId,
     createInstance,
     stopInstance,
+    renameInstance,
     writeToInstance,
     resizeInstance,
     subscribeInstance,
-    unsubscribeInstance,
     createTerminal,
     createObserver,
     sendUserResponse,
     sendUserMessage,
     startGroup,
     stopGroup,
-    reassignGroup,
+    resumeInstance,
+    moveInstance,
   };
 };
 

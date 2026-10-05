@@ -1,6 +1,4 @@
-import React, {
-  useState, useRef, useEffect, useCallback,
-} from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Select from '@mui/material/Select';
@@ -13,57 +11,18 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 
-import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
-import useWebSocket from '@/hooks/useWebSocket';
+import InstanceTerminal from '@/components/InstanceTerminal/InstanceTerminal';
 import useMobile from '@/components/layout/hooks/useMobile';
 
 const PlaceholderSlot = ({
-  instanceId, instance, instances, onSelect, onClear, send, siblingInstanceId,
+  instanceId, instance, instances, onSelect, onClear, siblingInstanceId,
 }) => {
-  const termRef = useRef(null);
-
-  const onMessage = useCallback(msg => {
-    if (!instanceId) return;
-    if (msg.type === 'output' && msg.instanceId === instanceId) {
-      termRef.current?.write(msg.data);
-    }
-  }, [instanceId]);
-
-  useWebSocket(onMessage);
-
-  // Subscribe/unsubscribe on instanceId change
-  // Only unsubscribe if the sibling placeholder isn't showing the same instance
-  const siblingRef = useRef(siblingInstanceId);
-  siblingRef.current = siblingInstanceId;
-
-  useEffect(() => {
-    if (!instanceId) return;
-    send('subscribe', { instanceId });
-    return () => {
-      if (siblingRef.current !== instanceId) {
-        send('unsubscribe', { instanceId });
-      }
-    };
-  }, [instanceId, send]);
-
-  const handleTerminalData = useCallback(data => {
-    if (instanceId) {
-      send('input', { instanceId, data });
-    }
-  }, [instanceId, send]);
-
-  const handleResize = useCallback((cols, rows) => {
-    if (instanceId) {
-      send('resize', { instanceId, cols, rows });
-    }
-  }, [instanceId, send]);
-
   const instanceList = Object.values(instances || {})
     .filter(inst => inst.id !== siblingInstanceId);
 
   const renderInstanceName = val => {
     const inst = instanceList.find(i => i.id === val);
-    return inst ? (inst.projectName || inst.name || val.slice(0, 8)) : 'Select...';
+    return inst ? (inst.title || inst.projectName || inst.name || val.slice(0, 8)) : 'Select...';
   };
 
   if (!instanceId) {
@@ -113,7 +72,7 @@ const PlaceholderSlot = ({
                   : inst.type === 'observer'
                     ? <ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" />
                     : <TerminalIcon sx={{ fontSize: 13, color: '#808080' }} />}
-                {inst.projectName || inst.name || inst.id.slice(0, 8)}
+                {inst.title || inst.projectName || inst.name || inst.id.slice(0, 8)}
               </MenuItem>
             ))}
           </Select>
@@ -155,7 +114,7 @@ const PlaceholderSlot = ({
           fontSize: '0.75rem', color: '#A9B7C6', fontWeight: 500, flex: 1,
         }}
         >
-          {instance?.projectName || instance?.name || instanceId.slice(0, 8)}
+          {instance?.title || instance?.projectName || instance?.name || instanceId.slice(0, 8)}
         </Typography>
         <Select
           size="small"
@@ -191,12 +150,7 @@ const PlaceholderSlot = ({
         </IconButton>
       </Box>
       <Box sx={{ flex: 1, minHeight: 0 }}>
-        <TerminalWidget
-          key={instanceId}
-          ref={termRef}
-          onData={handleTerminalData}
-          onResize={handleResize}
-        />
+        <InstanceTerminal instanceId={instanceId} />
       </Box>
     </Box>
   );
@@ -205,7 +159,6 @@ const PlaceholderSlot = ({
 const PlaceholderPanel = ({
   placeholder1Id, placeholder2Id, instances, onSelect1, onSelect2, onClear1, onClear2,
 }) => {
-  const { send } = useWebSocket();
   const { isMobile } = useMobile();
   const [activeTab, setActiveTab] = useState(0);
 
@@ -236,7 +189,10 @@ const PlaceholderPanel = ({
           <Tab label="Placeholder 1" />
           <Tab label="Placeholder 2" />
         </Tabs>
-        <Box sx={{ flex: 1, minHeight: 0, px: 1, py: 1, position: 'relative' }}>
+        <Box sx={{
+          flex: 1, minHeight: 0, px: 1, py: 1, position: 'relative',
+        }}
+        >
           <Box sx={{
             display: activeTab === 0 ? 'flex' : 'none',
             flexDirection: 'column',
@@ -249,7 +205,6 @@ const PlaceholderPanel = ({
               instances={instances}
               onSelect={onSelect1}
               onClear={onClear1}
-              send={send}
               siblingInstanceId={placeholder2Id}
             />
           </Box>
@@ -265,7 +220,6 @@ const PlaceholderPanel = ({
               instances={instances}
               onSelect={onSelect2}
               onClear={onClear2}
-              send={send}
               siblingInstanceId={placeholder1Id}
             />
           </Box>
@@ -285,7 +239,6 @@ const PlaceholderPanel = ({
         instances={instances}
         onSelect={onSelect1}
         onClear={onClear1}
-        send={send}
         siblingInstanceId={placeholder2Id}
       />
       <PlaceholderSlot
@@ -294,7 +247,6 @@ const PlaceholderPanel = ({
         instances={instances}
         onSelect={onSelect2}
         onClear={onClear2}
-        send={send}
         siblingInstanceId={placeholder1Id}
       />
     </Box>

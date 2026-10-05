@@ -1,3 +1,5 @@
+import { atom } from 'jotai';
+
 import GlobalStateHelper from '@/components/state/GlobalStateHelper';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 
@@ -5,6 +7,7 @@ export const InstanceStores = {
   instancesStore: null,
   activeInstanceIdStore: null,
   inputDraftsStore: null,
+  inputDraftFamilyStore: null,
 };
 
 // --- Cross-window sync via BroadcastChannel ---
@@ -31,7 +34,8 @@ export function withoutBroadcast(fn) {
   }
 }
 
-// Map of instanceId -> instance data
+// Map of instanceId -> instance data. AI instances also carry what this window has
+// loaded from the database: feed (oldest first), feedTotal, feedLoaded and plans.
 GlobalStateHelper.atom({
   key: 'instancesStore',
   default: {},
@@ -52,28 +56,50 @@ GlobalStateHelper.atom({
   store: InstanceStores,
 });
 
+// Per-instance derived view of a single instance's draft text. Cards subscribe
+// to their own slice through this family (via useStoreFamilyValue) so a keystroke
+// in one card re-renders only that card — not every other card mounted in the
+// group. Writes still go through setInputDraft on the shared inputDraftsStore, so
+// drafts persist across group-tab switches (which unmount off-tab cards).
+GlobalStateHelper.atomFamily({
+  key: 'inputDraftFamilyStore',
+  factory: instanceId => atom(get => get(InstanceStores.inputDraftsStore.jotai)[instanceId] || ''),
+  store: InstanceStores,
+});
+
 export const setInputDraft = (instanceId, text) => {
   const current = InstanceStores.inputDraftsStore.get();
   InstanceStores.inputDraftsStore.set({ ...current, [instanceId]: text });
 };
 
-export const getInputDraft = instanceId => {
-  const current = InstanceStores.inputDraftsStore.get();
-  return current[instanceId] || '';
+const LOADED_FIELDS = ['feed', 'feedTotal', 'feedLoaded', 'plans'];
+
+const keepLoaded = existing => {
+  const kept = {};
+  if (!existing) return kept;
+  LOADED_FIELDS.forEach(field => {
+    if (existing[field] !== undefined) kept[field] = existing[field];
+  });
+  return kept;
 };
 
-// Derived: list of instances as array
-GlobalStateHelper.computedAtom({
-  key: 'instanceListStore',
-  factory: get => Object.values(get(InstanceStores.instancesStore.jotai)),
-  store: InstanceStores,
-});
+// Snapshot fields are primitives or small arrays/objects (launchFlags, pendingInput).
+const sameValue = (a, b) => a === b
+  || (typeof a === 'object' && a !== null && JSON.stringify(a) === JSON.stringify(b));
+
+const matchesSnapshot = (existing, inst) => Object.keys(inst).every(key => sameValue(existing[key], inst[key]));
 
 export const setInstances = instances => {
+  const current = InstanceStores.instancesStore.get();
   const map = {};
   if (Array.isArray(instances)) {
     instances.forEach(inst => {
-      map[inst.id] = inst;
+      const existing = current[inst.id];
+      // Server snapshots carry no feed or plans: keep what this window loaded, and keep
+      // unchanged instances as they are so memoized cards don't re-render.
+      map[inst.id] = existing && matchesSnapshot(existing, inst)
+        ? existing
+        : { ...keepLoaded(existing), ...inst };
     });
   }
   InstanceStores.instancesStore.set(map);
@@ -122,26 +148,66 @@ export const removeInstance = instanceId => {
     const { [instanceId]: _d, ...restDrafts } = drafts;
     InstanceStores.inputDraftsStore.set(restDrafts);
   }
+  // Drop this instance's derived draft atom so the family cache doesn't grow forever
+  InstanceStores.inputDraftFamilyStore?.jotai?.remove?.(instanceId);
 };
 
 export const setActiveInstanceId = id => {
   InstanceStores.activeInstanceIdStore.set(id);
 };
 
-export const addMilestone = (instanceId, milestone) => {
+// Apply `update(existing)` to one instance; returning null means nothing changed.
+const updateInstance = (instanceId, update) => {
   const current = InstanceStores.instancesStore.get();
   const existing = current[instanceId];
   if (!existing) return;
-  // Deduplicate: skip if same accomplished+timestamp already exists
-  const ms = existing.milestones || [];
-  const ts = milestone.timestamp ? String(milestone.timestamp) : '';
-  if (ts && ms.some(m => String(m.timestamp) === ts && m.accomplished === milestone.accomplished)) return;
+  const changes = update(existing);
+  if (!changes) return;
   InstanceStores.instancesStore.set({
     ...current,
-    [instanceId]: {
-      ...existing,
-      milestones: [...ms, milestone],
-    },
+    [instanceId]: { ...existing, ...changes },
+  });
+};
+
+// Feed item ids are MongoDB ObjectIds, whose hex strings sort in creation order.
+// Items the server failed to save have "unsaved-…" ids, which sort after them.
+const byId = (a, b) => {
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+};
+
+const mergeFeed = (existing, incoming) => {
+  const seen = new Set(existing.map(item => item.id));
+  const added = incoming.filter(item => !seen.has(item.id));
+  return added.length ? [...existing, ...added].sort(byId) : existing;
+};
+
+const samePlans = (a = [], b = []) => a.length === b.length
+  && a.every((plan, i) => plan.id === b[i].id && plan.seen === b[i].seen && plan.title === b[i].title);
+
+export const appendFeedItem = (instanceId, item) => {
+  if (!item?.id) return;
+  updateInstance(instanceId, existing => {
+    const feed = existing.feed || [];
+    if (feed.some(i => i.id === item.id)) return null;
+    return { feed: mergeFeed(feed, [item]), feedTotal: (existing.feedTotal || 0) + 1 };
+  });
+};
+
+// A page from /instances/feed. The first page also brings the instance's plans.
+export const setFeedPage = (instanceId, { items = [], total = 0, plans = null }) => {
+  updateInstance(instanceId, existing => {
+    const feed = mergeFeed(existing.feed || [], items);
+    const feedTotal = Math.max(total, feed.length);
+    const changes = { feed, feedTotal, feedLoaded: true };
+    if (plans) {
+      const loadedIds = new Set(plans.map(p => p.id));
+      changes.plans = [...plans, ...(existing.plans || []).filter(p => !loadedIds.has(p.id))];
+    }
+    // A reload that brought nothing new must not re-render the views
+    const nothingNew = existing.feedLoaded && feed === existing.feed && feedTotal === existing.feedTotal
+      && (!changes.plans || samePlans(changes.plans, existing.plans));
+    return nothingNew ? null : changes;
   });
 };
 
@@ -159,52 +225,11 @@ export const setPendingInput = (instanceId, pendingInput) => {
   broadcast({ action: 'setPendingInput', instanceId, pendingInput });
 };
 
-export const addUserMessage = (instanceId, text, timestamp) => {
-  const current = InstanceStores.instancesStore.get();
-  const existing = current[instanceId];
-  if (!existing) return;
-  const ts = timestamp || new Date().toISOString();
-  InstanceStores.instancesStore.set({
-    ...current,
-    [instanceId]: {
-      ...existing,
-      userMessages: [...(existing.userMessages || []), { text, timestamp: ts }],
-    },
-  });
-  broadcast({
-    action: 'addUserMessage', instanceId, text, timestamp: ts,
-  });
-};
-
-export const addClaudeMessage = (instanceId, message) => {
-  const current = InstanceStores.instancesStore.get();
-  const existing = current[instanceId];
-  if (!existing) return;
-  // Deduplicate: skip if a message with the same text+timestamp already exists
-  // (can happen when instance_state snapshot and claude_message event overlap)
-  const msgs = existing.messages || [];
-  const ts = message.timestamp ? String(message.timestamp) : '';
-  if (ts && msgs.some(m => String(m.timestamp) === ts && m.text === message.text)) return;
-  InstanceStores.instancesStore.set({
-    ...current,
-    [instanceId]: {
-      ...existing,
-      messages: [...msgs, message],
-    },
-  });
-  broadcast({ action: 'addClaudeMessage', instanceId, message });
-};
-
 export const addPlanToInstance = (instanceId, plan) => {
-  const current = InstanceStores.instancesStore.get();
-  const existing = current[instanceId];
-  if (!existing) return;
-  InstanceStores.instancesStore.set({
-    ...current,
-    [instanceId]: {
-      ...existing,
-      plans: [...(existing.plans || []), plan],
-    },
+  updateInstance(instanceId, existing => {
+    const plans = existing.plans || [];
+    if (plan.id && plans.some(p => p.id === plan.id)) return null;
+    return { plans: [...plans, plan] };
   });
 };
 
@@ -220,22 +245,6 @@ export const markPlanSeen = (instanceId, planId) => {
   Connections.postRequest(ApiEndpoints.plansMarkSeen, { _id: planId, instance_id: instanceId });
 };
 
-export const reassignInstancesToGroup = (oldGroupId, newGroupId) => {
-  const current = InstanceStores.instancesStore.get();
-  const updated = { ...current };
-  let changed = false;
-  for (const [id, inst] of Object.entries(updated)) {
-    if (inst.groupId === oldGroupId) {
-      updated[id] = { ...inst, groupId: newGroupId };
-      changed = true;
-    }
-  }
-  if (changed) {
-    InstanceStores.instancesStore.set(updated);
-  }
-  return changed;
-};
-
 // Listen for state changes from other windows
 if (syncChannel) {
   syncChannel.onmessage = event => {
@@ -243,12 +252,6 @@ if (syncChannel) {
     try {
       const msg = event.data;
       switch (msg.action) {
-        case 'addUserMessage':
-          addUserMessage(msg.instanceId, msg.text, msg.timestamp);
-          break;
-        case 'addClaudeMessage':
-          addClaudeMessage(msg.instanceId, msg.message);
-          break;
         case 'setPendingInput':
           setPendingInput(msg.instanceId, msg.pendingInput);
           break;

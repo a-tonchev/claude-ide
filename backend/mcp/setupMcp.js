@@ -1,4 +1,3 @@
-import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -58,24 +57,32 @@ const TOOL_PERMISSIONS = [
   'NotebookEdit',
 ];
 
+// Set by startup/server.js from settings.js; see the comment there.
+let apiPort = null;
+
+function setMcpApiPort(port) {
+  apiPort = port;
+}
+
+function getMcpServerConfig() {
+  const port = apiPort || 6950;
+  const apiPrefix = '/api/v1';
+
+  return {
+    command: process.execPath,
+    args: [MCP_SERVER_PATH],
+    env: { API_URL: `http://localhost:${port}`, API_PREFIX: apiPrefix },
+  };
+}
+
 /**
  * Ensures the shared mcp-config.json exists next to server.js.
  * Only writes when missing or when API_URL/port changed.
  */
 function ensureMcpConfig() {
-  const port = process.env.PORT || 6950;
-  const apiPrefix = '/api/v1';
-
   const config = {
     mcpServers: {
-      'claude-ide': {
-        command: 'node',
-        args: [MCP_SERVER_PATH],
-        env: {
-          API_URL: `http://localhost:${port}`,
-          API_PREFIX: apiPrefix,
-        },
-      },
+      'claude-ide': getMcpServerConfig(),
     },
   };
 
@@ -134,36 +141,6 @@ function enableMcpInSettings(projectRoot) {
 }
 
 /**
- * Removes the claude-ide entries from .claude/settings.local.json.
- */
-function disableMcpInSettings(projectRoot) {
-  const settingsPath = path.join(projectRoot, '.claude', 'settings.local.json');
-
-  try {
-    if (!fs.existsSync(settingsPath)) return;
-
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-
-    if (Array.isArray(settings.permissions?.allow)) {
-      const ourPerms = new Set(TOOL_PERMISSIONS);
-      settings.permissions.allow = settings.permissions.allow.filter(p => !ourPerms.has(p));
-      if (settings.permissions.allow.length === 0) delete settings.permissions.allow;
-      if (settings.permissions && Object.keys(settings.permissions).length === 0) {
-        delete settings.permissions;
-      }
-    }
-
-    if (Object.keys(settings).length === 0) {
-      fs.unlinkSync(settingsPath);
-    } else {
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-    }
-  } catch (e) {
-    // Ignore cleanup errors
-  }
-}
-
-/**
  * Full setup: ensure shared MCP config exists + enable tool permissions.
  * Returns the config path for use with `claude --mcp-config`.
  */
@@ -174,21 +151,13 @@ function setupForClaude(projectCwd) {
   return mcpConfigPath;
 }
 
-/**
- * Full cleanup: remove tool permissions from project settings.
- */
-function cleanupForClaude(projectCwd) {
-  const root = findGitRoot(projectCwd);
-  disableMcpInSettings(root);
-}
-
 export {
+  setMcpApiPort,
+  getMcpServerConfig,
   ensureMcpConfig,
   enableMcpInSettings,
-  disableMcpInSettings,
   findGitRoot,
   setupForClaude,
-  cleanupForClaude,
   MCP_SERVER_PATH,
   MCP_CONFIG_PATH,
 };

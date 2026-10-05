@@ -4,6 +4,11 @@ const settingsToUse = SystemSettingsServices.getSettings();
 
 const onError = (err, ctx) => {
   if (!settingsToUse?.debug && ctx.status !== 500) return;
+  // Client errors (invalid input, not found, "instance is running") are expected: one line
+  if (ctx.status < 500) {
+    console.warn(`Request error ${ctx.status}: ${ctx.body?.code || err.message || 'no details'}`);
+    return;
+  }
   // TODO - need to be reported later, maybe in DB or via api
   console.warn('Error MESSAGE: ', err.message);
   console.warn('Error CODE: ', ctx.status);

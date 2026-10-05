@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import ConfirmSnackBar from '@/components/dialogs/snackbars/ConfirmSnackBar';
 
@@ -25,14 +25,16 @@ const useConfirm = (type = 'modal') => {
     });
   };
 
-  const openDialog = (text = '', callback = () => {}) => new Promise(resolve => {
+  // Stable across renders (setDialog is stable) so consumers can pass callbacks
+  // built on openDialog to React.memo'd children without defeating memoization.
+  const openDialog = useCallback((text = '', callback = () => {}) => new Promise(resolve => {
     setDialog({
       open: true,
       text,
       callback,
       resolve,
     });
-  });
+  }), []);
 
   const onConfirm = () => {
     dialog.callback && dialog.callback();

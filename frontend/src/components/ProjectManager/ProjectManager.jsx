@@ -144,7 +144,7 @@ const ProjectManager = ({ open, onClose }) => {
           color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
         }}
         >
-          Projects
+          AI Instances
         </DialogTitle>
         <DialogContent>
           {/* Add / Edit form */}

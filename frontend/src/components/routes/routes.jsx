@@ -8,7 +8,6 @@ import SignUp from '@/screens/auth/SignUp';
 import Logout from '@/screens/auth/Logout';
 import NotFoundPage from '@/screens/NotFoundPage';
 import Dashboard from '@/screens/Dashboard/Dashboard';
-import InstanceView from '@/screens/InstanceView/InstanceView';
 import InstanceWindow from '@/screens/InstanceWindow/InstanceWindow';
 import PlanView from '@/screens/PlanView/PlanView';
 import Profile from '@/screens/users/Profile';
@@ -20,10 +19,6 @@ const routes = [
   {
     path: UrlEnums.DASHBOARD,
     element: <Dashboard />,
-  },
-  {
-    path: UrlEnums.INSTANCE_VIEW,
-    element: <InstanceView />,
   },
   {
     path: UrlEnums.INSTANCE_WINDOW,

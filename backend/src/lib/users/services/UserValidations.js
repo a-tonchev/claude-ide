@@ -175,7 +175,7 @@ const UserValidations = {
     const { password, resetToken } = ctx.request.body;
     const valid = ctx.modS.validations.validateSchema(ctx, { password, resetToken }, {
       bsonType: 'object',
-      required: ['password'],
+      required: ['password', 'resetToken'],
       properties: {
         password: UserSchemaFields.password,
         resetToken: CommonSchemaFields.requiredString,

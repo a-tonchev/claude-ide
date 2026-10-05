@@ -1,22 +1,25 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-import BasicConfig from '@/components/config/BasicConfig';
-import { getServerBaseUrl } from '@/components/config/BasicConfig';
+import BasicConfig, { getServerBaseUrl } from '@/components/config/BasicConfig';
 import {
   setInstances,
   upsertInstance,
   updateInstanceField,
   removeInstance,
-  addMilestone,
-  addClaudeMessage,
+  appendFeedItem,
   setPendingInput,
   addPlanToInstance,
   InstanceStores,
   withoutBroadcast,
 } from '@/stores/instanceAtoms';
 import { clearPlaceholder } from '@/stores/groupAtoms';
+import { loadFeedIntoStore } from '@/hooks/useInstanceFeed';
 
 const RECONNECT_DELAY = 3000;
+
+// Safety net: ask for the instance list now and then. The answer re-subscribes this
+// connection to every instance topic, so a window heals itself if it ever misses events.
+const RESYNC_INTERVAL = 30000;
 
 // Singleton WebSocket state — shared across all hook consumers
 const wsState = {
@@ -25,6 +28,10 @@ const wsState = {
   sendQueue: [],
   listeners: new Set(),
   reconnectTimer: null,
+  resyncTimer: null,
+  // Set when a socket opens: feed items stored while this window was disconnected
+  // aren't in its feeds yet, so the next snapshot reloads them once.
+  resyncFeeds: false,
 };
 
 function getWsUrl() {
@@ -65,31 +72,39 @@ function handleMessage(event) {
     // so suppress BroadcastChannel re-broadcasting to prevent duplicates.
     withoutBroadcast(() => {
       switch (type) {
-        case 'instances':
+        case 'instances': {
           // The backend open handler already subscribes us to all instance topics,
-          // so we just need to set the state — no need to send subscribe messages
-          // (sending subscribe would trigger redundant instance_state responses
-          // that race with claude_message events and cause duplicates).
+          // so we just need to set the state — no need to send subscribe messages.
           setInstances(message.list || []);
+          if (wsState.resyncFeeds) {
+            wsState.resyncFeeds = false;
+            const current = InstanceStores.instancesStore.get();
+            (message.list || []).forEach(inst => {
+              if (current[inst.id]?.feedLoaded) loadFeedIntoStore(inst.id);
+            });
+          }
           break;
+        }
 
         case 'created':
           // Backend's subscribeAllClients already subscribes us to this topic,
-          // so no need to send a subscribe message here.
+          // so no need to send a subscribe message here. The feed is loaded from
+          // the database by the views that show it (a resumed instance has one).
           upsertInstance({
             id: message.instanceId,
             projectId: message.projectId,
             projectName: message.projectName,
+            title: message.title || null,
             type: message.instanceType || 'claude',
+            provider: message.provider || 'claude',
+            savedItemId: message.savedItemId || null,
             groupId: message.groupId || null,
             cwd: message.cwd || null,
             shell: message.shell || null,
             command: message.command || null,
+            launchFlags: message.launchFlags || [],
             status: 'running',
             startedAt: new Date().toISOString(),
-            milestones: [],
-            messages: [],
-            plans: [],
             pendingInput: null,
           });
           break;
@@ -102,6 +117,20 @@ function handleMessage(event) {
           updateInstanceField(message.instanceId, 'status', message.status);
           break;
 
+        case 'title_update':
+          updateInstanceField(message.instanceId, 'title', message.title || null);
+          break;
+
+        // "Move to group…": the instance now belongs to another group
+        case 'group_changed': {
+          const movedInst = InstanceStores.instancesStore.get()[message.instanceId];
+          if (movedInst?.groupId && movedInst.groupId !== message.groupId) {
+            clearPlaceholder(movedInst.groupId, message.instanceId);
+          }
+          updateInstanceField(message.instanceId, 'groupId', message.groupId);
+          break;
+        }
+
         case 'status_update': {
           // Don't let 'working'/'thinking' override 'waiting' — race condition guard
           const suInst = InstanceStores.instancesStore.get()[message.instanceId];
@@ -113,31 +142,12 @@ function handleMessage(event) {
           break;
         }
 
-        case 'milestone':
-          addMilestone(message.instanceId, {
-            accomplished: message.accomplished,
-            workingOn: message.workingOn,
-            timestamp: message.timestamp || new Date().toISOString(),
-          });
-          break;
-
-        case 'claude_message':
-          addClaudeMessage(message.instanceId, {
-            text: message.text,
-            type: message.messageType || 'info',
-            timestamp: message.timestamp || new Date().toISOString(),
-          });
+        // User messages, Claude messages (questions included) and milestones, as stored
+        case 'feed_item':
+          appendFeedItem(message.instanceId, message.item);
           break;
 
         case 'user_input_needed':
-          // Add the question text as a chat message immediately
-          if (message.message) {
-            addClaudeMessage(message.instanceId, {
-              text: message.message,
-              type: 'question',
-              timestamp: new Date().toISOString(),
-            });
-          }
           setPendingInput(message.instanceId, {
             choices: message.choices,
           });
@@ -163,17 +173,18 @@ function handleMessage(event) {
             upsertInstance({
               id: inst.instanceId,
               type: inst.type,
+              provider: inst.provider || 'claude',
+              savedItemId: inst.savedItemId || null,
               projectId: inst.projectId || null,
               projectName: inst.name,
+              title: inst.title || null,
               groupId: message.groupId,
               cwd: inst.cwd || null,
               shell: inst.shell || null,
               command: inst.command || null,
+              launchFlags: inst.launchFlags || [],
               status: 'running',
               startedAt: new Date().toISOString(),
-              milestones: [],
-              messages: [],
-              plans: [],
               pendingInput: null,
             });
           });
@@ -189,6 +200,8 @@ function handleMessage(event) {
           });
           break;
 
+        // Manual stop, or (remembered: true) an instance that exited on its own and
+        // moved to the remembered list.
         case 'stopped': {
           const stoppedInst = InstanceStores.instancesStore.get()[message.instanceId];
           if (stoppedInst?.groupId) {
@@ -203,7 +216,7 @@ function handleMessage(event) {
       }
     });
 
-    // Always forward to per-component listeners (for output, plan_ready, etc.)
+    // Always forward to per-component listeners (for output, remembered_changed, etc.)
     notifyListeners(message);
   } catch (e) {
     console.error('WS message parse error:', e);
@@ -222,6 +235,7 @@ function forceReconnect() {
     wsState.reconnectTimer = null;
   }
   wsState.connecting = false;
+  // eslint-disable-next-line no-use-before-define
   connect();
 }
 
@@ -247,12 +261,18 @@ function connect() {
   socket.onopen = () => {
     wsState.connecting = false;
     wsState.socket = socket;
+    wsState.resyncFeeds = true;
 
     // Flush queued messages
     while (wsState.sendQueue.length) {
       const payload = wsState.sendQueue.shift();
       socket.send(payload);
     }
+
+    clearInterval(wsState.resyncTimer);
+    wsState.resyncTimer = setInterval(() => {
+      if (wsState.socket?.readyState === WebSocket.OPEN) sendJson({ type: 'list' });
+    }, RESYNC_INTERVAL);
 
     notifyListeners({ type: 'ws_connected' });
   };
@@ -262,6 +282,8 @@ function connect() {
   socket.onclose = () => {
     wsState.connecting = false;
     wsState.socket = null;
+    clearInterval(wsState.resyncTimer);
+    wsState.resyncTimer = null;
     notifyListeners({ type: 'ws_disconnected' });
 
     // Auto-reconnect
@@ -270,10 +292,10 @@ function connect() {
     }, RECONNECT_DELAY);
   };
 
-  socket.onerror = error => {
-    console.error('WS error:', error);
+  // Not logged: every reconnect attempt during a backend restart fires it, and onclose
+  // (which always follows) reconnects.
+  socket.onerror = () => {
     wsState.connecting = false;
-    // onclose will fire after onerror, which triggers reconnect
   };
 }
 
@@ -282,6 +304,8 @@ function disconnect() {
     clearTimeout(wsState.reconnectTimer);
     wsState.reconnectTimer = null;
   }
+  clearInterval(wsState.resyncTimer);
+  wsState.resyncTimer = null;
   if (wsState.socket) {
     wsState.socket.close();
     wsState.socket = null;

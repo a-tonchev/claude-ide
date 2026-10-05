@@ -1,52 +1,47 @@
 import InstanceManager from '#modules/instanceManager/InstanceManager';
-import WsHandler, { broadcastGroupStatus } from '#modules/wsHandler/WsHandler';
+import InstanceStore from '#modules/instanceStore/InstanceStore';
+import WsHandler, { publishStatus, recordFeedItem, setStatus } from '#modules/wsHandler/WsHandler';
+import { FeedKinds } from '../enums/InstanceEnums';
+
+const FEED_PAGE_SIZE = 50;
+const FEED_MAX_PAGE_SIZE = 200;
+
+const notFound = ctx => ctx.modS.responses.createErrorResponse(
+  ctx,
+  ctx.modS.responses.CustomErrors.NOT_FOUND,
+);
+
+const badRequest = (ctx, message) => ctx.modS.responses.createErrorResponse(
+  ctx,
+  ctx.modS.responses.CustomErrors.BAD_REQUEST,
+  { message },
+);
 
 const InstanceController = {
   async updateStatus(ctx) {
     const { id } = ctx.params;
     const { status } = ctx.request.body;
 
-    if (!status) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.BAD_REQUEST,
-        { message: 'status is required' },
-      );
-    }
+    if (!status) return badRequest(ctx, 'status is required');
+
+    const existing = InstanceManager.get(id);
+    if (!existing) return notFound(ctx);
 
     // Don't let Claude override 'waiting' while user input is pending —
     // prevents race between update_status('working') and user_input_needed
-    const existing = InstanceManager.get(id);
-    if (existing && existing.status === 'waiting' && existing.pendingInput
+    if (existing.status === 'waiting' && existing.pendingInput
         && ['working', 'thinking', 'running'].includes(status)) {
       return ctx.modS.responses.createSuccessResponse(ctx, { status: existing.status });
     }
 
-    const updated = InstanceManager.updateStatus(id, status);
-    if (!updated) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.NOT_FOUND,
-      );
-    }
+    InstanceManager.detectCodexSession(id);
 
-    // Delay 'completed' broadcast so any in-flight messages/plans arrive first
     if (status === 'completed') {
-      setTimeout(() => {
-        WsHandler.publish(`instance_${id}`, {
-          type: 'status_update',
-          instanceId: id,
-          status,
-        });
-        broadcastGroupStatus(id);
-      }, 500);
+      InstanceManager.updateStatus(id, status);
+      // Delay the broadcast so any in-flight messages/plans arrive first
+      setTimeout(() => publishStatus(id, status), 500);
     } else {
-      WsHandler.publish(`instance_${id}`, {
-        type: 'status_update',
-        instanceId: id,
-        status,
-      });
-      broadcastGroupStatus(id);
+      setStatus(id, status);
     }
 
     return ctx.modS.responses.createSuccessResponse(ctx, { status });
@@ -56,55 +51,23 @@ const InstanceController = {
     const { id } = ctx.params;
     const { accomplished, workingOn } = ctx.request.body;
 
-    const milestone = InstanceManager.addMilestone(id, { accomplished, workingOn });
-    if (!milestone) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.NOT_FOUND,
-      );
-    }
+    if (!InstanceManager.get(id)) return notFound(ctx);
 
-    WsHandler.publish(`instance_${id}`, {
-      type: 'milestone',
-      instanceId: id,
-      accomplished,
-      workingOn,
-      timestamp: milestone.timestamp,
-    });
-
+    const milestone = await recordFeedItem(id, { kind: FeedKinds.MILESTONE, accomplished, workingOn });
     return ctx.modS.responses.createSuccessResponse(ctx, { milestone });
-  },
-
-  async getMilestones(ctx) {
-    const { id } = ctx.params;
-    const milestones = InstanceManager.getMilestones(id);
-    return ctx.modS.responses.createSuccessResponse(ctx, { milestones });
   },
 
   async setUserInput(ctx) {
     const { id } = ctx.params;
     const { message, choices } = ctx.request.body;
 
-    if (!message || !choices) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.BAD_REQUEST,
-        { message: 'message and choices are required' },
-      );
-    }
+    if (!message || !choices) return badRequest(ctx, 'message and choices are required');
 
     const set = InstanceManager.setPendingInput(id, { choices });
-    if (!set) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.NOT_FOUND,
-      );
-    }
+    if (!set) return notFound(ctx);
 
-    // Store the question as a chat message immediately (for persistence/reconnects)
-    if (message) {
-      InstanceManager.addMessage(id, { text: message, type: 'question' });
-    }
+    // The question is part of the feed, so it is still there after a reload or resume.
+    await recordFeedItem(id, { kind: FeedKinds.MESSAGE, type: 'question', text: message });
 
     WsHandler.publish(`instance_${id}`, {
       type: 'user_input_needed',
@@ -112,14 +75,7 @@ const InstanceController = {
       message,
       choices,
     });
-
-    WsHandler.publish(`instance_${id}`, {
-      type: 'status_update',
-      instanceId: id,
-      status: 'waiting',
-    });
-
-    broadcastGroupStatus(id);
+    publishStatus(id, 'waiting');
 
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
@@ -128,72 +84,68 @@ const InstanceController = {
     const { id } = ctx.params;
     const { text, type } = ctx.request.body;
 
-    if (!text) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.BAD_REQUEST,
-        { message: 'text is required' },
-      );
-    }
+    if (!text) return badRequest(ctx, 'text is required');
+    if (!InstanceManager.get(id)) return notFound(ctx);
 
-    const message = InstanceManager.addMessage(id, { text, type });
-    if (!message) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.NOT_FOUND,
-      );
-    }
-
-    WsHandler.publish(`instance_${id}`, {
-      type: 'claude_message',
-      instanceId: id,
-      text,
-      messageType: type || 'info',
-      timestamp: message.timestamp,
-    });
-
+    const message = await recordFeedItem(id, { kind: FeedKinds.MESSAGE, text, type });
     return ctx.modS.responses.createSuccessResponse(ctx, { message });
   },
 
-  async userResponse(ctx) {
-    const { id } = ctx.params;
-    const { choice } = ctx.request.body;
-
-    if (!choice) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.BAD_REQUEST,
-        { message: 'choice is required' },
-      );
-    }
-
-    const instance = InstanceManager.get(id);
-    if (!instance) {
-      return ctx.modS.responses.createErrorResponse(
-        ctx,
-        ctx.modS.responses.CustomErrors.NOT_FOUND,
-      );
-    }
-
-    InstanceManager.addUserMessage(id, choice);
-    InstanceManager.write(id, choice);
-    setTimeout(() => InstanceManager.write(id, '\r'), 100);
-    InstanceManager.clearPendingInput(id);
-    InstanceManager.updateStatus(id, 'working');
-
-    WsHandler.publish(`instance_${id}`, {
-      type: 'pending_cleared',
-      instanceId: id,
+  // Instances that exist in the database but aren't running: they exited on their
+  // own, or were running when the backend stopped.
+  async getRemembered(ctx) {
+    const records = await InstanceStore.listRecords(InstanceManager.runningIds());
+    return ctx.modS.responses.createSuccessResponse(ctx, {
+      instances: records.map(r => ({
+        id: r._id,
+        type: r.type,
+        provider: r.provider,
+        projectId: r.projectId,
+        projectName: r.projectName,
+        title: r.title,
+        cwd: r.cwd,
+        groupId: r.groupId,
+        hasSession: !!r.sessionId,
+        resumeError: r.resumeError || null,
+        messageCount: r.messageCount,
+        startedAt: r.startedAt,
+        lastActiveAt: r.lastActiveAt,
+      })),
     });
+  },
 
-    WsHandler.publish(`instance_${id}`, {
-      type: 'status_update',
-      instanceId: id,
-      status: 'working',
+  // A page of an instance's feed, newest last. The first page also carries its plans.
+  async getFeed(ctx) {
+    const { instanceId, beforeId, limit } = ctx.request.body;
+    if (!instanceId || typeof instanceId !== 'string') return badRequest(ctx, 'instanceId is required');
+
+    const pageSize = Math.min(Math.max(Math.trunc(Number(limit)) || FEED_PAGE_SIZE, 1), FEED_MAX_PAGE_SIZE);
+    const [{ items, total }, plans] = await Promise.all([
+      InstanceStore.getFeed(instanceId, { beforeId, limit: pageSize }),
+      beforeId ? null : ctx.libS.plans.getByInstanceId(instanceId),
+    ]);
+
+    return ctx.modS.responses.createSuccessResponse(ctx, {
+      items,
+      total,
+      plans: plans && plans.reverse().map(p => ({
+        id: p._id.toString(),
+        title: p.title || '',
+        content: p.content || '',
+        seen: !!p.seen,
+      })),
     });
+  },
 
-    broadcastGroupStatus(id);
+  // Removing a remembered instance is a manual stop: record and messages are deleted,
+  // plans are kept.
+  async removeRemembered(ctx) {
+    const { instanceId } = ctx.request.body;
+    if (!instanceId || typeof instanceId !== 'string') return badRequest(ctx, 'instanceId is required');
+    if (InstanceManager.get(instanceId)) return badRequest(ctx, 'This instance is running. Stop it from its card instead.');
 
+    await InstanceStore.deleteRecord(instanceId);
+    WsHandler.publish('global', { type: 'remembered_changed' });
     return ctx.modS.responses.createSuccessResponse(ctx);
   },
 };

@@ -2,7 +2,7 @@ import CommonSchemaFields from '#modules/validation/CommonSchemaFields';
 import SettingsSchemaFields from './SettingsSchemaFields';
 
 const {
-  type, name, dbPath, dbName, username, encryptedPassword, instructions,
+  type, name, dbPath, dbName, username, encryptedPassword, instructions, args,
 } = SettingsSchemaFields;
 const { _id, date } = CommonSchemaFields;
 
@@ -19,6 +19,7 @@ const SettingsSchema = {
     username,
     encryptedPassword,
     instructions,
+    args,
     updatedAt: date,
     createdAt: date,
   },

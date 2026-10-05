@@ -2,3 +2,5 @@
 nul
 .mcp.json
 backend/mcp/mcp-config.json
+SECURITY-TODO.md
+*.stackdump

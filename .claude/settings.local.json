@@ -18,7 +18,9 @@
       "WebSearch",
       "Task",
       "NotebookEdit",
-      "mcp__claude_ai_Documentation_MCP__write_note"
+      "mcp__claude_ai_Documentation_MCP__write_note",
+      "mcp__claude-ide__getObserver",
+      "mcp__claude-ide__setObserver"
     ]
   },
   "enableAllProjectMcpServers": true,

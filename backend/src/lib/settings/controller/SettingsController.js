@@ -16,7 +16,7 @@ const SettingsController = {
 
   async create(ctx) {
     const {
-      type, name, dbPath, dbName, username, password, instructions,
+      type, name, dbPath, dbName, username, password, instructions, args,
     } = ctx.request.body;
 
     const doc = { type, name };
@@ -24,6 +24,7 @@ const SettingsController = {
     if (dbName !== undefined) doc.dbName = dbName;
     if (username !== undefined) doc.username = username;
     if (instructions !== undefined) doc.instructions = instructions;
+    if (args !== undefined) doc.args = args;
     if (password) {
       doc.encryptedPassword = CryptoHelper.encrypt(password);
     }

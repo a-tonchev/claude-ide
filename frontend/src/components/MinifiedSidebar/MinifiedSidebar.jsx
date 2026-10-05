@@ -52,7 +52,7 @@ const MinifiedSidebar = ({
         {instances.map(inst => (
           <Tooltip
             key={inst.id}
-            title={inst.projectName || inst.name || 'Instance'}
+            title={inst.title || inst.projectName || inst.name || 'Instance'}
             placement="left"
             arrow
           >
@@ -114,7 +114,7 @@ const MinifiedSidebar = ({
                 flex: 1,
               }}
               >
-                {selectedInstance.projectName || selectedInstance.name || 'Instance'}
+                {selectedInstance.title || selectedInstance.projectName || selectedInstance.name || 'Instance'}
               </Typography>
             </Box>
             <Divider sx={{ borderColor: '#4E5254', my: 0.75 }} />

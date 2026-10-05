@@ -5,8 +5,6 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import TextField from '@mui/material/TextField';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Popover from '@mui/material/Popover';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -18,7 +16,7 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
 import MinimizeIcon from '@mui/icons-material/Minimize';
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import DriveFileMoveOutlinedIcon from '@mui/icons-material/DriveFileMoveOutlined';
 import PersonIcon from '@mui/icons-material/Person';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -26,24 +24,19 @@ import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import DescriptionIcon from '@mui/icons-material/Description';
 import HistoryIcon from '@mui/icons-material/History';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
-import { useStoreValue } from '@/components/state/GlobalState';
+import ChatInput from '@/components/ChatInput/ChatInput';
+import { FeedAttachments, FileDropZone } from '@/components/Attachments/Attachments';
+import useAttachments from '@/hooks/useAttachments';
+import EditableTitle from '@/components/EditableTitle/EditableTitle';
+import { useStoreFamilyValue } from '@/components/state/GlobalState';
 import { InstanceStores, setInputDraft, markPlanSeen } from '@/stores/instanceAtoms';
-import useMobile from '@/components/layout/hooks/useMobile';
+import { STATUS_CONFIG, getInstanceTitle } from '@/helpers/instanceHelper';
+import useFeedWindow from '@/hooks/useFeedWindow';
 
-const STATUS_CONFIG = {
-  ready: { label: 'Ready', color: '#7CB368' },
-  thinking: { label: 'Thinking', color: '#CC7832' },
-  planning: { label: 'Planning', color: '#CC7832' },
-  plan_ready: { label: 'Plan Ready', color: '#7CB368' },
-  waiting: { label: 'Waiting', color: '#CC7832' },
-  working: { label: 'Working', color: '#6897BB' },
-  completed: { label: 'Completed', color: '#7CB368' },
-  running: { label: 'Running', color: '#7CB368' },
-  exited: { label: 'Exited', color: '#606366' },
-};
+// "Click to read full message" under a shortened feed item
+const hintSx = { fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' };
 
 const ObserverCard = ({
   instance,
@@ -57,32 +50,24 @@ const ObserverCard = ({
   onViewPlan,
   onViewInstructions,
   onMinimize,
-  onRemoveFromGroup,
+  onMoveToGroup,
+  onRename,
+  fill = false,
 }) => {
-  const { isMobile } = useMobile();
-  const inputDrafts = useStoreValue(InstanceStores.inputDraftsStore);
-  const inputText = inputDrafts[instance.id] || '';
-  const [feedExpanded, setFeedExpanded] = useState(false);
+  const inputText = useStoreFamilyValue(InstanceStores.inputDraftFamilyStore, instance.id);
   const [plansAnchorEl, setPlansAnchorEl] = useState(null);
+  const [pendingCollapsed, setPendingCollapsed] = useState(false);
   const feedRef = useRef(null);
 
   const status = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
-  const milestones = instance.milestones || [];
-  const messages = instance.messages || [];
-  const userMessages = instance.userMessages || [];
   const plans = instance.plans || [];
   const pending = instance.pendingInput;
 
-  const feed = [];
-  userMessages.forEach(m => feed.push({ kind: 'user', text: m.text, ts: m.timestamp }));
-  milestones.forEach(m => feed.push({
-    kind: 'milestone', accomplished: m.accomplished, workingOn: m.workingOn, ts: m.timestamp,
-  }));
-  messages.forEach(m => feed.push({
-    kind: 'message', text: m.text, messageType: m.type, ts: m.timestamp,
-  }));
-  feed.sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  const visibleFeed = feedExpanded || expanded ? feed : feed.slice(-5);
+  // The feed as stored in the database; an expanded card shows every loaded item.
+  // Keys are the stored ids, so appends don't force MarkdownRenderer to re-parse the visible feed.
+  const {
+    feed, visibleFeed, hiddenCount, showMore, newestId,
+  } = useFeedWindow(instance, { showAll: expanded });
 
   const isProcessing = ['thinking', 'planning', 'working'].includes(instance.status);
 
@@ -102,417 +87,527 @@ const ObserverCard = ({
     if (feedRef.current && !userScrolledUp.current) {
       feedRef.current.scrollTop = feedRef.current.scrollHeight;
     }
-  }, [feed.length]);
+  }, [newestId]);
 
-  const handleSend = useCallback(() => {
-    if (inputText.trim()) {
-      onSendInput(instance.id, `${inputText}\r`);
-      setInputDraft(instance.id, '');
-    }
-  }, [inputText, instance.id, onSendInput]);
+  // Files attached to the message being written; dropped anywhere on the card or pasted
+  const attachments = useAttachments(instance.id);
 
-  const handleKeyDown = useCallback(e => {
-    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
-      e.preventDefault();
-      handleSend();
-    }
-  }, [handleSend, isMobile]);
+  const handleSend = useCallback((data, attachmentIds) => {
+    onSendInput(instance.id, data, attachmentIds);
+    setInputDraft(instance.id, '');
+  }, [instance.id, onSendInput]);
 
   return (
-    <Card
-      sx={{
-        bgcolor: '#313335',
-        border: '1px solid #3C3F41',
-        borderRadius: 2,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: 'calc(40vh - 36px)',
-      }}
+    <FileDropZone
+      enabled={attachments.enabled}
+      onFiles={attachments.addFiles}
+      sx={fill ? { height: '100%' } : undefined}
     >
-      {/* Header */}
-      <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', flexShrink: 0,
-      }}
+      <Card
+        sx={{
+          bgcolor: '#313335',
+          border: '1px solid #3C3F41',
+          borderRadius: 2,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          // fill: the card takes its container's full height (one card per page on mobile)
+          height: fill ? '100%' : undefined,
+          maxHeight: fill ? 'none' : 'calc(40vh - 36px)',
+        }}
       >
-        <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
-        <Typography sx={{ fontSize: '0.75rem', color: status.color, fontWeight: 500 }}>
-          {status.label}
-        </Typography>
-        <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, justifyContent: 'flex-end', minWidth: 0,
-        }}
+        {/* Header: status + editable title + show-more, single compact row */}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.75,
+            px: 1,
+            py: 0.5,
+            borderBottom: '1px solid #3C3F41',
+            flexShrink: 0,
+          }}
         >
-          <ArrowFatLinesUp size={14} weight="bold" color="#B07ACC" style={{ flexShrink: 0 }} />
-          <Typography
-            sx={{
-              fontSize: '0.8rem',
-              color: '#A9B7C6',
-              fontWeight: 600,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
+          <FiberManualRecordIcon titleAccess={status.label} sx={{ fontSize: 9, color: status.color, flexShrink: 0 }} />
+          <Typography sx={{
+            fontSize: '0.7rem', color: status.color, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0,
+          }}
           >
-            {instance.projectName || instance.name}
+            {status.label}
           </Typography>
-        </Box>
-      </Box>
-
-      {/* Activity Feed */}
-      {feed.length > 0 && (
-        <Box sx={{
-          px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41',
-          flexShrink: 1, flexGrow: 1, minHeight: 0, overflow: 'hidden',
-          display: 'flex', flexDirection: 'column',
-        }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.25, flexShrink: 0 }}>
-            <Typography sx={{
-              fontSize: '0.85rem', color: '#808080', fontWeight: 600, flex: 1,
-            }}
+          <EditableTitle
+            title={getInstanceTitle(instance)}
+            onRename={title => onRename?.(instance.id, title)}
+            icon={<ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" style={{ flexShrink: 0 }} />}
+          />
+          {hiddenCount > 0 && (
+            <Box
+              onClick={showMore}
+              title={`Show 5 more messages (${hiddenCount} hidden)`}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.25,
+                px: 0.5,
+                borderRadius: 1,
+                cursor: 'pointer',
+                flexShrink: 0,
+                '&:hover': { bgcolor: '#3C3F41' },
+              }}
             >
-              ACTIVITY
-            </Typography>
-            {feed.length > 5 && (
-              <IconButton size="small" onClick={() => setFeedExpanded(!feedExpanded)} sx={{ p: 0 }}>
-                {feedExpanded
-                  ? <ExpandLessIcon sx={{ fontSize: 14, color: '#808080' }} />
-                  : <ExpandMoreIcon sx={{ fontSize: 14, color: '#808080' }} />}
-              </IconButton>
-            )}
-          </Box>
-          <Box ref={feedRef} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-            {visibleFeed.map((item, idx) => {
-              if (item.kind === 'user') {
-                const isLong = item.text && item.text.length > 250;
-                const display = isLong ? `${item.text.slice(0, 200)}...` : item.text;
-                return (
-                  <Box
-                    key={idx}
-                    onClick={isLong ? () => onViewPlan?.({ title: 'User Message', content: item.text }) : undefined}
-                    sx={{
-                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
-                      ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
-                    }}
-                  >
-                    <PersonIcon sx={{ fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.4 }}>
-                      {display}
-                    </Typography>
-                  </Box>
-                );
-              }
-              if (item.kind === 'message') {
-                const msgColor = item.messageType === 'success' ? '#7CB368'
-                  : item.messageType === 'warning' ? '#CC7832'
-                    : item.messageType === 'error' ? '#BC3F3C'
-                      : item.messageType === 'question' ? '#CC7832'
-                        : '#A9B7C6';
-                const isLong = item.text && item.text.length > 250;
-                const display = isLong ? `${item.text.slice(0, 200)}...` : item.text;
-                return (
-                  <Box
-                    key={idx}
-                    onClick={isLong ? () => onViewPlan?.({ title: 'Message', content: item.text }) : undefined}
-                    sx={{
-                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
-                      ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
-                    }}
-                  >
-                    <ChatIcon sx={{ fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0 }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <MarkdownRenderer
-                        content={display}
-                        fontSize="0.8rem"
-                        sx={{
-                          color: msgColor,
-                          lineHeight: 1.4,
-                          '& p': { mb: 0.25 },
-                          '& p:last-child': { mb: 0 },
-                          '& pre': { p: 0.75, mb: 0.5, fontSize: '0.85rem' },
-                          '& ul, & ol': { pl: 2, mb: 0.25 },
-                          '& li': { mb: 0 },
-                          '& h1, & h2, & h3': { fontSize: '0.85rem', mt: 0.5, mb: 0.25 },
-                        }}
-                      />
-                      {isLong && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography sx={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
-                            Click to read full message
-                          </Typography>
-                          {item.text.trim().endsWith('?') && (
-                            <HelpOutlineIcon sx={{ fontSize: 12, color: msgColor, pr: 0.5, pb: 0.5 }} />
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-                );
-              }
-              {
-                const milestoneText = `${item.accomplished || ''}${item.workingOn ? ` → ${item.workingOn}` : ''}`;
-                const isLong = milestoneText.length > 250;
-                const msDisplay = isLong ? `${(item.accomplished || '').slice(0, 200)}...` : null;
-                return (
-                  <Box
-                    key={idx}
-                    onClick={isLong ? () => onViewPlan?.({ title: 'Milestone', content: milestoneText }) : undefined}
-                    sx={{
-                      display: 'flex', alignItems: 'flex-start', gap: 0.5, mb: 0.25,
-                      ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
-                    }}
-                  >
-                    <SmartToyIcon sx={{ fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: '0.8rem', color: '#A9B7C6', lineHeight: 1.4 }}>
-                      <span style={{ color: '#7CB368' }}>{isLong ? msDisplay : item.accomplished}</span>
-                      {!isLong && item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
-                    </Typography>
-                  </Box>
-                );
-              }
-            })}
-          </Box>
-          {isProcessing && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.5, flexShrink: 0 }}>
-              <CircularProgress size={10} sx={{ color: '#6897BB' }} />
-              <Typography sx={{ fontSize: '0.85rem', color: '#6897BB', fontStyle: 'italic' }}>
-                Processing...
+              <Typography sx={{ fontSize: '0.65rem', color: '#808080', whiteSpace: 'nowrap' }}>
+                +5 ({hiddenCount})
               </Typography>
+              <ExpandLessIcon sx={{ fontSize: 13, color: '#808080' }} />
             </Box>
           )}
         </Box>
-      )}
-      {feed.length === 0 && isProcessing && (
-        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-            <CircularProgress size={10} sx={{ color: '#6897BB' }} />
-            <Typography sx={{ fontSize: '0.85rem', color: '#6897BB', fontStyle: 'italic' }}>
-              Observer is working...
-            </Typography>
-          </Box>
-        </Box>
-      )}
 
-      {/* Plans */}
-      {plans.length > 0 && (
-        <Box sx={{ px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Typography sx={{ fontSize: '0.85rem', color: '#808080', fontWeight: 600 }}>
-              PLANS
-            </Typography>
+        {/* Activity Feed */}
+        {feed.length > 0 && (
+          <Box sx={{
+            px: 1.5,
+            py: 0.5,
+            borderBottom: '1px solid #3C3F41',
+            flexShrink: 1,
+            flexGrow: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          >
+            <Box ref={feedRef} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              {visibleFeed.map(item => {
+                if (item.kind === 'user') {
+                  const isLong = item.text && item.text.length > 250;
+                  const display = isLong ? `${item.text.slice(0, 200)}...` : item.text;
+                  return (
+                    <Box
+                      key={item.id}
+                      onClick={isLong ? () => onViewPlan?.({ title: 'User Message', content: item.text }) : undefined}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 0.5,
+                        mb: 0.25,
+                        ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
+                      }}
+                    >
+                      <PersonIcon sx={{
+                        fontSize: 12, color: '#B07ACC', mt: '2px', flexShrink: 0,
+                      }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.4 }}>
+                          {display}
+                        </Typography>
+                        <FeedAttachments instanceId={instance.id} attachments={item.attachments} />
+                      </Box>
+                    </Box>
+                  );
+                }
+                if (item.kind === 'message') {
+                  const msgColor = item.type === 'success' ? '#7CB368'
+                    : item.type === 'warning' ? '#CC7832'
+                      : item.type === 'error' ? '#BC3F3C'
+                        : item.type === 'question' ? '#CC7832'
+                          : '#A9B7C6';
+                  const isLong = item.text && item.text.length > 250;
+                  const display = isLong ? `${item.text.slice(0, 200)}...` : item.text;
+                  return (
+                    <Box
+                      key={item.id}
+                      onClick={isLong ? () => onViewPlan?.({ title: 'Message', content: item.text }) : undefined}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 0.5,
+                        mb: 0.25,
+                        ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
+                      }}
+                    >
+                      <ChatIcon sx={{
+                        fontSize: 12, color: msgColor, mt: '2px', flexShrink: 0,
+                      }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <MarkdownRenderer
+                          content={display}
+                          fontSize="0.8rem"
+                          sx={{
+                            color: msgColor,
+                            lineHeight: 1.4,
+                            '& p': { mb: 0.25 },
+                            '& p:last-child': { mb: 0 },
+                            '& pre': { p: 0.75, mb: 0.5, fontSize: '0.85rem' },
+                            '& ul, & ol': { pl: 2, mb: 0.25 },
+                            '& li': { mb: 0 },
+                            '& h1, & h2, & h3': { fontSize: '0.85rem', mt: 0.5, mb: 0.25 },
+                          }}
+                        />
+                        {isLong && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Typography sx={hintSx}>
+                              Click to read full message
+                            </Typography>
+                            {item.text.trim().endsWith('?') && (
+                              <HelpOutlineIcon sx={{
+                                fontSize: 12, color: msgColor, pr: 0.5, pb: 0.5,
+                              }}
+                              />
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                }
+                {
+                  const milestoneText = `${item.accomplished || ''}${item.workingOn ? ` → ${item.workingOn}` : ''}`;
+                  const isLong = milestoneText.length > 250;
+                  const msDisplay = isLong ? `${(item.accomplished || '').slice(0, 200)}...` : null;
+                  return (
+                    <Box
+                      key={item.id}
+                      onClick={isLong ? () => onViewPlan?.({ title: 'Milestone', content: milestoneText }) : undefined}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 0.5,
+                        mb: 0.25,
+                        ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' }, borderRadius: 1 }),
+                      }}
+                    >
+                      <SmartToyIcon sx={{
+                        fontSize: 12, color: '#7CB368', mt: '2px', flexShrink: 0,
+                      }}
+                      />
+                      <Typography sx={{ fontSize: '0.8rem', color: '#A9B7C6', lineHeight: 1.4 }}>
+                        <span style={{ color: '#7CB368' }}>{isLong ? msDisplay : item.accomplished}</span>
+                        {!isLong && item.workingOn && <span style={{ color: '#7AAACF' }}> → {item.workingOn}</span>}
+                      </Typography>
+                    </Box>
+                  );
+                }
+              })}
+            </Box>
+            {isProcessing && (
+              <Box sx={{
+                display: 'flex', alignItems: 'center', gap: 0.75, mt: 0.25, flexShrink: 0,
+              }}
+              >
+                <CircularProgress size={10} sx={{ color: '#6897BB' }} />
+                <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
+                  Processing...
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
+        {feed.length === 0 && isProcessing && (
+          <Box sx={{
+            px: 1.5, py: 0.5, borderBottom: '1px solid #3C3F41', flexShrink: 0,
+          }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <CircularProgress size={10} sx={{ color: '#6897BB' }} />
+              <Typography sx={{ fontSize: '0.75rem', color: '#6897BB', fontStyle: 'italic' }}>
+                Observer is working...
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {/* Plans — single compact row: dot + last plan title + history icon */}
+        {plans.length > 0 && (
+          <Box
+            sx={{
+              px: 1.5,
+              py: 0.5,
+              borderBottom: '1px solid #3C3F41',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.75,
+            }}
+          >
+            <Box
+              onClick={() => {
+                const lp = plans[plans.length - 1];
+                if (!lp.seen) markPlanSeen(instance.id, lp.id);
+                onViewPlan?.(lp);
+              }}
+              onMouseEnter={() => {
+                const lp = plans[plans.length - 1];
+                if (!lp.seen) markPlanSeen(instance.id, lp.id);
+              }}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                flex: 1,
+                minWidth: 0,
+                cursor: 'pointer',
+                '&:hover .plan-title': { textDecoration: 'underline' },
+              }}
+            >
+              <Box
+                className="plan-dot"
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  bgcolor: '#CC7832',
+                  flexShrink: 0,
+                  opacity: plans[plans.length - 1].seen !== false ? 0.4 : undefined,
+                  animation: plans[plans.length - 1].seen !== false ? 'none' : 'planPulse 2s ease-in-out infinite',
+                  '@keyframes planPulse': {
+                    '0%, 100%': { opacity: 0.4, transform: 'scale(1)' },
+                    '50%': { opacity: 1, transform: 'scale(1.3)' },
+                  },
+                }}
+              />
+              <Typography
+                className="plan-title"
+                sx={{
+                  fontSize: '0.8rem',
+                  color: '#6897BB',
+                  lineHeight: 1.4,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {plans[plans.length - 1].title || 'Untitled Plan'}
+              </Typography>
+            </Box>
             {plans.length > 1 && (
-              <IconButton size="small" onClick={e => setPlansAnchorEl(e.currentTarget)} sx={{ p: 0, ml: 'auto' }}>
+              <IconButton
+                size="small"
+                title="All plans"
+                onClick={e => setPlansAnchorEl(e.currentTarget)}
+                sx={{ p: 0.25, flexShrink: 0 }}
+              >
                 <HistoryIcon sx={{ fontSize: 14, color: '#808080' }} />
               </IconButton>
             )}
           </Box>
-          <Box
-            onClick={() => {
-              const lp = plans[plans.length - 1];
-              if (!lp.seen) markPlanSeen(instance.id, lp.id);
-              onViewPlan?.(lp);
+        )}
+        <Popover
+          open={Boolean(plansAnchorEl)}
+          anchorEl={plansAnchorEl}
+          onClose={() => setPlansAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          PaperProps={{
+            sx: {
+              bgcolor: '#313335',
+              border: '1px solid #4E5254',
+              maxHeight: 300,
+              overflowY: 'auto',
+              minWidth: 200,
+              maxWidth: 350,
+            },
+          }}
+        >
+          <Box sx={{ py: 0.5 }}>
+            <Typography sx={{
+              fontSize: '0.85rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5,
             }}
-            onMouseEnter={() => {
-              const lp = plans[plans.length - 1];
-              if (!lp.seen) markPlanSeen(instance.id, lp.id);
-            }}
-            sx={{
-              display: 'flex', alignItems: 'center', gap: 0.75,
-              cursor: 'pointer',
-              '&:hover .plan-title': { textDecoration: 'underline' },
-            }}
-          >
-            <Box
-              className="plan-dot"
-              sx={{
-                width: 6, height: 6, borderRadius: '50%', bgcolor: '#CC7832', flexShrink: 0,
-                opacity: plans[plans.length - 1].seen !== false ? 0.4 : undefined,
-                animation: plans[plans.length - 1].seen !== false ? 'none' : 'planPulse 2s ease-in-out infinite',
-                '@keyframes planPulse': {
-                  '0%, 100%': { opacity: 0.4, transform: 'scale(1)' },
-                  '50%': { opacity: 1, transform: 'scale(1.3)' },
-                },
-              }}
-            />
-            <Typography
-              className="plan-title"
-              sx={{ fontSize: '0.8rem', color: '#6897BB', lineHeight: 1.4 }}
             >
-              {plans[plans.length - 1].title || 'Untitled Plan'}
+              ALL PLANS
             </Typography>
-          </Box>
-        </Box>
-      )}
-      <Popover
-        open={Boolean(plansAnchorEl)}
-        anchorEl={plansAnchorEl}
-        onClose={() => setPlansAnchorEl(null)}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        PaperProps={{
-          sx: {
-            bgcolor: '#313335', border: '1px solid #4E5254',
-            maxHeight: 300, overflowY: 'auto', minWidth: 200, maxWidth: 350,
-          },
-        }}
-      >
-        <Box sx={{ py: 0.5 }}>
-          <Typography sx={{ fontSize: '0.85rem', color: '#808080', fontWeight: 600, px: 1.5, py: 0.5 }}>
-            ALL PLANS
-          </Typography>
-          {plans.map((plan, idx) => (
-            <Typography
-              key={idx}
-              onClick={() => { onViewPlan?.(plan); setPlansAnchorEl(null); }}
-              sx={{
-                fontSize: '0.8rem', color: '#6897BB', cursor: 'pointer', px: 1.5, py: 0.5,
-                '&:hover': { bgcolor: '#3C3F41' }, lineHeight: 1.4,
-              }}
-            >
-              {plan.title || 'Untitled Plan'}
-            </Typography>
-          ))}
-        </Box>
-      </Popover>
-
-      {/* User Choices */}
-      {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
-        <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41', flexShrink: 0 }}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-            {pending.choices.map((choice, idx) => (
-              <Chip
+            {plans.map((plan, idx) => (
+              <Typography
                 key={idx}
-                label={choice}
-                clickable
-                onClick={() => onSendResponse(instance.id, choice)}
+                onClick={() => { onViewPlan?.(plan); setPlansAnchorEl(null); }}
                 sx={{
-                  bgcolor: '#214283', color: '#A9B7C6', fontSize: '0.85rem',
-                  height: 32,
-                  '&:hover': { bgcolor: '#2E5AA7' },
+                  fontSize: '0.8rem',
+                  color: '#6897BB',
+                  cursor: 'pointer',
+                  px: 1.5,
+                  py: 0.5,
+                  '&:hover': { bgcolor: '#3C3F41' },
+                  lineHeight: 1.4,
                 }}
-              />
+              >
+                {plan.title || 'Untitled Plan'}
+              </Typography>
             ))}
           </Box>
-        </Box>
-      )}
+        </Popover>
 
-      {/* Input */}
-      <Box sx={{
-        px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', flexShrink: 0, position: 'relative',
-      }}
-      >
-        <TextField
-          fullWidth
-          multiline
-          maxRows={expanded ? 12 : 8}
-          size="small"
-          placeholder="Type a message..."
+        {/* User Choices */}
+        {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
+          <Box sx={{
+            px: 1.5, py: 0.75, borderBottom: '1px solid #3C3F41', bgcolor: '#3C3F41', flexShrink: 0,
+          }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: pendingCollapsed ? 0 : 0.5 }}>
+              <Typography sx={{
+                fontSize: '0.7rem', color: '#808080', fontWeight: 600, flex: 1,
+              }}
+              >
+                {pendingCollapsed
+                  ? `${pending.choices.length} option${pending.choices.length === 1 ? '' : 's'} hidden`
+                  : 'OPTIONS'}
+              </Typography>
+              <IconButton
+                size="small"
+                onClick={() => setPendingCollapsed(c => !c)}
+                title={pendingCollapsed ? 'Show options' : 'Hide options'}
+                sx={{
+                  p: 0.25,
+                  bgcolor: '#2B2B2B',
+                  color: '#A9B7C6',
+                  borderRadius: '6px',
+                  '&:hover': { bgcolor: '#4E5254', color: '#FFFFFF' },
+                }}
+              >
+                {pendingCollapsed
+                  ? <ExpandLessIcon sx={{ fontSize: 16 }} />
+                  : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
+              </IconButton>
+            </Box>
+            {!pendingCollapsed && (
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5,
+                maxHeight: '30vh',
+                overflowY: 'auto',
+              }}
+              >
+                {pending.choices.map((choice, idx) => (
+                  <Box
+                    key={idx}
+                    component="button"
+                    type="button"
+                    onClick={() => onSendResponse(instance.id, choice)}
+                    sx={{
+                      bgcolor: '#214283',
+                      color: '#A9B7C6',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                      overflow: 'visible',
+                      width: '100%',
+                      display: 'block',
+                      lineHeight: 1.4,
+                      px: 1.25,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: '#2E5AA7' },
+                      '&:active': { bgcolor: '#1A3666' },
+                    }}
+                  >
+                    {choice}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* Input */}
+        <ChatInput
           value={inputText}
-          onChange={e => setInputDraft(instance.id, e.target.value)}
+          onChange={text => setInputDraft(instance.id, text)}
+          onSend={handleSend}
           disabled={instance.status === 'exited'}
-          onKeyDown={handleKeyDown}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              fontSize: '0.85rem',
-              bgcolor: '#2B2B2B',
-              color: '#A9B7C6',
-              borderRadius: '24px',
-              pr: '40px',
-              minHeight: 40,
-              '& fieldset': { borderColor: '#3C3F41' },
-              '&:hover fieldset': { borderColor: '#6897BB' },
-              '&.Mui-focused fieldset': { borderColor: '#6897BB' },
-            },
-            '& .MuiOutlinedInput-input': { py: 1, px: 1.5 },
-          }}
+          maxRows={expanded ? 12 : 8}
+          attachments={attachments}
         />
-        <IconButton
-          size="small"
-          onClick={handleSend}
-          disabled={instance.status === 'exited' || !inputText.trim()}
+
+        {/* Buttons */}
+        <Box
           sx={{
-            position: 'absolute',
-            right: 20,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 28,
-            height: 28,
-            bgcolor: inputText.trim() ? '#6897BB' : 'transparent',
-            color: inputText.trim() ? '#fff' : '#4E5254',
-            '&:hover': { bgcolor: inputText.trim() ? '#89B8DE' : 'rgba(104,151,187,0.15)' },
-            '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.25,
+            px: 0.75,
+            py: 0.25,
+            flexShrink: 0,
+            '& > .MuiIconButton-root': { p: 0.5 },
           }}
         >
-          <ArrowUpwardIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-      </Box>
-
-      {/* Buttons */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, flexShrink: 0 }}>
-        <IconButton
-          size="small"
-          onClick={() => onViewInstructions?.(instance.projectId, instance.projectName)}
-          title="View instructions"
-          sx={{ color: '#B07ACC', '&:hover': { color: '#C5A5D6' } }}
-        >
-          <DescriptionIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onOpenPlaceholder(instance.id)}
-          title="Open in placeholder"
-          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          <TvIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onOpenWindow(instance.id)}
-          title="Open in new window"
-          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          <OpenInNewIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onMinimize?.(instance.id)}
-          title="Minimize to sidebar"
-          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          <MinimizeIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onToggleExpand?.(instance.id)}
-          title={expanded ? 'Shrink card' : 'Expand card'}
-          sx={{ color: expanded ? '#6897BB' : '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          {expanded
-            ? <UnfoldLessIcon sx={{ fontSize: 16 }} />
-            : <UnfoldMoreIcon sx={{ fontSize: 16 }} />}
-        </IconButton>
-        <Box sx={{ flex: 1 }} />
-        <IconButton
-          size="small"
-          onClick={() => onRemoveFromGroup?.(instance.id)}
-          title="Remove from group"
-          sx={{ color: '#808080', '&:hover': { color: '#CC7832' } }}
-        >
-          <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onStop(instance.id)}
-          disabled={instance.status === 'exited'}
-          title="Stop"
-          sx={{ color: '#BC3F3C', '&:hover': { color: '#D45B58' }, '&.Mui-disabled': { color: '#4E5254' } }}
-        >
-          <StopIcon sx={{ fontSize: 16 }} />
-        </IconButton>
-      </Box>
-    </Card>
+          <IconButton
+            size="small"
+            onClick={() => onViewInstructions?.(instance.projectId, instance.projectName)}
+            title="View instructions"
+            sx={{ color: '#B07ACC', '&:hover': { color: '#C5A5D6' } }}
+          >
+            <DescriptionIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          {onOpenPlaceholder && (
+            <IconButton
+              size="small"
+              onClick={() => onOpenPlaceholder(instance.id)}
+              title="Open in placeholder"
+              sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+            >
+              <TvIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+          <IconButton
+            size="small"
+            onClick={() => onOpenWindow(instance.id)}
+            title="Open in new window"
+            sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+          >
+            <OpenInNewIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          {onMinimize && (
+            <IconButton
+              size="small"
+              onClick={() => onMinimize?.(instance.id)}
+              title="Minimize to sidebar"
+              sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+            >
+              <MinimizeIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          )}
+          {onToggleExpand && (
+            <IconButton
+              size="small"
+              onClick={() => onToggleExpand?.(instance.id)}
+              title={expanded ? 'Shrink card' : 'Expand card'}
+              sx={{ color: expanded ? '#6897BB' : '#808080', '&:hover': { color: '#6897BB' } }}
+            >
+              {expanded
+                ? <UnfoldLessIcon sx={{ fontSize: 16 }} />
+                : <UnfoldMoreIcon sx={{ fontSize: 16 }} />}
+            </IconButton>
+          )}
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            size="small"
+            onClick={e => onMoveToGroup?.(instance.id, e.currentTarget)}
+            disabled={instance.status === 'exited'}
+            title="Move to group…"
+            sx={{ color: '#808080', '&:hover': { color: '#6897BB' }, '&.Mui-disabled': { color: '#4E5254' } }}
+          >
+            <DriveFileMoveOutlinedIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => onStop(instance.id)}
+            disabled={instance.status === 'exited'}
+            title="Stop"
+            sx={{ color: '#BC3F3C', '&:hover': { color: '#D45B58' }, '&.Mui-disabled': { color: '#4E5254' } }}
+          >
+            <StopIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      </Card>
+    </FileDropZone>
   );
 };
 
-export default ObserverCard;
+export default React.memo(ObserverCard);

@@ -1,6 +1,6 @@
 import GroupSchemaFields from '../schema/GroupSchemaFields';
 
-const { name, items } = GroupSchemaFields;
+const { name, draft, items } = GroupSchemaFields;
 
 const CreateGroupSchema = {
   bsonType: 'object',
@@ -8,6 +8,7 @@ const CreateGroupSchema = {
   additionalProperties: false,
   properties: {
     name,
+    draft,
     items,
   },
 };
@@ -18,6 +19,7 @@ const UpdateGroupSchema = {
   properties: {
     _id: { bsonType: 'string' },
     name,
+    draft,
     items,
   },
 };

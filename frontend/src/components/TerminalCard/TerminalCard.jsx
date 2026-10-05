@@ -1,7 +1,6 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -9,7 +8,10 @@ import TvIcon from '@mui/icons-material/Tv';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StopIcon from '@mui/icons-material/Stop';
 import MinimizeIcon from '@mui/icons-material/Minimize';
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import DriveFileMoveOutlinedIcon from '@mui/icons-material/DriveFileMoveOutlined';
+
+import EditableTitle from '@/components/EditableTitle/EditableTitle';
+import { getInstanceTitle } from '@/helpers/instanceHelper';
 
 const SHELL_COLORS = {
   wsl: { bg: '#CC783222', color: '#CC7832', label: 'WSL' },
@@ -20,7 +22,7 @@ const SHELL_COLORS = {
 };
 
 const TerminalCard = ({
-  instance, onOpenPlaceholder, onOpenWindow, onStop, onMinimize, onRemoveFromGroup,
+  instance, onOpenPlaceholder, onOpenWindow, onStop, onMinimize, onMoveToGroup, onRename,
 }) => {
   const isRunning = instance.status !== 'exited';
   const shellInfo = SHELL_COLORS[instance.shell] || SHELL_COLORS.bash;
@@ -36,23 +38,25 @@ const TerminalCard = ({
     >
       {/* Header */}
       <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+        display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderBottom: '1px solid #3C3F41',
       }}
       >
-        <FiberManualRecordIcon sx={{ fontSize: 10, color: isRunning ? '#7CB368' : '#606366' }} />
-        <Typography sx={{
-          fontSize: '0.8rem', color: '#A9B7C6', fontWeight: 600, flex: 1,
-        }}
-        >
-          {instance.projectName || instance.name || 'Terminal'}
-        </Typography>
+        <FiberManualRecordIcon
+          titleAccess={isRunning ? 'Running' : 'Exited'}
+          sx={{ fontSize: 9, color: isRunning ? '#7CB368' : '#606366', flexShrink: 0 }}
+        />
+        <EditableTitle
+          title={getInstanceTitle(instance) || 'Terminal'}
+          onRename={title => onRename?.(instance.id, title)}
+        />
         <Chip
           size="small"
           label={shellInfo.label}
           sx={{
-            height: 20,
-            fontSize: '0.65rem',
+            height: 18,
+            fontSize: '0.6rem',
             fontWeight: 600,
+            flexShrink: 0,
             bgcolor: shellInfo.bg,
             color: shellInfo.color,
           }}
@@ -60,18 +64,26 @@ const TerminalCard = ({
       </Box>
 
       {/* Buttons */}
-      <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5,
-      }}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 0.25,
+          px: 0.75,
+          py: 0.25,
+          '& > .MuiIconButton-root': { p: 0.5 },
+        }}
       >
-        <IconButton
-          size="small"
-          onClick={() => onOpenPlaceholder(instance.id)}
-          title="Open in placeholder"
-          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          <TvIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+        {onOpenPlaceholder && (
+          <IconButton
+            size="small"
+            onClick={() => onOpenPlaceholder(instance.id)}
+            title="Open in placeholder"
+            sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+          >
+            <TvIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        )}
         <IconButton
           size="small"
           onClick={() => onOpenWindow(instance.id)}
@@ -80,22 +92,25 @@ const TerminalCard = ({
         >
           <OpenInNewIcon sx={{ fontSize: 16 }} />
         </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => onMinimize?.(instance.id)}
-          title="Minimize to sidebar"
-          sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
-        >
-          <MinimizeIcon sx={{ fontSize: 16 }} />
-        </IconButton>
+        {onMinimize && (
+          <IconButton
+            size="small"
+            onClick={() => onMinimize?.(instance.id)}
+            title="Minimize to sidebar"
+            sx={{ color: '#808080', '&:hover': { color: '#6897BB' } }}
+          >
+            <MinimizeIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        )}
         <Box sx={{ flex: 1 }} />
         <IconButton
           size="small"
-          onClick={() => onRemoveFromGroup?.(instance.id)}
-          title="Remove from group"
-          sx={{ color: '#808080', '&:hover': { color: '#CC7832' } }}
+          onClick={e => onMoveToGroup?.(instance.id, e.currentTarget)}
+          disabled={!isRunning}
+          title="Move to group…"
+          sx={{ color: '#808080', '&:hover': { color: '#6897BB' }, '&.Mui-disabled': { color: '#4E5254' } }}
         >
-          <RemoveCircleOutlineIcon sx={{ fontSize: 16 }} />
+          <DriveFileMoveOutlinedIcon sx={{ fontSize: 16 }} />
         </IconButton>
         <IconButton
           size="small"
@@ -111,4 +126,4 @@ const TerminalCard = ({
   );
 };
 
-export default TerminalCard;
+export default React.memo(TerminalCard);

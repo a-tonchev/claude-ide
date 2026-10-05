@@ -1,5 +1,4 @@
 import GlobalStateHelper from '@/components/state/GlobalStateHelper';
-import UrlHelper from '@/components/connections/UrlHelper';
 
 export const GroupStores = {
   groupsStore: null,
@@ -7,7 +6,7 @@ export const GroupStores = {
   placeholdersStore: null,
 };
 
-// Object map: groupId -> { id, name, items, saved }
+// Object map: groupId -> { id, name, items, saved, draft }
 GlobalStateHelper.atom({
   key: 'groupsStore',
   default: {},
@@ -28,20 +27,11 @@ GlobalStateHelper.atom({
   store: GroupStores,
 });
 
-// Derived: list of groups as array
-GlobalStateHelper.computedAtom({
-  key: 'groupListStore',
-  factory: get => Object.values(get(GroupStores.groupsStore.jotai)),
-  store: GroupStores,
-});
-
-export const setGroups = (groups, implicitToPreserve = {}) => {
-  const map = { ...implicitToPreserve };
-  if (Array.isArray(groups)) {
-    groups.forEach(g => {
-      map[g._id || g.id] = { ...g, id: g._id || g.id };
-    });
-  }
+export const setGroups = groups => {
+  const map = {};
+  (groups || []).forEach(g => {
+    map[g._id || g.id] = { ...g, id: g._id || g.id };
+  });
   GroupStores.groupsStore.set(map);
 };
 
@@ -57,24 +47,16 @@ export const upsertGroup = group => {
   });
 };
 
+// Drops a group and its placeholders. The caller picks the next active group.
 export const removeGroup = groupId => {
   const current = GroupStores.groupsStore.get();
   const { [groupId]: _, ...rest } = current;
   GroupStores.groupsStore.set(rest);
 
   if (GroupStores.activeGroupIdStore.get() === groupId) {
-    const remaining = Object.keys(rest);
-    const nextId = remaining.length ? remaining[0] : null;
-    GroupStores.activeGroupIdStore.set(nextId);
-    // Keep URL in sync
-    if (nextId) {
-      UrlHelper.setParam('group', nextId);
-    } else {
-      UrlHelper.deleteParam('group');
-    }
+    GroupStores.activeGroupIdStore.set(null);
   }
 
-  // Clean up placeholders for this group
   const placeholders = GroupStores.placeholdersStore.get();
   const { [groupId]: __, ...restPlaceholders } = placeholders;
   GroupStores.placeholdersStore.set(restPlaceholders);

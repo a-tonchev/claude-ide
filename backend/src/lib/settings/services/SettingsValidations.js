@@ -1,7 +1,7 @@
 import SettingsSchemaFields from '../schema/SettingsSchemaFields';
 
 const {
-  type, name, dbPath, dbName, username, instructions,
+  type, name, dbPath, dbName, username, instructions, args,
 } = SettingsSchemaFields;
 
 const CreateSettingsSchema = {
@@ -16,6 +16,7 @@ const CreateSettingsSchema = {
     username,
     password: { bsonType: 'string' },
     instructions,
+    args,
   },
 };
 
@@ -31,6 +32,7 @@ const UpdateSettingsSchema = {
     username,
     password: { bsonType: 'string' },
     instructions,
+    args,
   },
 };
 

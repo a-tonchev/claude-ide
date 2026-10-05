@@ -4,16 +4,20 @@ import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Chip from '@mui/material/Chip';
-import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
-import CastConnectedIcon from '@mui/icons-material/CastConnected';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
-const SavedItemCard = ({ item, onStart, onRemove, onToggleRemote }) => {
+const SavedItemCard = ({
+  item, onStart, onRemove, launchFlags = [], onToggleFlag, onProviderChange, error,
+}) => {
   const isClaude = item.type === 'claude';
+  const provider = item.provider || 'claude';
+  const activeFlagIds = item.flagIds || [];
 
   return (
     <Card
@@ -36,7 +40,7 @@ const SavedItemCard = ({ item, onStart, onRemove, onToggleRemote }) => {
           : <TerminalIcon sx={{ fontSize: 14, color: '#606366' }} />}
         <Chip
           size="small"
-          label={isClaude ? 'Claude' : 'Terminal'}
+          label={isClaude ? 'AI' : 'Terminal'}
           sx={{
             height: 18,
             fontSize: '0.6rem',
@@ -77,7 +81,39 @@ const SavedItemCard = ({ item, onStart, onRemove, onToggleRemote }) => {
         )}
       </Box>
 
+      {/* The last Start of this card failed right away (e.g. a bad launch flag) */}
+      {error && (
+        <Typography
+          role="alert"
+          sx={{
+            px: 1.5, pb: 0.75, fontSize: '0.7rem', color: '#BC3F3C', lineHeight: 1.4,
+          }}
+        >
+          Last start failed: {error}
+        </Typography>
+      )}
+
       {/* Actions */}
+      {isClaude && (
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={provider}
+          onChange={(event, value) => { if (value) onProviderChange?.(item, value); }}
+          aria-label={`AI provider for ${item.name}`}
+          sx={{
+            mx: 1.5,
+            mb: 1,
+            '& .MuiToggleButton-root': {
+              color: '#808080', fontSize: '0.7rem', py: 0.25, px: 1.5, textTransform: 'none',
+            },
+            '& .MuiToggleButton-root.Mui-selected': { color: '#A9B7C6', bgcolor: '#21428355' },
+          }}
+        >
+          <ToggleButton value="claude">Claude</ToggleButton>
+          <ToggleButton value="codex">Codex</ToggleButton>
+        </ToggleButtonGroup>
+      )}
       <Box sx={{
         display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, borderTop: '1px solid #3C3F41',
       }}
@@ -85,24 +121,41 @@ const SavedItemCard = ({ item, onStart, onRemove, onToggleRemote }) => {
         <IconButton
           size="small"
           onClick={() => onStart(item)}
-          title="Start"
+          title={isClaude ? `Start ${provider === 'codex' ? 'Codex' : 'Claude'}` : 'Start'}
+          aria-label={isClaude ? `Start ${provider === 'codex' ? 'Codex' : 'Claude'}` : 'Start'}
           sx={{ color: '#7CB368', '&:hover': { color: '#8FD47A' } }}
         >
           <PlayArrowIcon sx={{ fontSize: 18 }} />
         </IconButton>
-        {isClaude && (
-          <Tooltip title="Remote control — access from phone via claude.ai/code" arrow>
-            <Box sx={{ display: 'flex', alignItems: 'center', ml: 0.5 }}>
-              <Checkbox
-                size="small"
-                checked={!!item.remote}
-                onChange={() => onToggleRemote?.(item)}
-                icon={<CastConnectedIcon sx={{ fontSize: 16, color: '#606366' }} />}
-                checkedIcon={<CastConnectedIcon sx={{ fontSize: 16, color: '#6897BB' }} />}
-                sx={{ p: 0.25 }}
-              />
-            </Box>
-          </Tooltip>
+        {/* Launch flag toggles — persisted on the saved item, applied on Start */}
+        {isClaude && provider === 'claude' && launchFlags.length > 0 && (
+          <Box sx={{
+            display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 0.5, minWidth: 0,
+          }}
+          >
+            {launchFlags.map(flag => {
+              const active = activeFlagIds.includes(flag._id);
+              const state = `${active ? 'On' : 'Off'} for this card (saved, used on every Start)`;
+              return (
+                <Tooltip key={flag._id} title={flag.args ? `${flag.args} · ${state}` : state} arrow>
+                  <Chip
+                    size="small"
+                    label={flag.name}
+                    clickable
+                    onClick={() => onToggleFlag?.(item, flag._id)}
+                    sx={{
+                      height: 18,
+                      fontSize: '0.6rem',
+                      bgcolor: active ? '#21428355' : 'transparent',
+                      color: active ? '#6897BB' : '#606366',
+                      border: `1px solid ${active ? '#6897BB' : '#4E5254'}`,
+                      '&:hover': { bgcolor: active ? '#21428377' : '#3C3F41' },
+                    }}
+                  />
+                </Tooltip>
+              );
+            })}
+          </Box>
         )}
         <Box sx={{ flex: 1 }} />
         <IconButton

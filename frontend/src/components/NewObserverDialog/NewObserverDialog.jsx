@@ -82,7 +82,7 @@ const NewObserverDialog = ({ open, onClose, onCreate }) => {
           }}
           >
             <Typography sx={{ color: '#808080', fontSize: 14 }}>
-              No observer configs found. Add one in Settings &rarr; Observer Configs.
+              No observer configs found. Add one in Settings &rarr; Observer Instances.
             </Typography>
           </Box>
         ) : (

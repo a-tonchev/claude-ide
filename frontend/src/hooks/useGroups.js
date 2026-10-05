@@ -1,7 +1,8 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { useStoreValue } from '@/components/state/GlobalState';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import UrlHelper from '@/components/connections/UrlHelper';
 import useQueryState from '@/components/connections/hooks/useQueryState';
 import {
   GroupStores,
@@ -11,100 +12,75 @@ import {
   setActiveGroupId,
   initPlaceholders,
 } from '@/stores/groupAtoms';
-import { reassignInstancesToGroup } from '@/stores/instanceAtoms';
 
+// Every group lives in the database. Unsaved groups are drafts (saved: false here),
+// created the moment they are needed, so a group's id never changes and running or
+// remembered instances can point to it.
 const useGroups = () => {
   const groups = useStoreValue(GroupStores.groupsStore);
   const activeGroupIdFromStore = useStoreValue(GroupStores.activeGroupIdStore);
   const placeholders = useStoreValue(GroupStores.placeholdersStore);
   const [groupFromUrl, setGroupInUrl] = useQueryState(null, 'group');
 
-  // URL is source of truth for saved groups; 'new' means use the Jotai store value
-  const activeGroupId = (groupFromUrl && groupFromUrl !== 'new')
-    ? groupFromUrl
-    : activeGroupIdFromStore;
+  // The URL carries the active group's id; the virtual Ungrouped tab lives only in the store.
+  const activeGroupId = groupFromUrl || activeGroupIdFromStore;
 
   const setActiveGroup = useCallback(id => {
     setActiveGroupId(id);
-    // Saved groups get their real ID in URL; unsaved get 'new'
-    const currentGroups = GroupStores.groupsStore.get();
-    const group = currentGroups[id];
-    setGroupInUrl(group?.saved ? id : 'new');
+    setGroupInUrl(GroupStores.groupsStore.get()[id] ? id : null);
   }, [setGroupInUrl]);
 
+  // Reads the URL and the store when it runs, so it stays stable and runs once on load.
   const fetchGroups = useCallback(async () => {
     const response = await Connections.postRequest(ApiEndpoints.groupsAll, {});
     if (response?.ok && response.data?.groups) {
-      const fetched = response.data.groups;
-      // Mark all fetched groups as saved (they come from DB)
-      const withSaved = fetched.map(g => ({ ...g, saved: true }));
-      // Preserve implicit (unsaved) groups that exist in the store
-      const current = GroupStores.groupsStore.get();
-      const implicit = {};
-      Object.entries(current).forEach(([id, g]) => {
-        if (!g.saved) implicit[id] = g;
-      });
-      setGroups(withSaved, implicit);
-      withSaved.forEach(g => {
+      const fetched = response.data.groups.map(g => ({ ...g, saved: !g.draft }));
+      setGroups(fetched);
+      fetched.forEach(g => {
         initPlaceholders(g._id || g.id);
       });
-      // Restore from URL query param, or fall back to first saved group
-      if (!activeGroupId && groupFromUrl !== 'new' && withSaved.length > 0) {
-        const urlId = groupFromUrl;
-        const matchesUrl = urlId && withSaved.some(g => (g._id || g.id) === urlId);
-        setActiveGroup(matchesUrl ? urlId : (withSaved[0]._id || withSaved[0].id));
+
+      // Restore the group from the URL, or fall back to the first saved group. A URL id
+      // that no longer exists (e.g. a deleted draft) must not stay selected, or new
+      // instances would join a group nobody can see.
+      const urlId = UrlHelper.getParam('group') || null;
+      if (urlId && fetched.some(g => (g._id || g.id) === urlId)) {
+        setActiveGroup(urlId);
+      } else if (urlId || !GroupStores.activeGroupIdStore.get()) {
+        const fallback = fetched.find(g => g.saved) || fetched[0];
+        setActiveGroup(fallback ? (fallback._id || fallback.id) : null);
       }
     }
     return response;
-  }, [activeGroupId, groupFromUrl, setActiveGroup]);
+  }, [setActiveGroup]);
 
-  const saveGroup = useCallback(async groupData => {
-    const { id, name, items } = groupData;
-
-    if (id && groups[id]?.saved) {
-      // Update existing
-      const response = await Connections.postRequest(ApiEndpoints.groupsUpdate, {
-        _id: id, name, items,
-      });
-      if (response?.ok) {
-        upsertGroup({
-          id, name, items, saved: true,
-        });
-      }
-      return response;
+  // Groups are created as drafts, so saving always updates an existing group and keeps
+  // its id (running instances stay attached).
+  const saveGroup = useCallback(async ({ id, name, items }) => {
+    if (!id || !GroupStores.groupsStore.get()[id]) {
+      return { ok: false, errorMessage: 'This group is no longer available. Reload the page and try again.' };
     }
-
-    // Create new
-    const response = await Connections.postRequest(ApiEndpoints.groupsAdd, {
-      name, items,
+    const response = await Connections.postRequest(ApiEndpoints.groupsUpdate, {
+      _id: id, name, items, draft: false,
     });
-    if (response?.ok && response.data?._id) {
-      const newId = response.data._id;
-      // Reassign instances from old implicit group to new saved group
-      if (id && id !== newId) {
-        reassignInstancesToGroup(id, newId);
-        removeGroup(id);
-      }
+    if (response?.ok) {
       upsertGroup({
-        id: newId, name, items, saved: true,
+        id, name, items, saved: true, draft: false,
       });
-      initPlaceholders(newId);
-      setActiveGroup(newId);
     }
     return response;
-  }, [groups, setActiveGroup]);
+  }, []);
 
   const deleteGroup = useCallback(async groupId => {
-    const group = groups[groupId];
-    if (group?.saved) {
-      await Connections.postRequest(ApiEndpoints.groupsDelete, { _id: groupId });
-    }
+    await Connections.postRequest(ApiEndpoints.groupsDelete, { _id: groupId });
     removeGroup(groupId);
-  }, [groups]);
+  }, []);
 
   const updateGroupItems = useCallback(async (groupId, items) => {
-    const group = groups[groupId];
-    if (!group?.saved) return;
+    const group = GroupStores.groupsStore.get()[groupId];
+    if (!group) {
+      return { ok: false, errorMessage: 'The selected group is no longer available. Select a group and try again.' };
+    }
 
     const response = await Connections.postRequest(ApiEndpoints.groupsUpdate, {
       _id: groupId, name: group.name, items,
@@ -113,23 +89,27 @@ const useGroups = () => {
       upsertGroup({ id: groupId, items });
     }
     return response;
-  }, [groups]);
+  }, []);
 
-  const createImplicitGroup = useCallback(name => {
-    const groupId = crypto.randomUUID();
+  // Create a draft group and make it active. Resolves to its id, or null on failure.
+  const createImplicitGroup = useCallback(async name => {
+    const groupName = name || `Group ${Object.keys(GroupStores.groupsStore.get()).length + 1}`;
+    const response = await Connections.postRequest(ApiEndpoints.groupsAdd, {
+      name: groupName, items: [], draft: true,
+    });
+    const groupId = response?.ok ? response.data?._id : null;
+    if (!groupId) return null;
+
     upsertGroup({
-      id: groupId,
-      name: name || `Group ${Object.keys(groups).length + 1}`,
-      items: [],
-      saved: false,
+      id: groupId, name: groupName, items: [], saved: false, draft: true,
     });
     initPlaceholders(groupId);
     setActiveGroupId(groupId);
-    setGroupInUrl('new');
+    setGroupInUrl(groupId);
     return groupId;
-  }, [groups, setGroupInUrl]);
+  }, [setGroupInUrl]);
 
-  const groupList = Object.values(groups || {});
+  const groupList = useMemo(() => Object.values(groups || {}), [groups]);
 
   return {
     groups,

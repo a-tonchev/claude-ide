@@ -162,6 +162,32 @@ function renderDiffHtml(text) {
 }
 /* eslint-enable max-len */
 
+// --- Mermaid (lazy-loaded; only pulled in when a diagram actually appears) ---
+
+let mermaidModulePromise = null;
+let mermaidInitialized = false;
+let mermaidIdCounter = 0;
+
+function loadMermaid() {
+  if (!mermaidModulePromise) {
+    mermaidModulePromise = import('mermaid').then(m => {
+      const mermaid = m.default;
+      if (!mermaidInitialized) {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'dark',
+          securityLevel: 'strict',
+          suppressErrorRendering: true,
+          fontFamily: 'inherit',
+        });
+        mermaidInitialized = true;
+      }
+      return mermaid;
+    });
+  }
+  return mermaidModulePromise;
+}
+
 // --- Marked Instance ---
 
 const markedInstance = new Marked();
@@ -170,6 +196,11 @@ markedInstance.use({
   breaks: true,
   renderer: {
     code({ text, lang }) {
+      if (lang === 'mermaid') {
+        // Defer to mermaid.js in a post-render effect; keep the raw source on the node.
+        return `<div class="mermaid-block" data-mermaid-src="${encodeURIComponent(text)}">`
+          + '<span class="mermaid-loading">Rendering diagram…</span></div>';
+      }
       if (lang === 'diff' || (!lang && /^(diff --git|---\s|@@\s)/.test(text))) {
         return renderDiffHtml(text);
       }
@@ -224,6 +255,33 @@ const markdownBaseStyles = {
   '& a': { color: '#6897BB', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } },
   '& hr': { border: 'none', borderTop: '1px solid #3C3F41', my: 3 },
   '& img': { maxWidth: '100%' },
+
+  // --- Mermaid Styles ---
+  '& .mermaid-block': {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    bgcolor: '#313335',
+    border: '1px solid #4E5254',
+    borderRadius: '6px',
+    p: 2,
+    mb: 2,
+    overflow: 'auto',
+    '& svg': { maxWidth: '100%', height: 'auto' },
+  },
+  '& .mermaid-loading': {
+    color: '#808080',
+    fontStyle: 'italic',
+    fontSize: '0.8rem',
+  },
+  '& .mermaid-error-msg': {
+    width: '100%',
+    color: '#e5534b',
+    fontFamily: '"JetBrains Mono", monospace',
+    fontSize: '0.78rem',
+    mb: 1,
+  },
+  '& .mermaid-block pre': { width: '100%', mt: 0, mb: 0 },
 
   // --- Diff Styles ---
   '& .diff-container': {
@@ -402,6 +460,51 @@ const MarkdownRenderer = ({ content, fontSize = '0.85rem', sx = {} }) => {
     }
 
     return () => cleanups.forEach(fn => fn());
+  }, [renderedHtml]);
+
+  // Render any ```mermaid blocks to SVG after the HTML is in the DOM.
+  useEffect(() => {
+    const container = boxRef.current;
+    if (!container) return;
+
+    const blocks = Array.from(container.querySelectorAll('.mermaid-block'))
+      .filter(el => !el.dataset.mermaidRendered);
+    if (blocks.length === 0) return;
+
+    let cancelled = false;
+
+    (async () => {
+      let mermaid;
+      try {
+        mermaid = await loadMermaid();
+      } catch (e) {
+        return; // mermaid chunk failed to load; leave the source placeholder as-is
+      }
+      if (cancelled) return;
+
+      for (const el of blocks) {
+        if (cancelled) return;
+        const src = decodeURIComponent(el.dataset.mermaidSrc || '');
+        mermaidIdCounter += 1;
+        const id = `mermaid-svg-${mermaidIdCounter}`;
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { svg, bindFunctions } = await mermaid.render(id, src);
+          if (cancelled) return;
+          el.innerHTML = svg;
+          el.dataset.mermaidRendered = 'done';
+          if (bindFunctions) bindFunctions(el);
+        } catch (err) {
+          if (cancelled) return;
+          el.dataset.mermaidRendered = 'error';
+          const message = err && err.message ? err.message : 'invalid diagram';
+          el.innerHTML = `<div class="mermaid-error-msg">Mermaid render error: ${escapeHtml(message)}</div>`
+            + `<pre class="mermaid-error"><code>${escapeHtml(src)}</code></pre>`;
+        }
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [renderedHtml]);
 
   return (

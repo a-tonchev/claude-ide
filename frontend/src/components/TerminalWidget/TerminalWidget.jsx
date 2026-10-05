@@ -96,16 +96,21 @@ const TerminalWidget = forwardRef(({ instanceId, onData, onResize }, ref) => {
       }
     };
 
-    const resizeObserver = new ResizeObserver(handleResize);
+    const resizeObserver = new window.ResizeObserver(handleResize);
     resizeObserver.observe(containerRef.current);
     window.addEventListener('resize', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
       resizeObserver.disconnect();
-      term.dispose();
       termRef.current = null;
       fitAddonRef.current = null;
+      // xterm queues scroll-area syncs (a timeout, then animation frames) that read the
+      // renderer. Disposing before they run throws "reading 'dimensions'" on a quick
+      // remount or when a placeholder switches instance, so let them run first. The element
+      // leaves the page now, so a remount never lays out next to it.
+      term.element?.remove();
+      setTimeout(() => requestAnimationFrame(() => term.dispose()), 0);
     };
   }, [instanceId]); // eslint-disable-line react-hooks/exhaustive-deps
 

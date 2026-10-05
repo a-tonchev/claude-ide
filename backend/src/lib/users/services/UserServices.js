@@ -64,6 +64,8 @@ class UserServices extends ServicesBase {
   }
 
   async getByResetToken(resetToken, params = this.publicParams) {
+    if (typeof resetToken !== 'string' || !resetToken) return null;
+
     return this.DB.findOne({
       'services.password.resetPasswordToken': resetToken,
       'services.password.lastResetRequest': { $gt: DateHelper.getBefore({ days: 2 }) },
