@@ -358,12 +358,13 @@ function cancelPendingSubmit(instanceId) {
   }
 }
 
-// Attachments reach the AI as their full paths, added to the message it is sent
+// Attachments reach the AI as their full paths, added to the message it is sent. They stay
+// on the same line: a newline written to the PTY acts as Enter and splits the message.
 function withAttachmentPaths(instanceId, text, attachmentIds) {
   const files = FileStore.describe(instanceId, attachmentIds);
   if (!files.length) return text;
   const list = files.map(f => `"${f.path}"`).join(', ');
-  return `${text}\n\nAttached files: ${list}`;
+  return `${text} (Attached files: ${list})`;
 }
 
 function handleInput(ws, message) {

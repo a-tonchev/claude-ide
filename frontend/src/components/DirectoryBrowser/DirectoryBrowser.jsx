@@ -20,6 +20,7 @@ import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import CheckIcon from '@mui/icons-material/Check';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const DirectoryBrowser = ({ open, onClose, onSelect }) => {
   const [loading, setLoading] = useState(false);
@@ -68,13 +69,7 @@ const DirectoryBrowser = ({ open, onClose, onSelect }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,

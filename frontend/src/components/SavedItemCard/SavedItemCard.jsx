@@ -3,14 +3,14 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
+import Chip from '@mui/material/Chip';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import DeleteIcon from '@mui/icons-material/Delete';
-import TerminalIcon from '@mui/icons-material/Terminal';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+
+import { CARD_COLORS, HeaderMeta, cardSx } from '@/components/CardParts/CardParts';
 
 const SavedItemCard = ({
   item, onStart, onRemove, launchFlags = [], onToggleFlag, onProviderChange, error,
@@ -20,41 +20,45 @@ const SavedItemCard = ({
   const activeFlagIds = item.flagIds || [];
 
   return (
-    <Card
-      sx={{
-        bgcolor: '#2B2B2B',
-        border: '1px dashed #4E5254',
-        borderRadius: 2,
-        overflow: 'hidden',
-        opacity: 0.7,
-        '&:hover': { opacity: 1, borderColor: '#6897BB' },
-        transition: 'opacity 0.2s, border-color 0.2s',
-      }}
+    <Card sx={{
+      ...cardSx(),
+      maxHeight: 'none',
+      transition: 'border-color 0.2s',
+      '&:hover': { borderColor: '#6897BB' },
+    }}
     >
+      {/* Header: a stopped card is "Saved"; its name is muted until it runs */}
       <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: '1px solid #3C3F41',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.75,
+        px: 1,
+        py: 0.6,
+        borderBottom: `1px solid ${CARD_COLORS.border}`,
       }}
       >
-        {isClaude
-          ? <SmartToyIcon sx={{ fontSize: 14, color: '#606366' }} />
-          : <TerminalIcon sx={{ fontSize: 14, color: '#606366' }} />}
-        <Chip
-          size="small"
-          label={isClaude ? 'AI' : 'Terminal'}
-          sx={{
-            height: 18,
-            fontSize: '0.6rem',
-            bgcolor: isClaude ? '#21428322' : '#4E5254',
-            color: isClaude ? '#6897BB' : '#808080',
+        <Box sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.6,
+          flexShrink: 0,
+          color: '#6A6E73',
+          fontSize: '0.72rem',
+          fontWeight: 600,
+        }}
+        >
+          <Box sx={{
+            width: 8, height: 8, borderRadius: '50%', bgcolor: '#6A6E73',
           }}
-        />
+          />
+        </Box>
         <Typography
           sx={{
-            fontSize: '0.8rem',
-            color: '#808080',
+            fontSize: '0.84rem',
+            color: '#9BA3AD',
             fontWeight: 600,
             flex: 1,
-            textAlign: 'right',
+            minWidth: 0,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -62,6 +66,7 @@ const SavedItemCard = ({
         >
           {item.name}
         </Typography>
+        <HeaderMeta>{isClaude ? 'AI' : 'Terminal'}</HeaderMeta>
       </Box>
 
       {/* Details */}

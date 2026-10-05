@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -13,11 +13,23 @@ import ArticleIcon from '@mui/icons-material/Article';
 
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
+import CopyAllButton from '@/components/CopyAllButton/CopyAllButton';
+import { selectContents } from '@/helpers/clipboard';
 import useMobile from '@/components/layout/hooks/useMobile';
 
 const PlanViewerDialog = ({ open, onClose, plan }) => {
   const { isMobile } = useMobile();
   const [viewMode, setViewMode] = useState('rendered');
+  const codeRef = useRef(null);
+  // Set when copying failed: show the raw text and select it for the device's own Copy
+  const [selectRequested, setSelectRequested] = useState(false);
+
+  useEffect(() => {
+    if (selectRequested && viewMode === 'code' && codeRef.current) {
+      selectContents(codeRef.current);
+      setSelectRequested(false);
+    }
+  }, [selectRequested, viewMode]);
 
   if (!plan) return null;
 
@@ -89,6 +101,13 @@ const PlanViewerDialog = ({ open, onClose, plan }) => {
             <CodeIcon sx={{ fontSize: 14, mr: 0.5 }} /> Code
           </ToggleButton>
         </ToggleButtonGroup>
+        <CopyAllButton
+          text={plan.content}
+          onFail={() => {
+            setViewMode('code');
+            setSelectRequested(true);
+          }}
+        />
         {plan.id && (
           <IconButton
             size="small"
@@ -103,11 +122,12 @@ const PlanViewerDialog = ({ open, onClose, plan }) => {
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ py: 2, px: 3 }}>
+      <DialogContent sx={{ py: 2, px: isMobile ? 1.5 : 3 }}>
         {viewMode === 'rendered' ? (
           <MarkdownRenderer content={plan.content} fontSize="0.85rem" />
         ) : (
           <Box
+            ref={codeRef}
             component="pre"
             sx={{
               color: '#A9B7C6',

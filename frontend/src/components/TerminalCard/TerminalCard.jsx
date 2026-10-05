@@ -2,8 +2,6 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import TvIcon from '@mui/icons-material/Tv';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StopIcon from '@mui/icons-material/Stop';
@@ -11,6 +9,9 @@ import MinimizeIcon from '@mui/icons-material/Minimize';
 import DriveFileMoveOutlinedIcon from '@mui/icons-material/DriveFileMoveOutlined';
 
 import EditableTitle from '@/components/EditableTitle/EditableTitle';
+import {
+  CARD_COLORS, HeaderMeta, StatusMark, cardSx,
+} from '@/components/CardParts/CardParts';
 import { getInstanceTitle } from '@/helpers/instanceHelper';
 
 const SHELL_COLORS = {
@@ -28,43 +29,32 @@ const TerminalCard = ({
   const shellInfo = SHELL_COLORS[instance.shell] || SHELL_COLORS.bash;
 
   return (
-    <Card
-      sx={{
-        bgcolor: '#313335',
-        border: '1px solid #3C3F41',
-        borderRadius: 2,
-        overflow: 'hidden',
-      }}
-    >
+    <Card sx={{ ...cardSx({ status: isRunning ? 'running' : 'exited' }), maxHeight: 'none' }}>
       {/* Header */}
       <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderBottom: '1px solid #3C3F41',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 0.75,
+        px: 1,
+        py: 0.6,
+        borderBottom: `1px solid ${CARD_COLORS.border}`,
       }}
       >
-        <FiberManualRecordIcon
-          titleAccess={isRunning ? 'Running' : 'Exited'}
-          sx={{ fontSize: 9, color: isRunning ? '#7CB368' : '#606366', flexShrink: 0 }}
-        />
+        <StatusMark status={isRunning ? 'running' : 'exited'} dotOnly />
         <EditableTitle
           title={getInstanceTitle(instance) || 'Terminal'}
           onRename={title => onRename?.(instance.id, title)}
+          fontSize="0.84rem"
+          color={CARD_COLORS.strong}
         />
-        <Chip
-          size="small"
-          label={shellInfo.label}
-          sx={{
-            height: 18,
-            fontSize: '0.6rem',
-            fontWeight: 600,
-            flexShrink: 0,
-            bgcolor: shellInfo.bg,
-            color: shellInfo.color,
-          }}
-        />
+        <HeaderMeta>
+          <Box component="span" sx={{ color: shellInfo.color }}>{shellInfo.label}</Box>
+        </HeaderMeta>
       </Box>
 
       {/* Buttons */}
       <Box
+        className="no-select"
         sx={{
           display: 'flex',
           alignItems: 'center',
@@ -102,7 +92,12 @@ const TerminalCard = ({
             <MinimizeIcon sx={{ fontSize: 16 }} />
           </IconButton>
         )}
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{
+          flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5,
+        }}
+        >
+          <StatusMark status={isRunning ? 'running' : 'exited'} />
+        </Box>
         <IconButton
           size="small"
           onClick={e => onMoveToGroup?.(instance.id, e.currentTarget)}

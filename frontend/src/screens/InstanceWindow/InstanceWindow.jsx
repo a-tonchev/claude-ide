@@ -4,22 +4,13 @@ import {
 import { useParams } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import Popover from '@mui/material/Popover';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import StopIcon from '@mui/icons-material/Stop';
-import PersonIcon from '@mui/icons-material/Person';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ChatIcon from '@mui/icons-material/Chat';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TerminalIcon from '@mui/icons-material/Terminal';
 import ArticleIcon from '@mui/icons-material/Article';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -29,12 +20,14 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
-import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import EditableTitle from '@/components/EditableTitle/EditableTitle';
 import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import ChatInput from '@/components/ChatInput/ChatInput';
-import { FeedAttachments, FileDropZone } from '@/components/Attachments/Attachments';
+import {
+  CARD_COLORS, FeedItem, PendingChoices, StatusMark, latestQuestion,
+} from '@/components/CardParts/CardParts';
+import { FileDropZone } from '@/components/Attachments/Attachments';
 import useAttachments from '@/hooks/useAttachments';
 import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useConfirm from '@/components/dialogs/hooks/useConfirm';
@@ -46,31 +39,6 @@ import {
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import { STATUS_CONFIG, getInstanceTitle, stopConfirmText } from '@/helpers/instanceHelper';
 import useMobile from '@/components/layout/hooks/useMobile';
-
-// The feed item's icon as a small tab in the bubble's top-left corner: it sits in
-// the bubble's padding, so it takes no width from the text and pushes nothing down.
-const CornerIcon = ({ Icon, color, sx }) => (
-  <Box
-    component="span"
-    aria-hidden="true"
-    sx={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: 12,
-      height: 12,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderTopLeftRadius: '7px',
-      borderBottomRightRadius: '4px',
-      bgcolor: `${color}26`,
-      ...sx,
-    }}
-  >
-    <Icon sx={{ fontSize: 9, color }} />
-  </Box>
-);
 
 const InstanceWindow = () => {
   const { instanceId } = useParams();
@@ -107,7 +75,6 @@ const InstanceWindow = () => {
   } = useInstances(onMessage);
 
   const instance = instances?.[instanceId];
-  const status = STATUS_CONFIG[instance?.status] || STATUS_CONFIG.running;
   const plans = instance?.plans || [];
   const pending = instance?.pendingInput;
 
@@ -268,26 +235,17 @@ const InstanceWindow = () => {
         gap: 1.5,
         px: 2,
         py: 1,
-        bgcolor: '#1A1A1A',
+        bgcolor: '#1E1F21',
         borderBottom: '1px solid #3C3F41',
       }}
       >
-        <FiberManualRecordIcon sx={{ fontSize: 10, color: status.color }} />
-        {instance.type === 'terminal'
-          ? <TerminalIcon sx={{ fontSize: 16, color: '#6897BB' }} />
-          : <AutoAwesomeIcon sx={{ fontSize: 16, color: '#CC7832' }} />}
         <EditableTitle
           title={getInstanceTitle(instance) || 'Instance'}
           onRename={title => renameInstance(instanceId, title)}
-          fontSize="0.9rem"
+          fontSize="0.92rem"
+          color={CARD_COLORS.strong}
         />
-        <Chip
-          size="small"
-          label={status.label}
-          sx={{
-            bgcolor: `${status.color}22`, color: status.color, fontSize: '0.7rem',
-          }}
-        />
+        <StatusMark status={instance.status} />
         <IconButton
           size="small"
           onClick={() => window.location.reload()}
@@ -323,7 +281,7 @@ const InstanceWindow = () => {
           variant="fullWidth"
           sx={{
             minHeight: 36,
-            bgcolor: '#1A1A1A',
+            bgcolor: '#1E1F21',
             borderBottom: '1px solid #3C3F41',
             '& .MuiTab-root': {
               minHeight: 36,
@@ -332,7 +290,7 @@ const InstanceWindow = () => {
               color: '#808080',
               textTransform: 'none',
             },
-            '& .Mui-selected': { color: '#A9B7C6' },
+            '& .Mui-selected': { color: '#D6DCE3' },
             '& .MuiTabs-indicator': { bgcolor: '#6897BB' },
           }}
         >
@@ -554,6 +512,8 @@ const InstanceWindow = () => {
               {hiddenCount > 0 && (
               <Box
                 onClick={showMore}
+                role="button"
+                className="no-select"
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
@@ -578,7 +538,7 @@ const InstanceWindow = () => {
               <Box
                 ref={feedRef}
                 sx={{
-                  flex: 1, overflow: 'auto', px: 2, py: 1.5,
+                  flex: 1, overflow: 'auto', px: 1, py: 1,
                 }}
               >
                 {feed.length === 0 && !isProcessing && (
@@ -590,180 +550,15 @@ const InstanceWindow = () => {
                 </Typography>
                 )}
 
-                {visibleFeed.map(item => {
-                  if (item.kind === 'user') {
-                    const isLongUser = item.text && item.text.length > 250;
-                    const userDisplayText = isLongUser
-                      ? `${item.text.slice(0, 200)}...`
-                      : item.text;
-                    return (
-                      <Box key={item.id} sx={{ mb: 1.5 }}>
-                        <Box
-                          onClick={isLongUser
-                            ? () => setViewingMessage({ text: item.text, title: 'User Message' })
-                            : undefined}
-                          sx={{
-                            position: 'relative',
-                            bgcolor: '#3C3F41',
-                            border: '1px solid #4E5254',
-                            borderRadius: '8px',
-                            px: 1.5,
-                            py: 0.75,
-                            flex: 1,
-                            ...(isLongUser && {
-                              cursor: 'pointer',
-                              '&:hover': { border: '1px solid #6E7274', bgcolor: '#434648' },
-                            }),
-                          }}
-                        >
-                          <CornerIcon Icon={PersonIcon} color="#B07ACC" />
-                          <Typography sx={{
-                            fontSize: '0.8rem', color: '#C5A5D6', lineHeight: 1.5, whiteSpace: 'pre-wrap',
-                          }}
-                          >
-                            {userDisplayText}
-                          </Typography>
-                          <FeedAttachments instanceId={instanceId} attachments={item.attachments} />
-                          {isLongUser && (
-                          <Box sx={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5,
-                          }}
-                          >
-                            <Typography sx={{
-                              fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
-                            }}
-                            >
-                              Click to read full message
-                            </Typography>
-                            {item.text.trim().endsWith('?') && (
-                              <HelpOutlineIcon sx={{
-                                fontSize: 14, color: '#C5A5D6', pr: 0.5, pb: 0.5,
-                              }}
-                              />
-                            )}
-                          </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  }
-                  if (item.kind === 'message') {
-                    const msgColor = item.type === 'success' ? '#7CB368'
-                      : item.type === 'warning' ? '#CC7832'
-                        : item.type === 'error' ? '#BC3F3C'
-                          : item.type === 'question' ? '#CC7832'
-                            : '#A9B7C6';
-                    const isLong = item.text && item.text.length > 250;
-                    const displayText = isLong
-                      ? `${item.text.slice(0, 200)}...`
-                      : item.text;
-                    return (
-                      <Box key={item.id} sx={{ mb: 1.5 }}>
-                        <Box
-                          onClick={isLong ? () => setViewingMessage({ text: item.text, title: 'Message' }) : undefined}
-                          sx={{
-                            position: 'relative',
-                            bgcolor: '#2B2B2B',
-                            border: `1px solid ${msgColor}33`,
-                            borderRadius: '8px',
-                            px: 1.5,
-                            py: 0.75,
-                            flex: 1,
-                            minWidth: 0,
-                            ...(isLong && {
-                              cursor: 'pointer',
-                              '&:hover': { border: `1px solid ${msgColor}66`, bgcolor: '#323436' },
-                            }),
-                          }}
-                        >
-                          <CornerIcon Icon={ChatIcon} color={msgColor} />
-                          <MarkdownRenderer
-                            content={displayText}
-                            fontSize="0.8rem"
-                            sx={{
-                              color: msgColor,
-                              '& p:last-child': { mb: 0 },
-                            }}
-                          />
-                          {isLong && (
-                          <Box sx={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5,
-                          }}
-                          >
-                            <Typography sx={{
-                              fontSize: '0.7rem',
-                              color: 'rgba(255,255,255,0.5)',
-                              fontStyle: 'italic',
-                            }}
-                            >
-                              Click to read full message
-                            </Typography>
-                            {item.text.trim().endsWith('?') && (
-                              <HelpOutlineIcon sx={{
-                                fontSize: 14, color: msgColor, pr: 0.5, pb: 0.5,
-                              }}
-                              />
-                            )}
-                          </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    );
-                  }
-                  const nextStep = item.workingOn ? `\nNext: ${item.workingOn}` : '';
-                  const milestoneText = `${item.accomplished || ''}${nextStep}`;
-                  const isLongMilestone = milestoneText.length > 250;
-                  const milestoneDisplay = isLongMilestone
-                    ? `${(item.accomplished || '').slice(0, 200)}...`
-                    : item.accomplished;
-                  return (
-                    <Box key={item.id} sx={{ mb: 1.5 }}>
-                      <Box
-                        onClick={isLongMilestone
-                          ? () => setViewingMessage({ text: milestoneText, title: 'Milestone' })
-                          : undefined}
-                        sx={{
-                          position: 'relative',
-                          pl: 2,
-                          ...(isLongMilestone && {
-                            cursor: 'pointer',
-                            borderRadius: '8px',
-                            '&:hover': { bgcolor: '#3C3F41' },
-                          }),
-                        }}
-                      >
-                        <CornerIcon Icon={SmartToyIcon} color="#7CB368" sx={{ top: '4px', borderRadius: '4px' }} />
-                        <Typography sx={{ fontSize: '0.8rem', color: '#7CB368', lineHeight: 1.5 }}>
-                          {milestoneDisplay}
-                        </Typography>
-                        {!isLongMilestone && item.workingOn && (
-                        <Typography sx={{ fontSize: '0.75rem', color: '#7AAACF', lineHeight: 1.4 }}>
-                          Next: {item.workingOn}
-                        </Typography>
-                        )}
-                        {isLongMilestone && (
-                        <Box sx={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5,
-                        }}
-                        >
-                          <Typography sx={{
-                            fontSize: '0.7rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic',
-                          }}
-                          >
-                            Click to read full message
-                          </Typography>
-                          {milestoneText.trim().endsWith('?') && (
-                            <HelpOutlineIcon sx={{
-                              fontSize: 14, color: '#7CB368', pr: 0.5, pb: 0.5,
-                            }}
-                            />
-                          )}
-                        </Box>
-                        )}
-                      </Box>
-                    </Box>
-                  );
-                })}
+                {visibleFeed.map(item => (
+                  <FeedItem
+                    key={item.id}
+                    item={item}
+                    instanceId={instanceId}
+                    size="lg"
+                    onOpen={({ title, content }) => setViewingMessage({ title, text: content })}
+                  />
+                ))}
 
                 {isProcessing && (
                 <Box sx={{
@@ -884,86 +679,15 @@ const InstanceWindow = () => {
                 </Box>
               </Popover>
 
-              {/* Pending choices */}
+              {/* The question waiting for an answer, with its options */}
               {pending && Array.isArray(pending.choices) && pending.choices.length > 0 && (
-              <Box sx={{
-                px: 2,
-                py: 1,
-                borderTop: '1px solid #3C3F41',
-                bgcolor: '#3C3F41',
-                position: 'relative',
-                flexShrink: 0,
-              }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: pendingCollapsed ? 0 : 0.75 }}>
-                  <Typography sx={{
-                    fontSize: '0.7rem', color: '#808080', fontWeight: 600, flex: 1,
-                  }}
-                  >
-                    {pendingCollapsed
-                      ? `${pending.choices.length} option${pending.choices.length === 1 ? '' : 's'} hidden`
-                      : 'OPTIONS'}
-                  </Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => setPendingCollapsed(c => !c)}
-                    title={pendingCollapsed ? 'Show options' : 'Hide options'}
-                    sx={{
-                      p: 0.5,
-                      bgcolor: '#2B2B2B',
-                      color: '#A9B7C6',
-                      borderRadius: '6px',
-                      '&:hover': { bgcolor: '#4E5254', color: '#FFFFFF' },
-                    }}
-                  >
-                    {pendingCollapsed
-                      ? <ExpandLessIcon sx={{ fontSize: 22 }} />
-                      : <ExpandMoreIcon sx={{ fontSize: 22 }} />}
-                  </IconButton>
-                </Box>
-                {!pendingCollapsed && (
-                  <Box sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 0.75,
-                    maxHeight: '40vh',
-                    overflowY: 'auto',
-                  }}
-                  >
-                    {pending.choices.map((choice, idx) => (
-                      <Box
-                        key={idx}
-                        component="button"
-                        type="button"
-                        onClick={() => handleChoiceClick(choice)}
-                        sx={{
-                          bgcolor: '#214283',
-                          color: '#A9B7C6',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '0.9rem',
-                          fontFamily: 'inherit',
-                          textAlign: 'left',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          overflowWrap: 'anywhere',
-                          overflow: 'visible',
-                          width: '100%',
-                          display: 'block',
-                          lineHeight: 1.4,
-                          px: 1.5,
-                          py: 1,
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: '#2E5AA7' },
-                          '&:active': { bgcolor: '#1A3666' },
-                        }}
-                      >
-                        {choice}
-                      </Box>
-                    ))}
-                  </Box>
-                )}
-              </Box>
+                <PendingChoices
+                  choices={pending.choices}
+                  question={latestQuestion(feed)}
+                  collapsed={pendingCollapsed}
+                  onToggle={() => setPendingCollapsed(c => !c)}
+                  onChoose={handleChoiceClick}
+                />
               )}
 
               {/* Input */}

@@ -15,6 +15,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import FolderIcon from '@mui/icons-material/Folder';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const LoadGroupDialog = ({
   open, onClose, onLoad, openGroupIds,
@@ -49,13 +50,7 @@ const LoadGroupDialog = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
@@ -85,8 +80,8 @@ const LoadGroupDialog = ({
                 onClick={() => handleLoad(group)}
                 sx={{
                   borderRadius: 2,
-                  mb: 0.5,
-                  py: 1.5,
+                  mb: 0.25,
+                  py: 0.6,
                   '&:hover': { bgcolor: 'rgba(78,82,84,0.3)' },
                 }}
               >

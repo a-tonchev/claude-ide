@@ -27,6 +27,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import TerminalIcon from '@mui/icons-material/Terminal';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import { managerPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const SHELLS = [
   { value: 'wsl', label: 'WSL' },
@@ -143,13 +144,7 @@ const TerminalManager = ({ open, onClose }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: managerPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1,

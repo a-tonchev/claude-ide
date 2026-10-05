@@ -26,6 +26,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import DirectoryBrowser from '@/components/DirectoryBrowser/DirectoryBrowser';
+import { managerPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const SETTINGS_TYPE = 'keepass';
 
@@ -153,13 +154,7 @@ const KeePassSettingsDialog = ({ open, onClose }) => {
         onClose={onClose}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: '#313335',
-            border: '1px solid #4E5254',
-            borderRadius: 3,
-          },
-        }}
+        PaperProps={{ sx: managerPaperSx }}
       >
         <DialogTitle sx={{
           color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,

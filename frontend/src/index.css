@@ -21,3 +21,25 @@ code {
     font-size: clamp(15px, calc(6.27px + 2.727vw), 18px);
   }
 }
+
+/* Controls never take part in text selection and show no tap flash: a long-press or double
+   tap on a button on the phone otherwise leaves a blue selection that is hard to clear. */
+button,
+[role="button"],
+.MuiButtonBase-root,
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Dark scrollbars everywhere (dialogs, feeds, lists) instead of the browser's white ones */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4E5254 transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: #4E5254; border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: #606366; }

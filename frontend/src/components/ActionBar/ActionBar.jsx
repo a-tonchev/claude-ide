@@ -7,7 +7,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 
 // The active group's Run / Stop / Save actions as small icons: in the group tab row on
-// desktop, next to the group picker on mobile. Stop is muted on purpose and still confirms.
+// desktop, next to the group picker on mobile. Stop asks for confirmation.
 const ActionBar = ({
   onSaveGroup, onRunGroup, onStopGroup, showSave, showRun, showStop, isUpdate,
 }) => {
@@ -40,8 +40,8 @@ const ActionBar = ({
             onClick={onStopGroup}
             aria-label="Stop group"
             sx={{
-              color: '#606366',
-              '&:hover, &:active': { color: '#BC3F3C', bgcolor: 'rgba(188,63,60,0.12)' },
+              color: '#BC3F3C',
+              '&:hover, &:active': { color: '#D45B58', bgcolor: 'rgba(188,63,60,0.12)' },
             }}
           >
             <StopIcon fontSize="small" />

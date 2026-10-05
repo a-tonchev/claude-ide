@@ -2,17 +2,24 @@ import React from 'react';
 import Chip from '@mui/material/Chip';
 
 const STATUS_CHIPS = {
-  thinking: { label: 'thinking', bgcolor: '#CC783233', color: '#CC7832' },
-  working: { label: 'working', bgcolor: '#6897BB33', color: '#6897BB' },
-  waiting: { label: 'waiting', bgcolor: '#CC783233', color: '#CC7832' },
-  planning: { label: 'planning', bgcolor: '#CC783233', color: '#CC7832' },
+  thinking: { label: 'thinking', bgcolor: '#6897BB2E', color: '#6897BB' },
+  working: { label: 'working', bgcolor: '#6897BB2E', color: '#6897BB' },
+  waiting: { label: 'waiting', bgcolor: '#CC78322E', color: '#CC7832' },
+  planning: { label: 'planning', bgcolor: '#6897BB2E', color: '#6897BB' },
   plan_ready: { label: 'plan ready', bgcolor: '#7CB36833', color: '#7CB368' },
   completed: { label: 'done', bgcolor: '#7CB36833', color: '#7CB368' },
   running: { label: 'running', bgcolor: '#7CB36833', color: '#7CB368' },
   ready: { label: 'ready', bgcolor: '#7CB36833', color: '#7CB368' },
 };
 
-const chipSx = { height: 18, fontSize: '0.65rem', flexShrink: 0 };
+const chipSx = {
+  height: 18,
+  fontSize: '0.66rem',
+  fontWeight: 600,
+  borderRadius: '9px',
+  flexShrink: 0,
+  '& .MuiChip-label': { px: 0.75 },
+};
 
 // What a group's tab shows next to its name: AI statuses, running terminals, and — when
 // nothing runs — how many saved cards it has.

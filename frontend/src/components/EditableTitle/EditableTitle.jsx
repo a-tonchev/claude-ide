@@ -95,7 +95,7 @@ const EditableTitle = ({
 
   return (
     <Box sx={{
-      display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0,
+      display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 48,
     }}
     >
       {icon}
@@ -117,7 +117,7 @@ const EditableTitle = ({
         onClick={startEdit}
         title="Edit title"
         sx={{
-          p: 0.25, flexShrink: 0, color: '#606366', '&:hover': { color: '#6897BB' },
+          p: 0.25, flexShrink: 0, color: '#808080', '&:hover': { color: '#6897BB' },
         }}
       >
         <EditIcon sx={{ fontSize: 13 }} />

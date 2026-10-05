@@ -38,7 +38,7 @@ const TitleBar = ({
         alignItems: 'center',
         px: isMobile ? 1 : 2,
         py: isMobile ? 0.5 : 1,
-        bgcolor: '#1A1A1A',
+        bgcolor: '#1E1F21',
         borderBottom: '1px solid #3C3F41',
         minHeight: 48,
       }}
@@ -62,6 +62,8 @@ const TitleBar = ({
       <IconButton
         size="small"
         onClick={e => setAddAnchor(e.currentTarget)}
+        aria-label="Add"
+        title="Add group, AI, terminal or observer"
         sx={{
           bgcolor: '#579945',
           color: '#fff',
@@ -126,6 +128,8 @@ const TitleBar = ({
       <IconButton
         size="small"
         onClick={e => setSettingsAnchor(e.currentTarget)}
+        aria-label="Settings"
+        title="Settings"
         sx={{ color: '#808080' }}
       >
         <SettingsIcon fontSize="small" />

@@ -17,6 +17,7 @@ import { ArrowFatLinesUp } from '@phosphor-icons/react';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const NewObserverDialog = ({ open, onClose, onCreate }) => {
   const [observers, setObservers] = useState([]);
@@ -49,13 +50,7 @@ const NewObserverDialog = ({ open, onClose, onCreate }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
@@ -94,8 +89,8 @@ const NewObserverDialog = ({ open, onClose, onCreate }) => {
                 onClick={() => setSelected(observer)}
                 sx={{
                   borderRadius: 2,
-                  mb: 0.5,
-                  py: 1.5,
+                  mb: 0.25,
+                  py: 0.6,
                   border: '1px solid transparent',
                   '&.Mui-selected': {
                     bgcolor: 'rgba(176,122,204,0.1)',

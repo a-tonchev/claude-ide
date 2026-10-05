@@ -26,6 +26,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const SHELLS = [
   { value: 'wsl', label: 'WSL' },
@@ -115,13 +116,7 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1, display: 'flex', alignItems: 'center', gap: 1,

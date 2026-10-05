@@ -27,6 +27,8 @@ Built on react-boilerplate (Vite + React + Material UI).
   next to the group picker (mobile)
 - `PlaceholderPanel/`, `MinifiedSidebar/`, `TerminalWidget/` (xterm.js), `MarkdownRenderer/`
 - `InstanceTerminal/` — an xterm bound to one instance (placeholders and the mobile pager)
+- `CardParts/` — shared card pieces (frame, status mark, feed item, full-width question block). Style:
+  polished Darcula; orange means only "waiting for you", busy states are blue
 - `ChatInput/` — AI chat input (cards and instance window): 📎, paste, chips, send. `Attachments/`
   has the chips, drop zone and feed thumbnails; `hooks/useAttachments.js` uploads (`/files/*`)
 - Mobile (< md): no group tabs, placeholders or minimize. `MobileGroupPicker/` (title-bar button →

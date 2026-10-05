@@ -25,6 +25,7 @@ import AddIcon from '@mui/icons-material/Add';
 
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import getRequestError from '@/helpers/requestErrorHelper';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 // The launch flags picked last time, preselected on the next Add AI
 const FLAG_IDS_KEY = 'claude-ide:add-ai-flag-ids';
@@ -116,13 +117,7 @@ const NewInstanceDialog = ({
       onClose={() => { if (!savePending.current) onClose?.(); }}
       maxWidth="sm"
       fullWidth
-      PaperProps={{
-        sx: {
-          bgcolor: '#313335',
-          border: '1px solid #4E5254',
-          borderRadius: 3,
-        },
-      }}
+      PaperProps={{ sx: dialogPaperSx }}
     >
       <DialogTitle sx={{
         color: '#A9B7C6', fontWeight: 600, fontSize: 16, pb: 1,
@@ -160,7 +155,7 @@ const NewInstanceDialog = ({
                 component="li"
                 key={project._id}
                 sx={{
-                  mb: 0.5,
+                  mb: 0.25,
                   borderRadius: 2,
                   overflow: 'hidden',
                   bgcolor: selected?._id === project._id ? 'rgba(104,151,187,0.05)' : 'transparent',
@@ -173,7 +168,7 @@ const NewInstanceDialog = ({
                   onClick={() => setSelected(project)}
                   sx={{
                     borderRadius: 2,
-                    py: 1.5,
+                    py: 0.6,
                     border: '1px solid transparent',
                     '&.Mui-selected': {
                       bgcolor: 'rgba(104,151,187,0.1)',

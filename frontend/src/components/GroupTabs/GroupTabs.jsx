@@ -58,7 +58,7 @@ const GroupTabs = ({
 
   return (
     <Box sx={{
-      bgcolor: '#1A1A1A', borderBottom: '1px solid #3C3F41', display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+      bgcolor: '#1E1F21', borderBottom: '1px solid #3C3F41', display: 'flex', alignItems: 'center', flexWrap: 'wrap',
     }}
     >
       {hasVisibleGroups && (
@@ -77,7 +77,7 @@ const GroupTabs = ({
             textTransform: 'none',
             color: '#808080',
             px: { xs: 1, sm: 2 },
-            '&.Mui-selected': { color: '#A9B7C6' },
+            '&.Mui-selected': { color: '#D6DCE3' },
           },
           '& .MuiTabs-indicator': { bgcolor: '#6897BB' },
           '& .MuiTabScrollButton-root': {

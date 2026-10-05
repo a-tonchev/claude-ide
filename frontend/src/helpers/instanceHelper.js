@@ -5,12 +5,13 @@ export const getInstanceTitle = instance => (
 );
 
 // Label and colour per instance status, shared by the cards and the instance window.
+// Orange is reserved for "waiting for you"; everything the agent is busy with is blue.
 export const STATUS_CONFIG = {
   ready: { label: 'Ready', color: '#7CB368' },
-  thinking: { label: 'Thinking', color: '#CC7832' },
-  planning: { label: 'Planning', color: '#CC7832' },
+  thinking: { label: 'Thinking', color: '#6897BB' },
+  planning: { label: 'Planning', color: '#6897BB' },
   plan_ready: { label: 'Plan Ready', color: '#7CB368' },
-  waiting: { label: 'Waiting', color: '#CC7832' },
+  waiting: { label: 'Waiting for you', color: '#CC7832' },
   working: { label: 'Working', color: '#6897BB' },
   completed: { label: 'Completed', color: '#7CB368' },
   running: { label: 'Running', color: '#7CB368' },

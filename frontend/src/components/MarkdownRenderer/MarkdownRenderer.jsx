@@ -4,6 +4,8 @@ import { Marked } from 'marked';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 
+import { copyText } from '@/helpers/clipboard';
+
 // --- Diff Parser ---
 
 function escapeHtml(str) {
@@ -397,19 +399,6 @@ const markdownBaseStyles = {
   },
 };
 
-function fallbackCopy(text) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
-  document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  let ok = false;
-  try { ok = document.execCommand('copy'); } catch (e) { /* ignore */ }
-  document.body.removeChild(ta);
-  return ok;
-}
-
 const COPY_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
 const CHECK_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
 
@@ -442,13 +431,7 @@ const MarkdownRenderer = ({ content, fontSize = '0.85rem', sx = {} }) => {
           setTimeout(() => { btn.innerHTML = COPY_ICON; }, 1500);
         };
 
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(text).then(onSuccess).catch(() => {
-            fallbackCopy(text) && onSuccess();
-          });
-        } else {
-          fallbackCopy(text) && onSuccess();
-        }
+        copyText(text, btn).then(ok => { if (ok) onSuccess(); });
       };
 
       btn.addEventListener('click', handleClick);

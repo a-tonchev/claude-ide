@@ -13,6 +13,7 @@ import Chip from '@mui/material/Chip';
 import SaveIcon from '@mui/icons-material/Save';
 
 import { getAiProvider, matchesSavedItem, runsInOtherGroup } from '@/helpers/aiHelper';
+import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
 const SaveGroupDialog = ({
   open, onClose, onSave, group, instances, isUpdate,
@@ -95,7 +96,7 @@ const SaveGroupDialog = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <SaveIcon sx={{ color: '#6897BB' }} />
         {isUpdate ? 'Update Group' : 'Save Group'}
