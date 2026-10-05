@@ -216,11 +216,10 @@ unconditionally, since they are harmless when unused.
 
 ## Security
 
-The WebSocket API is unauthenticated and binds all interfaces (see
-[`SECURITY-TODO.md`](SECURITY-TODO.md) items 2 and 3), and `mcp/setupMcp.js` pre-approves
-`Bash`, `Write`, `Edit`, `WebFetch` and `Task` for spawned instances. So **anyone who can
-post in the bound channel can type into a terminal running an agent with pre-approved shell
-access.** Discord channel permissions become the auth boundary.
+`mcp/setupMcp.js` pre-approves `Bash`, `Write`, `Edit`, `WebFetch` and `Task` for spawned
+instances, so **anyone who can post in the bound channel can type into a terminal running an
+agent with pre-approved shell access.** Discord channel permissions become the auth boundary
+(see also the local `SECURITY-TODO.md`).
 
 Minimum: a private channel plus a hardcoded allowlist of Discord user IDs in the bridge that
 ignores everyone else. Cheap, and worth having from day one.

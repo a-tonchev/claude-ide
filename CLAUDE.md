@@ -44,13 +44,9 @@ for the provider identity and MCP routing checks.
 
 ## Security
 
-Known unfixed security issues are tracked in [`SECURITY-TODO.md`](SECURITY-TODO.md) — audited
-2026-07-25, nothing fixed yet. Read it before adding routes, WebSocket message types, or anything
-the MCP server calls. Summary: the API binds all interfaces, reflects any `Origin` with credentials
-allowed, and only 7 routes require authentication — so unauthenticated callers can currently read
-decrypted KeePass credentials and spawn terminals. The live install runs all the time, so this
-exposure lasts as long as it is up; the `/instances/remembered*` and `/instances/feed` routes are
-unauthenticated too (they expose instance messages).
+Known security issues are tracked in a local, git-ignored `SECURITY-TODO.md`. Read it before
+adding routes, WebSocket message types, or anything the MCP server calls, and add new findings
+there rather than to tracked files.
 
 ## Live and dev installs
 
