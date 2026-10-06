@@ -4,9 +4,9 @@ import {
 import {
   Alert, Box, Divider, Grid, Menu, MenuItem, Snackbar, Typography,
 } from '@mui/material';
-import TerminalIcon from '@mui/icons-material/Terminal';
 import { Helmet } from 'react-helmet-async';
 
+import { TerminalIcon } from '@/components/Icons/Icons';
 import TitleBar from '@/components/TitleBar/TitleBar';
 import GroupTabs from '@/components/GroupTabs/GroupTabs';
 import ActionBar from '@/components/ActionBar/ActionBar';
@@ -34,6 +34,8 @@ import RememberedInstancesDialog from '@/components/RememberedInstancesDialog/Re
 import MobileGroupPicker from '@/components/MobileGroupPicker/MobileGroupPicker';
 import MobileCardPager from '@/components/MobileCardPager/MobileCardPager';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
+import History from '@/components/connections/History';
+import useQuery from '@/components/connections/hooks/useQuery';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import useInstances from '@/hooks/useInstances';
 import useGroups from '@/hooks/useGroups';
@@ -57,6 +59,8 @@ import {
 } from '@/stores/instanceAtoms';
 
 const UNGROUPED_ID = '__ungrouped__';
+
+const MINIMIZED_KEY = 'claude-ide:minimized-cards';
 
 const withAdded = (set, value) => new Set(set).add(value);
 const withRemoved = (set, value) => {
@@ -91,7 +95,15 @@ const Dashboard = () => {
   const [wsConnected, setWsConnected] = useState(false);
   const [instanceError, setInstanceError] = useState('');
   const [expandedCards, setExpandedCards] = useState(new Set());
-  const [minimizedCards, setMinimizedCards] = useState(new Set());
+  // Minimized cards by instance id, kept through a refresh (a resumed instance keeps its id)
+  const [minimizedCards, setMinimizedCards] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(MINIMIZED_KEY));
+      return new Set(Array.isArray(saved) ? saved : []);
+    } catch {
+      return new Set();
+    }
+  });
   const [wsGroupStatuses, setWsGroupStatuses] = useState({});
   const [openTabIds, setOpenTabIds] = useState(new Set());
   // Tabs whose X was clicked this session; the groups stay loaded so they can come back
@@ -134,6 +146,14 @@ const Dashboard = () => {
     if (msg.type === 'start_failed') {
       setInstanceError(`${msg.name || 'The instance'}: ${msg.message}`);
       if (msg.savedItemId) setStartErrors(prev => ({ ...prev, [msg.savedItemId]: msg.message }));
+    }
+    // The backend's full instance list (on connect and every 30 s): minimized ids of
+    // instances that no longer exist are dropped, so localStorage doesn't collect them
+    if (msg.type === 'instances') {
+      const alive = new Set((msg.list || []).map(i => i.id));
+      setMinimizedCards(prev => ([...prev].every(id => alive.has(id))
+        ? prev
+        : new Set([...prev].filter(id => alive.has(id)))));
     }
     if (msg.type === 'group_status') {
       setWsGroupStatuses(prev => ({ ...prev, [msg.groupId]: msg.statuses }));
@@ -237,6 +257,29 @@ const Dashboard = () => {
     [instanceList, activeGroupId, ungroupedInstances],
   );
 
+  // The card shown on mobile, as ?card=<page key>, so a refresh stays on it. Replaced
+  // rather than pushed, so swiping doesn't fill the back history.
+  const { card: cardFromUrl = null } = useQuery();
+  const setCardInUrl = useCallback(key => {
+    const query = new URLSearchParams(window.location.search);
+    if (key) query.set('card', key);
+    else query.delete('card');
+    History.navigate(`${window.location.pathname}?${query}`, { replace: true });
+  }, []);
+
+  // An observer has no card id when it is created, so after adding one the next observer
+  // that shows up in the group becomes the shown card. Holds the ids known before the add.
+  const pendingObserverFocus = useRef(null);
+  useEffect(() => {
+    const known = pendingObserverFocus.current;
+    if (!known) return;
+    const added = activeGroupInstances.find(i => i.type === 'observer' && !known.has(i.id));
+    if (added) {
+      pendingObserverFocus.current = null;
+      setCardInUrl(added.savedItemId || added.id);
+    }
+  }, [activeGroupInstances, setCardInUrl]);
+
   const activeGroup = activeGroupId && activeGroupId !== UNGROUPED_ID ? groups[activeGroupId] : null;
   const currentPlaceholders = placeholders[activeGroupId] || { placeholder1: null, placeholder2: null };
 
@@ -261,11 +304,13 @@ const Dashboard = () => {
     if (!gid) return { ok: false, errorMessage: 'Could not create a group for the AI instance. Please try again.' };
     const aiProvider = getAiProvider({ provider });
     rememberProvider(aiProvider);
+    const savedItemId = createUuid();
     createInstance(projectId, name, path, [], gid, aiProvider === 'claude' ? flagIds : [], {
-      provider: aiProvider, savedItemId: createUuid(),
+      provider: aiProvider, savedItemId,
     });
+    setCardInUrl(savedItemId);
     return { ok: true };
-  }, [ensureGroup, createInstance, rememberProvider]);
+  }, [ensureGroup, createInstance, rememberProvider, setCardInUrl]);
 
   const handleCreateTerminal = useCallback(async (name, shell, command) => {
     const gid = await ensureGroup();
@@ -273,8 +318,10 @@ const Dashboard = () => {
       setInstanceError('Could not create a group for the terminal. Please try again.');
       return;
     }
-    createTerminal(name, shell, command, gid, createUuid());
-  }, [createTerminal, ensureGroup]);
+    const savedItemId = createUuid();
+    createTerminal(name, shell, command, gid, savedItemId);
+    setCardInUrl(savedItemId);
+  }, [createTerminal, ensureGroup, setCardInUrl]);
 
   const handleCreateObserver = useCallback(async (observerId, name, path) => {
     const gid = await ensureGroup();
@@ -282,6 +329,7 @@ const Dashboard = () => {
       setInstanceError('Could not create a group for the observer. Please try again.');
       return;
     }
+    pendingObserverFocus.current = new Set(Object.keys(InstanceStores.instancesStore.get()));
     createObserver(name, observerId, path, gid);
   }, [createObserver, ensureGroup]);
 
@@ -339,6 +387,19 @@ const Dashboard = () => {
     if (!activeGroupId) return;
     assignToPlaceholder(activeGroupId, instanceId);
   }, [activeGroupId]);
+
+  // A stopped instance leaves the store (from any window, a group stop or a group delete):
+  // it drops out of the minimized list too. Only removals count, so the list survives the
+  // refresh, while the instances are still arriving.
+  const knownInstanceIds = useRef(new Set());
+  useEffect(() => {
+    const current = new Set(Object.keys(instances));
+    const removed = [...knownInstanceIds.current].filter(id => !current.has(id));
+    knownInstanceIds.current = current;
+    if (removed.some(id => minimizedCards.has(id))) {
+      setMinimizedCards(prev => new Set([...prev].filter(id => !removed.includes(id))));
+    }
+  }, [instances, minimizedCards]);
 
   const handleMinimize = useCallback(instanceId => {
     setMinimizedCards(prev => withAdded(prev, instanceId));
@@ -625,13 +686,20 @@ const Dashboard = () => {
     localStorage.setItem('claude-ide:cardsHeight', String(cardsHeight));
   }, [cardsHeight]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(MINIMIZED_KEY, JSON.stringify([...minimizedCards]));
+    } catch { /* storage full or blocked: minimized cards just aren't remembered */ }
+  }, [minimizedCards]);
+
   const handleSaveGroup = useCallback(async groupData => {
     const response = await saveGroup(groupData);
     if (!response?.ok) setInstanceError(response?.errorMessage || 'Could not save the group. Please try again.');
   }, [saveGroup]);
 
   // Mobile shows one card per page: running cards first, then the saved ones. A running
-  // card started from a saved one keeps its key, so the pager stays on it.
+  // card started from a saved one keeps its key, so the pager stays on it. Minimized cards
+  // are left out (keys are given first, so they don't shift when one is minimized).
   const mobilePages = useMemo(() => {
     if (!isMobile) return [];
     const seen = new Set();
@@ -643,14 +711,26 @@ const Dashboard = () => {
     return [
       ...activeGroupInstances.map(instance => ({ key: uniqueKey(instance.savedItemId, instance.id), instance })),
       ...stoppedItems.map((item, idx) => ({ key: uniqueKey(item.id, `saved-${idx}`), item })),
-    ];
-  }, [isMobile, activeGroupInstances, stoppedItems]);
+    ].filter(page => !page.instance || !minimizedCards.has(page.instance.id));
+  }, [isMobile, activeGroupInstances, stoppedItems, minimizedCards]);
 
-  // A running card. On mobile it fills its page and has no placeholder, minimize or
-  // expand buttons: the pager has its own terminal tab and shows one card at a time.
+  const minimizedInGroup = useMemo(
+    () => activeGroupInstances.filter(i => minimizedCards.has(i.id)),
+    [activeGroupInstances, minimizedCards],
+  );
+
+  // Mobile: a restored card is opened right away
+  const handleRestoreOnMobile = useCallback(instanceId => {
+    handleRestore(instanceId);
+    const inst = InstanceStores.instancesStore.get()[instanceId];
+    if (inst) setCardInUrl(inst.savedItemId || inst.id);
+  }, [handleRestore, setCardInUrl]);
+
+  // A running card. On mobile it fills its page and has no placeholder or expand buttons:
+  // the pager has its own terminal tab and shows one card at a time.
   const renderInstanceCard = (instance, mobile = false) => {
     const isExpanded = expandedCards.has(instance.id);
-    const desktopOnly = mobile ? {} : {
+    const cardExtras = mobile ? { onMinimize: handleMinimize } : {
       onOpenPlaceholder: handleOpenPlaceholder,
       onMinimize: handleMinimize,
     };
@@ -662,7 +742,7 @@ const Dashboard = () => {
           onStop={confirmStopInstance}
           onMoveToGroup={handleOpenMoveMenu}
           onRename={renameInstance}
-          {...desktopOnly}
+          {...cardExtras}
         />
       );
     }
@@ -682,7 +762,7 @@ const Dashboard = () => {
         onMoveToGroup={handleOpenMoveMenu}
         onRename={renameInstance}
         onToggleSaved={setInstanceSaved}
-        {...desktopOnly}
+        {...cardExtras}
       />
     );
   };
@@ -774,25 +854,32 @@ const Dashboard = () => {
           savedCount={savedInstances.length}
           onOpenSaved={() => setSavedOpen(true)}
           groupSelector={isMobile ? (
-            <>
-              <MobileGroupPicker
-                groups={tabList}
-                activeGroupId={activeGroupId}
-                groupStatuses={groupStatuses}
-                instances={instances}
-                openTabIds={openTabIds}
-                closedTabIds={closedTabIds}
-                onSelect={setActiveGroupId}
-                onAddGroup={handleAddGroupTab}
-                onClose={handleCloseGroup}
-                onDelete={confirmDeleteGroup}
-                onRunGroup={runGroup}
-                onStopGroup={confirmStopGroup}
-                onNewGroup={handleNewGroup}
-              />
-              {groupActions}
-            </>
+            <MobileGroupPicker
+              groups={tabList}
+              activeGroupId={activeGroupId}
+              groupStatuses={groupStatuses}
+              instances={instances}
+              openTabIds={openTabIds}
+              closedTabIds={closedTabIds}
+              onSelect={setActiveGroupId}
+              onAddGroup={handleAddGroupTab}
+              onClose={handleCloseGroup}
+              onDelete={confirmDeleteGroup}
+              onRunGroup={runGroup}
+              onStopGroup={confirmStopGroup}
+              onNewGroup={handleNewGroup}
+            />
           ) : null}
+          groupActions={isMobile ? {
+            // Run only while nothing in the group runs; a running group starts the rest card by card
+            showRun: stoppedItems.length > 0 && activeGroupInstances.length === 0,
+            onRun: handleRunGroup,
+            showStop: activeGroupInstances.length > 0,
+            onStop: handleStopGroup,
+            showSave: !!activeGroup && (!activeGroup.saved || hasUnsavedChanges),
+            isUpdate: !!activeGroup?.saved && hasUnsavedChanges,
+            onSave: () => setSaveGroupOpen(true),
+          } : null}
         />
 
         {/* Floats over the page: an inline banner took its height from the terminal panels */}
@@ -813,8 +900,21 @@ const Dashboard = () => {
           }}
           >
             {mobilePages.length ? (
-              <MobileCardPager key={activeGroupId || 'none'} pages={mobilePages} renderCard={renderMobilePage} />
-            ) : emptyState}
+              <MobileCardPager
+                key={activeGroupId || 'none'}
+                pages={mobilePages}
+                renderCard={renderMobilePage}
+                activeKey={cardFromUrl}
+                onActiveKeyChange={setCardInUrl}
+                minimized={minimizedInGroup}
+                onRestoreMinimized={handleRestoreOnMobile}
+              />
+            ) : (
+              <>
+                {emptyState}
+                <MinifiedSidebar variant="row" instances={minimizedInGroup} onRestore={handleRestoreOnMobile} />
+              </>
+            )}
           </Box>
         ) : (
           <>
@@ -881,7 +981,7 @@ const Dashboard = () => {
                   )}
               </Box>
               <MinifiedSidebar
-                instances={activeGroupInstances.filter(i => minimizedCards.has(i.id))}
+                instances={minimizedInGroup}
                 onRestore={handleRestore}
                 onOpenPlaceholder={handleOpenPlaceholder}
               />

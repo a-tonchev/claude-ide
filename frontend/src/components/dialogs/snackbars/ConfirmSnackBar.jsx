@@ -4,12 +4,8 @@ import {
   SnackbarContent,
   Typography,
 } from '@mui/material';
-import {
-  Info,
-  Check,
-  Close,
-} from '@mui/icons-material';
 
+import { CheckIcon as Check, CloseIcon as Close, InfoIcon as Info } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 const styles = {

@@ -6,11 +6,10 @@ import IconButton from '@mui/material/IconButton';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Box from '@mui/material/Box';
-import CloseIcon from '@mui/icons-material/Close';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import CodeIcon from '@mui/icons-material/Code';
-import ArticleIcon from '@mui/icons-material/Article';
 
+import {
+  ArticleIcon, CloseIcon, CodeIcon, OpenInNewIcon,
+} from '@/components/Icons/Icons';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import CopyAllButton from '@/components/CopyAllButton/CopyAllButton';

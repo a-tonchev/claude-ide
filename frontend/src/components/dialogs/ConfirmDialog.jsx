@@ -1,7 +1,8 @@
 import {
   Box, Dialog, DialogActions, DialogContent, Typography,
 } from '@mui/material';
-import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+
+import { WarningAmberRoundedIcon } from '@/components/Icons/Icons';
 
 // Confirmation for stopping, deleting and removing, in the dashboard's dark style. The safe
 // choice sits first and gets the focus; the confirming one is red, since every use deletes.

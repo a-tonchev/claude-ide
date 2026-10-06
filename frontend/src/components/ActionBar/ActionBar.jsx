@@ -2,9 +2,8 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
-import SaveIcon from '@mui/icons-material/Save';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
+
+import { PlayArrowIcon, SaveIcon, StopIcon } from '@/components/Icons/Icons';
 
 // The active group's Run / Stop / Save actions as small icons: in the group tab row on
 // desktop, next to the group picker on mobile. Stop asks for confirmation.

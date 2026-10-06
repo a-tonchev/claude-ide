@@ -12,15 +12,17 @@ import Collapse from '@mui/material/Collapse';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import BookmarkRemoveOutlinedIcon from '@mui/icons-material/BookmarkRemoveOutlined';
-import PersonIcon from '@mui/icons-material/Person';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import ChatIcon from '@mui/icons-material/Chat';
 
+import {
+  BookmarkRemoveOutlinedIcon,
+  ChatIcon,
+  DeleteOutlineIcon,
+  ExpandLessIcon,
+  ExpandMoreIcon,
+  PersonIcon,
+  PlayArrowIcon,
+  SmartToyIcon,
+} from '@/components/Icons/Icons';
 import useConfirm from '@/components/dialogs/hooks/useConfirm';
 import { fetchFeedPage } from '@/hooks/useInstanceFeed';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';

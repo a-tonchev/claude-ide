@@ -1,12 +1,11 @@
 import React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
 import IconButton from '@mui/material/IconButton';
 
+import {
+  BookmarkBorderIcon, BookmarkIcon, ExpandLessIcon, ExpandMoreIcon,
+} from '@/components/Icons/Icons';
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import { FeedAttachments } from '@/components/Attachments/Attachments';
 import { STATUS_CONFIG } from '@/helpers/instanceHelper';
@@ -48,31 +47,38 @@ export const cardSx = ({ status = null, waiting = false, fill = false } = {}) =>
   maxHeight: fill ? 'none' : 'calc(40vh - 36px)',
 });
 
-// The card's one status: a coloured dot and its label. In the header only the dot shows
-// (dotOnly), so the name keeps its room; the label sits in the card's footer.
-export const StatusMark = ({ status, dotOnly = false }) => {
+// A header title with its status: the dot in front of the title, the status label as a tiny
+// caption under it, lined up with the title's first letter
+export const StatusTitle = ({ status, children }) => {
   const config = STATUS_CONFIG[status] || STATUS_CONFIG.running;
   return (
-    <Box
-      title={config.label}
-      sx={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 0.6,
-        flexShrink: 1,
-        minWidth: 8,
-        maxWidth: dotOnly ? 8 : '100%',
-        color: config.color,
-        fontSize: '0.72rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-      }}
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: '8px minmax(0, 1fr)',
+      columnGap: 0.75,
+      alignItems: 'center',
+      flex: 1,
+      minWidth: 0,
+    }}
     >
       <Box sx={{
-        width: 8, height: 8, flexShrink: 0, borderRadius: '50%', bgcolor: config.color,
+        width: 8, height: 8, borderRadius: '50%', bgcolor: config.color,
       }}
       />
-      {!dotOnly && <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{config.label}</Box>}
+      <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>{children}</Box>
+      <Typography sx={{
+        gridColumn: 2,
+        fontSize: '0.62rem',
+        fontWeight: 500,
+        lineHeight: 1.2,
+        color: config.color,
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}
+      >
+        {config.label}
+      </Typography>
     </Box>
   );
 };
@@ -116,6 +122,57 @@ const MESSAGE_COLORS = {
   question: '#CC7832',
 };
 
+// Each feed item is a bubble; the kind sets its tint, a message's type its left edge
+const bubbleSx = item => {
+  if (item.kind === 'user') {
+    return {
+      bgcolor: `${CARD_COLORS.user}14`,
+      border: `1px solid ${CARD_COLORS.user}33`,
+      borderRight: `2px solid ${CARD_COLORS.user}`,
+    };
+  }
+  if (item.kind === 'message') {
+    return {
+      bgcolor: 'rgba(255,255,255,0.035)',
+      border: `1px solid ${CARD_COLORS.border}`,
+      borderLeft: `2px solid ${MESSAGE_COLORS[item.type] || '#6897BB'}`,
+    };
+  }
+  return { bgcolor: 'rgba(124,179,104,0.06)', border: '1px solid rgba(124,179,104,0.18)' };
+};
+
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear()
+  && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+// "09:35" today, "5 Oct 09:35" on earlier days
+const formatFeedTime = date => {
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (sameDay(date, new Date())) return time;
+  return `${date.toLocaleDateString([], { day: 'numeric', month: 'short' })} ${time}`;
+};
+
+// Floats in the bubble's top-right corner, so the text flows around it
+const FeedTime = ({ timestamp }) => {
+  const date = timestamp ? new Date(timestamp) : null;
+  if (!date || Number.isNaN(date.getTime())) return null;
+  return (
+    <Box
+      component="span"
+      title={date.toLocaleString()}
+      sx={{
+        float: 'right',
+        ml: 1,
+        fontSize: '0.68rem',
+        lineHeight: 1.9,
+        color: CARD_COLORS.faint,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {formatFeedTime(date)}
+    </Box>
+  );
+};
+
 const ReadMore = () => (
   <Typography sx={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic' }}>
     Click to read full message
@@ -141,7 +198,9 @@ export const FeedItem = ({
     full = `${item.accomplished || ''}${item.workingOn ? ` → ${item.workingOn}` : ''}`;
     title = 'Milestone';
   }
-  const isLong = full.length > LONG_TEXT;
+  // Questions always show in full: they have to be read to be answered
+  const isQuestion = item.kind === 'message' && item.type === 'question';
+  const isLong = !isQuestion && full.length > LONG_TEXT;
   const open = isLong ? () => onOpen?.({ title, content: full }) : undefined;
 
   let body;
@@ -197,14 +256,16 @@ export const FeedItem = ({
     <Box
       onClick={open}
       sx={{
+        px: 1,
         py: size === 'lg' ? 0.6 : 0.4,
+        mb: 0.75,
         borderRadius: '6px',
-        ...(item.kind === 'user' && {
-          bgcolor: 'rgba(255,255,255,0.04)', px: 0.75, my: 0.25,
-        }),
+        display: 'flow-root',
+        ...bubbleSx(item),
         ...(isLong && { cursor: 'pointer', '&:hover': { bgcolor: '#3C3F41' } }),
       }}
     >
+      <FeedTime timestamp={item.timestamp} />
       {body}
       {isLong && <ReadMore />}
     </Box>
@@ -239,12 +300,15 @@ export const PendingChoices = ({
           color: '#BBC4CF',
           lineHeight: 1.35,
           overflowWrap: 'anywhere',
-          // The full question is in the feed above; here it stays short so the options and the
-          // input keep their room in a small card
-          overflow: 'hidden',
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: collapsed ? 1 : 2,
+          whiteSpace: 'pre-wrap',
+          // Open: the whole question, scrolling past a height so the options and input keep
+          // their room. Folded: one line.
+          ...(collapsed ? {
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: 1,
+          } : { maxHeight: maxListHeight, overflowY: 'auto' }),
         }}
         title={question}
       >

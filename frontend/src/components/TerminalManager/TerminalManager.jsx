@@ -20,12 +20,10 @@ import {
   InputLabel,
   Chip,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import TerminalIcon from '@mui/icons-material/Terminal';
 
+import {
+  AddIcon, DeleteIcon, EditIcon, SaveIcon, TerminalIcon,
+} from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { managerPaperSx } from '@/components/ManagerDialog/managerStyles';
 

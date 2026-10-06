@@ -15,10 +15,8 @@ import {
   Breadcrumbs,
   Chip,
 } from '@mui/material';
-import FolderIcon from '@mui/icons-material/Folder';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
-import CheckIcon from '@mui/icons-material/Check';
 
+import { ArrowUpwardIcon, CheckIcon, FolderIcon } from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 

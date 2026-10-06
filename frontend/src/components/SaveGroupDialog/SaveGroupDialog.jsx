@@ -10,8 +10,8 @@ import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Chip from '@mui/material/Chip';
-import SaveIcon from '@mui/icons-material/Save';
 
+import { SaveIcon } from '@/components/Icons/Icons';
 import { getAiProvider, matchesSavedItem, runsInOtherGroup } from '@/helpers/aiHelper';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 

@@ -1,4 +1,3 @@
-import { LockOutlined } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import {
   Avatar,
@@ -7,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 
+import { LockOutlinedIcon as LockOutlined } from '@/components/Icons/Icons';
 import Grid from '@/components/inputs/CustomGrid';
 import CustomLink from '@/components/inputs/CustomLink';
 import CustomTextField from '@/components/inputs/CustomTextField';

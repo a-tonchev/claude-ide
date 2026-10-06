@@ -8,16 +8,18 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
-import GroupAddIcon from '@mui/icons-material/GroupAdd';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
+import {
+  ArrowDropDownIcon,
+  CheckIcon,
+  CloseIcon,
+  DeleteIcon,
+  GroupAddIcon,
+  MoreVertIcon,
+  PlayArrowIcon,
+  StopIcon,
+  VisibilityOffIcon,
+} from '@/components/Icons/Icons';
 import GroupStatusChips, { getGroupCounts } from '@/components/GroupStatusChips/GroupStatusChips';
 import { splitGroupTabs } from '@/helpers/groupTabsHelper';
 
@@ -137,8 +139,8 @@ const MobileGroupPicker = ({
           justifyContent: 'flex-start',
           gap: 0.75,
           px: 1,
-          py: 0.5,
-          mx: 1,
+          py: 0.75,
+          // Lined up with the card dropdown below it; the title bar's gap spaces the buttons
           borderRadius: 1,
           border: '1px solid #3C3F41',
           bgcolor: '#2B2B2B',

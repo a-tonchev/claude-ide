@@ -13,9 +13,8 @@ import {
   CircularProgress,
   Box,
 } from '@mui/material';
-import { ArrowFatLinesUp } from '@phosphor-icons/react';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 
+import { ArrowFatLinesUpIcon as ArrowFatLinesUp, RocketLaunchIcon } from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 

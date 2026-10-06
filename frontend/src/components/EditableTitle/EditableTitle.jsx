@@ -3,9 +3,8 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import InputBase from '@mui/material/InputBase';
-import EditIcon from '@mui/icons-material/Edit';
-import CheckIcon from '@mui/icons-material/Check';
-import CloseIcon from '@mui/icons-material/Close';
+
+import { CheckIcon, CloseIcon, EditIcon } from '@/components/Icons/Icons';
 
 // Card title with a pencil icon: click to edit inline, Enter/blur/✓ saves,
 // Escape/✕ cancels. Saving an unchanged or empty value is a no-op.

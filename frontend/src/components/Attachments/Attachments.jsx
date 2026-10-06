@@ -3,12 +3,14 @@ import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
-import CloseIcon from '@mui/icons-material/Close';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 
+import {
+  AttachFileIcon,
+  CloseIcon,
+  ErrorOutlineIcon,
+  InsertDriveFileOutlinedIcon,
+  UploadFileIcon,
+} from '@/components/Icons/Icons';
 import { attachmentUrl, formatBytes, isImage } from '@/hooks/useAttachments';
 
 const chipSx = {

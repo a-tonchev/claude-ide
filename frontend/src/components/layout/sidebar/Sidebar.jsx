@@ -5,17 +5,17 @@ import {
   ListItemText,
   IconButton, ListItemButton,
 } from '@mui/material';
-import {
-  ChevronLeft as ChevronLeftIcon,
-  LockOutlined,
-  Home,
-  AccountCircle,
-  WebAsset,
-  SupervisorAccount,
-  Web,
-} from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
+import {
+  AccountCircleIcon as AccountCircle,
+  ChevronLeftIcon,
+  HomeIcon as Home,
+  LockOutlinedIcon as LockOutlined,
+  SupervisorAccountIcon as SupervisorAccount,
+  WebIcon as Web,
+  WebAssetIcon as WebAsset,
+} from '@/components/Icons/Icons';
 import Authorized from '@/screens/auth/Authorized';
 import CustomLink from '@/components/inputs/CustomLink';
 import UrlEnums from '@/components/connections/enums/UrlEnums';

@@ -12,8 +12,8 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import FolderIcon from '@mui/icons-material/Folder';
 
+import { FolderIcon } from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 

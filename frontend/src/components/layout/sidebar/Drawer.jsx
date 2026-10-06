@@ -2,9 +2,9 @@ import { useState } from 'react';
 import {
   Drawer as MuiDrawer,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import IconButton from '@mui/material/IconButton';
 
+import { MenuIcon } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 import Sidebar from './Sidebar';

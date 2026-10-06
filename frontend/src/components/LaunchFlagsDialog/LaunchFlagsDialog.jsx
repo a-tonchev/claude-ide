@@ -16,12 +16,10 @@ import {
   Chip,
   Tooltip,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
-import TuneIcon from '@mui/icons-material/Tune';
 
+import {
+  AddIcon, DeleteIcon, EditIcon, SaveIcon, TuneIcon,
+} from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { LAUNCH_FLAG_TYPE } from '@/hooks/useLaunchFlags';
 import { managerPaperSx } from '@/components/ManagerDialog/managerStyles';

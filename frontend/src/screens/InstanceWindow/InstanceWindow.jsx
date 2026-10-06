@@ -9,23 +9,32 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Popover from '@mui/material/Popover';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import StopIcon from '@mui/icons-material/Stop';
-import ArticleIcon from '@mui/icons-material/Article';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import HistoryIcon from '@mui/icons-material/History';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import OpenWithIcon from '@mui/icons-material/OpenWith';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
-import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Divider from '@mui/material/Divider';
 
+import {
+  ArticleIcon,
+  BookmarkBorderIcon,
+  BookmarkIcon,
+  ExpandLessIcon,
+  HistoryIcon,
+  KeyboardArrowDownIcon,
+  KeyboardArrowLeftIcon,
+  KeyboardArrowRightIcon,
+  KeyboardArrowUpIcon,
+  MoreVertIcon,
+  OpenWithIcon,
+  RefreshIcon,
+  StopIcon,
+} from '@/components/Icons/Icons';
 import EditableTitle from '@/components/EditableTitle/EditableTitle';
 import PlansDialog from '@/components/PlansDialog/PlansDialog';
 import TerminalWidget from '@/components/TerminalWidget/TerminalWidget';
 import ChatInput from '@/components/ChatInput/ChatInput';
 import {
-  CARD_COLORS, FeedItem, PendingChoices, SaveToggle, StatusMark, latestQuestion,
+  CARD_COLORS, FeedItem, PendingChoices, SaveToggle, StatusTitle, latestQuestion,
 } from '@/components/CardParts/CardParts';
 import { FileDropZone } from '@/components/Attachments/Attachments';
 import useAttachments from '@/hooks/useAttachments';
@@ -40,6 +49,12 @@ import UrlEnums from '@/components/connections/enums/UrlEnums';
 import { STATUS_CONFIG, getInstanceTitle, stopConfirmText } from '@/helpers/instanceHelper';
 import useMobile from '@/components/layout/hooks/useMobile';
 
+const menuPaperSx = {
+  bgcolor: '#313335',
+  border: '1px solid #4E5254',
+  '& .MuiMenuItem-root': { fontSize: '0.85rem', color: '#A9B7C6' },
+};
+
 const InstanceWindow = () => {
   const { instanceId } = useParams();
   const termRef = useRef(null);
@@ -49,6 +64,7 @@ const InstanceWindow = () => {
   const [viewingMessage, setViewingMessage] = useState(null);
   const [plansOpen, setPlansOpen] = useState(false);
   const [plansAnchorEl, setPlansAnchorEl] = useState(null);
+  const [actionsAnchor, setActionsAnchor] = useState(null);
   const [arrowsAnchorEl, setArrowsAnchorEl] = useState(null);
   const [pendingCollapsed, setPendingCollapsed] = useState(false);
   const [mobileTab, setMobileTab] = useState(0);
@@ -240,45 +256,100 @@ const InstanceWindow = () => {
         borderBottom: '1px solid #3C3F41',
       }}
       >
-        <EditableTitle
-          title={getInstanceTitle(instance) || 'Instance'}
-          onRename={title => renameInstance(instanceId, title)}
-          fontSize="0.92rem"
-          color={CARD_COLORS.strong}
-        />
-        <StatusMark status={instance.status} />
-        {(instance.type === 'claude' || instance.type === 'observer') && (
-          <SaveToggle
-            saved={instance.saved}
-            size={18}
-            onToggle={() => setInstanceSaved(instanceId, !instance.saved)}
+        <StatusTitle status={instance.status}>
+          <EditableTitle
+            title={getInstanceTitle(instance) || 'Instance'}
+            onRename={title => renameInstance(instanceId, title)}
+            fontSize="0.92rem"
+            color={CARD_COLORS.strong}
           />
+        </StatusTitle>
+        {/* Mobile: reload stays visible, the other header actions share one ⋮ menu */}
+        {isMobile ? (
+          <>
+            <IconButton
+              size="small"
+              onClick={() => window.location.reload()}
+              title="Reload page"
+              sx={{ ml: 'auto', color: '#A9B7C6', '&:hover': { color: '#FFFFFF' } }}
+            >
+              <RefreshIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={e => setActionsAnchor(e.currentTarget)}
+              aria-label="Instance actions"
+              title="Actions"
+              sx={{ color: '#A9B7C6', '&:hover': { color: '#FFFFFF' } }}
+            >
+              <MoreVertIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+            <Menu
+              anchorEl={actionsAnchor}
+              open={Boolean(actionsAnchor)}
+              onClose={() => setActionsAnchor(null)}
+              PaperProps={{ sx: menuPaperSx }}
+            >
+              {(instance.type === 'claude' || instance.type === 'observer') && (
+                <MenuItem onClick={() => { setActionsAnchor(null); setInstanceSaved(instanceId, !instance.saved); }}>
+                  <ListItemIcon>
+                    {instance.saved
+                      ? <BookmarkIcon sx={{ fontSize: 18, color: '#6897BB' }} />
+                      : <BookmarkBorderIcon sx={{ fontSize: 18, color: '#808080' }} />}
+                  </ListItemIcon>
+                  {instance.saved ? 'Unsave instance' : 'Save instance'}
+                </MenuItem>
+              )}
+              <MenuItem onClick={() => { setActionsAnchor(null); setPlansOpen(true); }}>
+                <ListItemIcon><ArticleIcon sx={{ fontSize: 18, color: '#6897BB' }} /></ListItemIcon>
+                Plans
+              </MenuItem>
+              <Divider sx={{ borderColor: '#3C3F41' }} />
+              <MenuItem
+                disabled={instance.status === 'exited'}
+                onClick={() => { setActionsAnchor(null); handleStopClick(); }}
+              >
+                <ListItemIcon><StopIcon sx={{ fontSize: 18, color: '#BC3F3C' }} /></ListItemIcon>
+                Stop instance
+              </MenuItem>
+            </Menu>
+          </>
+        ) : (
+          <>
+            {(instance.type === 'claude' || instance.type === 'observer') && (
+            <SaveToggle
+              saved={instance.saved}
+              size={18}
+              onToggle={() => setInstanceSaved(instanceId, !instance.saved)}
+            />
+            )}
+            <IconButton
+              size="small"
+              onClick={() => window.location.reload()}
+              title="Reload page"
+              sx={{ color: '#A9B7C6', '&:hover': { color: '#FFFFFF' } }}
+            >
+              <RefreshIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={() => setPlansOpen(true)}
+              title="View stored plans"
+              sx={{ color: '#6897BB', '&:hover': { color: '#89B8DE' } }}
+            >
+              <ArticleIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={handleStopClick}
+              disabled={instance.status === 'exited'}
+              title="Stop instance"
+              sx={{ color: '#BC3F3C', '&:hover': { color: '#D45B58' }, '&.Mui-disabled': { color: '#4E5254' } }}
+            >
+              <StopIcon sx={{ fontSize: 18 }} />
+            </IconButton>
+          </>
         )}
-        <IconButton
-          size="small"
-          onClick={() => window.location.reload()}
-          title="Reload page"
-          sx={{ color: '#A9B7C6', '&:hover': { color: '#FFFFFF' } }}
-        >
-          <RefreshIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={() => setPlansOpen(true)}
-          title="View stored plans"
-          sx={{ color: '#6897BB', '&:hover': { color: '#89B8DE' } }}
-        >
-          <ArticleIcon sx={{ fontSize: 18 }} />
-        </IconButton>
-        <IconButton
-          size="small"
-          onClick={handleStopClick}
-          disabled={instance.status === 'exited'}
-          title="Stop instance"
-          sx={{ color: '#BC3F3C', '&:hover': { color: '#D45B58' }, '&.Mui-disabled': { color: '#4E5254' } }}
-        >
-          <StopIcon sx={{ fontSize: 18 }} />
-        </IconButton>
       </Box>
 
       {/* Mobile tabs */}

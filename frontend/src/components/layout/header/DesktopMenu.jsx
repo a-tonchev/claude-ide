@@ -4,13 +4,9 @@ import {
   MenuItem,
   Menu,
 } from '@mui/material';
-import {
-  AccountCircle,
-  Mail as MailIcon,
-  Notifications as NotificationsIcon,
-} from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
+import { AccountCircleIcon as AccountCircle, MailIcon, NotificationsIcon } from '@/components/Icons/Icons';
 import Authorized from '@/screens/auth/Authorized';
 import CustomLink from '@/components/inputs/CustomLink';
 import LanguagesPicker from '@/components/translations/LanguagesPicker';

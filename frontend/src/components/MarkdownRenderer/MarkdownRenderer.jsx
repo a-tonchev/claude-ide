@@ -212,6 +212,10 @@ markedInstance.use({
         : hljs.highlightAuto(text).value;
       return `<pre><code class="hljs${language ? ` language-${language}` : ''}">${highlighted}</code></pre>`;
     },
+    // A <script> injected via innerHTML swallowed the rest of the message, so show it as text.
+    html({ text }) {
+      return /<\/?script/i.test(text) ? escapeHtml(text) : text;
+    },
   },
 });
 

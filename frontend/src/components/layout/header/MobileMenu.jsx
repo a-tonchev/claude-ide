@@ -3,10 +3,8 @@ import {
   MenuItem,
   Menu as MuiMenu,
 } from '@mui/material';
-import {
-  MoreVert as MoreIcon,
-} from '@mui/icons-material';
 
+import { MoreVertIcon as MoreIcon } from '@/components/Icons/Icons';
 import { useIsAdmin, useLoggedIn, useUserData } from '@/screens/users/hooks/userDataHooks';
 import AuthHelper from '@/screens/auth/AuthHelper';
 import useClasses from '@/components/layout/hooks/useClasses';

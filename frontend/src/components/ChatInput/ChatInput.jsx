@@ -2,8 +2,8 @@ import React, { useCallback } from 'react';
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
-import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 
+import { ArrowUpwardIcon } from '@/components/Icons/Icons';
 import { AttachButton, AttachmentChips, takePastedFiles } from '@/components/Attachments/Attachments';
 import useMobile from '@/components/layout/hooks/useMobile';
 
@@ -86,18 +86,18 @@ const ChatInput = ({
           title={attachments.uploading ? 'Waiting for uploads…' : 'Send'}
           sx={{
             position: 'absolute',
-            right: 6,
+            right: 4,
             top: '50%',
             transform: 'translateY(-50%)',
-            width: 28,
-            height: 28,
+            width: 32,
+            height: 32,
             bgcolor: canSend ? '#6897BB' : 'transparent',
             color: canSend ? '#fff' : '#4E5254',
             '&:hover': { bgcolor: canSend ? '#89B8DE' : 'rgba(104,151,187,0.15)' },
             '&.Mui-disabled': { color: '#4E5254', bgcolor: 'transparent' },
           }}
         >
-          <ArrowUpwardIcon sx={{ fontSize: 16 }} />
+          <ArrowUpwardIcon sx={{ fontSize: 22 }} />
         </IconButton>
       </Box>
     </Box>

@@ -1,8 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Box from '@mui/material/Box';
-import CheckIcon from '@mui/icons-material/Check';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
+import { CheckIcon, ContentCopyIcon } from '@/components/Icons/Icons';
 import { copyText } from '@/helpers/clipboard';
 
 // "Copy" for a whole plan or message (its Markdown). When the browser refuses, onFail lets

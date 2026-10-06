@@ -5,15 +5,21 @@ import Tooltip from '@mui/material/Tooltip';
 import Popover from '@mui/material/Popover';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import TvIcon from '@mui/icons-material/Tv';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { ArrowsOut } from '@phosphor-icons/react';
-import MonitorIcon from '@mui/icons-material/Monitor';
 
+import {
+  ArrowsOutIcon as ArrowsOut,
+  AutoAwesomeIcon,
+  FiberManualRecordIcon,
+  MonitorIcon,
+  TvIcon,
+} from '@/components/Icons/Icons';
+
+// The minimized cards as icons; a click offers Restore (and Open in placeholder when given).
+// variant "row": a titled row with a count, for the bottom of the mobile card list.
 const MinifiedSidebar = ({
-  instances, onRestore, onOpenPlaceholder,
+  instances, onRestore, onOpenPlaceholder, variant = 'sidebar',
 }) => {
+  const isRow = variant === 'row';
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedInstance, setSelectedInstance] = useState(null);
 
@@ -33,8 +39,40 @@ const MinifiedSidebar = ({
 
   return (
     <>
+      {isRow && (
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1, px: 2, pt: 1.5,
+        }}
+        >
+          <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#808080' }}>
+            Minified
+          </Typography>
+          <Box sx={{
+            minWidth: 18,
+            height: 18,
+            px: 0.5,
+            borderRadius: 9,
+            bgcolor: '#579945',
+            color: '#fff',
+            fontSize: '0.68rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          >
+            {instances.length}
+          </Box>
+        </Box>
+      )}
       <Box
-        sx={{
+        sx={isRow ? {
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 0.75,
+          px: 1.5,
+          py: 1,
+        } : {
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -53,22 +91,23 @@ const MinifiedSidebar = ({
           <Tooltip
             key={inst.id}
             title={inst.title || inst.projectName || inst.name || 'Instance'}
-            placement="left"
+            placement={isRow ? 'top' : 'left'}
             arrow
           >
             <IconButton
               size="small"
               onClick={e => handleClick(e, inst)}
               sx={{
-                width: 30,
-                height: 30,
+                width: isRow ? 40 : 30,
+                height: isRow ? 40 : 30,
+                ...(isRow && { border: '1px solid #3C3F41', borderRadius: 1.5 }),
                 color: isRunning(inst) ? (inst.type === 'terminal' ? '#7CB368' : '#CC7832') : '#606366',
                 '&:hover': { bgcolor: '#3C3F41' },
               }}
             >
               {inst.type === 'terminal'
-                ? <MonitorIcon sx={{ fontSize: 18 }} />
-                : <AutoAwesomeIcon sx={{ fontSize: 18 }} />}
+                ? <MonitorIcon sx={{ fontSize: isRow ? 22 : 18 }} />
+                : <AutoAwesomeIcon sx={{ fontSize: isRow ? 22 : 18 }} />}
             </IconButton>
           </Tooltip>
         ))}
@@ -78,8 +117,10 @@ const MinifiedSidebar = ({
         open={Boolean(anchorEl)}
         anchorEl={anchorEl}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'center', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'center', horizontal: 'right' }}
+        anchorOrigin={isRow ? { vertical: 'top', horizontal: 'center' } : { vertical: 'center', horizontal: 'left' }}
+        transformOrigin={isRow
+          ? { vertical: 'bottom', horizontal: 'center' }
+          : { vertical: 'center', horizontal: 'right' }}
         PaperProps={{
           sx: {
             bgcolor: '#313335',
@@ -128,15 +169,17 @@ const MinifiedSidebar = ({
                   <ArrowsOut size={16} />
                 </IconButton>
               </Tooltip>
-              <Tooltip title="Open in placeholder" placement="bottom">
-                <IconButton
-                  size="small"
-                  onClick={() => { onOpenPlaceholder(selectedInstance.id); handleClose(); }}
-                  sx={{ color: '#808080', '&:hover': { bgcolor: '#3C3F41', color: '#6897BB' } }}
-                >
-                  <TvIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </Tooltip>
+              {onOpenPlaceholder && (
+                <Tooltip title="Open in placeholder" placement="bottom">
+                  <IconButton
+                    size="small"
+                    onClick={() => { onOpenPlaceholder(selectedInstance.id); handleClose(); }}
+                    sx={{ color: '#808080', '&:hover': { bgcolor: '#3C3F41', color: '#6897BB' } }}
+                  >
+                    <TvIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           </Box>
         )}

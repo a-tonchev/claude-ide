@@ -21,10 +21,8 @@ import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
-import TerminalIcon from '@mui/icons-material/Terminal';
-import DeleteIcon from '@mui/icons-material/Delete';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 
+import { DeleteIcon, RocketLaunchIcon, TerminalIcon } from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 

@@ -20,9 +20,8 @@ import {
   Chip,
   Tooltip,
 } from '@mui/material';
-import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
-import AddIcon from '@mui/icons-material/Add';
 
+import { AddIcon, FolderOutlinedIcon } from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import getRequestError from '@/helpers/requestErrorHelper';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';

@@ -4,11 +4,9 @@ import {
   Typography,
   Container,
 } from '@mui/material';
-import {
-  LockOutlined,
-} from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
+import { LockOutlinedIcon as LockOutlined } from '@/components/Icons/Icons';
 import CustomTextField from '@/components/inputs/CustomTextField';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import useError from '@/components/validations/hooks/useError';

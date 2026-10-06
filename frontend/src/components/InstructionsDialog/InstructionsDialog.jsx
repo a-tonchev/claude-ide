@@ -10,16 +10,16 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
-import CloseIcon from '@mui/icons-material/Close';
-import EditIcon from '@mui/icons-material/Edit';
-import ArticleIcon from '@mui/icons-material/Article';
-import CodeIcon from '@mui/icons-material/Code';
-import SaveIcon from '@mui/icons-material/Save';
 
+import {
+  ArticleIcon, CloseIcon, CodeIcon, EditIcon, SaveIcon,
+} from '@/components/Icons/Icons';
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 
-const InstructionsDialog = ({ open, onClose, observerId, observerName }) => {
+const InstructionsDialog = ({
+  open, onClose, observerId, observerName,
+}) => {
   const [viewMode, setViewMode] = useState('rendered');
   const [editing, setEditing] = useState(false);
   const [instructions, setInstructions] = useState('');
@@ -104,7 +104,10 @@ const InstructionsDialog = ({ open, onClose, observerId, observerName }) => {
               <ToggleButton
                 value="rendered"
                 sx={{
-                  py: 0.25, px: 1, color: '#808080', borderColor: '#4E5254',
+                  py: 0.25,
+                  px: 1,
+                  color: '#808080',
+                  borderColor: '#4E5254',
                   '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' },
                 }}
               >
@@ -113,7 +116,10 @@ const InstructionsDialog = ({ open, onClose, observerId, observerName }) => {
               <ToggleButton
                 value="code"
                 sx={{
-                  py: 0.25, px: 1, color: '#808080', borderColor: '#4E5254',
+                  py: 0.25,
+                  px: 1,
+                  color: '#808080',
+                  borderColor: '#4E5254',
                   '&.Mui-selected': { color: '#6897BB', bgcolor: '#3C3F41' },
                 }}
               >
@@ -164,7 +170,10 @@ const InstructionsDialog = ({ open, onClose, observerId, observerName }) => {
           instructions ? (
             <MarkdownRenderer content={instructions} fontSize="0.85rem" />
           ) : (
-            <Box sx={{ color: '#808080', fontStyle: 'italic', py: 4, textAlign: 'center' }}>
+            <Box sx={{
+              color: '#808080', fontStyle: 'italic', py: 4, textAlign: 'center',
+            }}
+            >
               No instructions yet. The observer will ask for SSH credentials on first startup.
             </Box>
           )

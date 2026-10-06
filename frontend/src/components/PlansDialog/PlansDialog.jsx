@@ -10,16 +10,17 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
+import {
+  CloseIcon, DeleteIcon, DeleteSweepIcon, OpenInNewIcon,
+} from '@/components/Icons/Icons';
 import usePlans from '@/hooks/usePlans';
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 
 const PlansDialog = ({ open, onClose }) => {
-  const { plans, fetchPlans, deletePlan, deleteAllPlans } = usePlans();
+  const {
+    plans, fetchPlans, deletePlan, deleteAllPlans,
+  } = usePlans();
 
   useEffect(() => {
     if (open) fetchPlans();
@@ -62,7 +63,10 @@ const PlansDialog = ({ open, onClose }) => {
         px: 2,
       }}
       >
-        <Typography sx={{ flex: 1, fontSize: '0.95rem', fontWeight: 600, color: '#A9B7C6' }}>
+        <Typography sx={{
+          flex: 1, fontSize: '0.95rem', fontWeight: 600, color: '#A9B7C6',
+        }}
+        >
           Stored Plans
         </Typography>
         <Button

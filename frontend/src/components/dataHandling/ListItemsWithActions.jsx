@@ -4,10 +4,13 @@ import {
   ListItemSecondaryAction,
   ListItemText,
 } from '@mui/material';
-import {
-  Delete, Edit, KeyboardArrowDown, KeyboardArrowUp,
-} from '@mui/icons-material';
 
+import {
+  DeleteIcon as Delete,
+  EditIcon as Edit,
+  KeyboardArrowDownIcon as KeyboardArrowDown,
+  KeyboardArrowUpIcon as KeyboardArrowUp,
+} from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 const styles = {

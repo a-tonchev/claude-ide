@@ -1,7 +1,7 @@
-import { Done } from '@mui/icons-material';
 import { Container, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 
+import { DoneIcon as Done } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 const styles = {

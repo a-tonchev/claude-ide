@@ -1,4 +1,3 @@
-import { CheckCircle, Close } from '@mui/icons-material';
 import {
   IconButton,
   Snackbar,
@@ -6,6 +5,7 @@ import {
   Typography,
 } from '@mui/material';
 
+import { CheckCircleIcon as CheckCircle, CloseIcon as Close } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 import { useSetSuccessSnackbar, useSuccessSnackbar } from './hooks/snackBarHooks';

@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+
+import { FiberManualRecordIcon } from '@/components/Icons/Icons';
 
 const StatusBar = ({ instances, wsConnected }) => {
   const counts = useMemo(() => {

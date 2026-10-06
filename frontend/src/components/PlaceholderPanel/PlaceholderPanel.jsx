@@ -6,11 +6,13 @@ import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import CloseIcon from '@mui/icons-material/Close';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TerminalIcon from '@mui/icons-material/Terminal';
-import { ArrowFatLinesUp } from '@phosphor-icons/react';
 
+import {
+  ArrowFatLinesUpIcon as ArrowFatLinesUp,
+  AutoAwesomeIcon,
+  CloseIcon,
+  TerminalIcon,
+} from '@/components/Icons/Icons';
 import InstanceTerminal from '@/components/InstanceTerminal/InstanceTerminal';
 import useMobile from '@/components/layout/hooks/useMobile';
 

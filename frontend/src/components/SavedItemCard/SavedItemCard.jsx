@@ -5,11 +5,10 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
+import { DeleteIcon, PlayArrowIcon } from '@/components/Icons/Icons';
 import { CARD_COLORS, HeaderMeta, cardSx } from '@/components/CardParts/CardParts';
 
 const SavedItemCard = ({

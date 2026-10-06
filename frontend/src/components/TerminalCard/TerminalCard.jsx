@@ -2,15 +2,17 @@ import React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import IconButton from '@mui/material/IconButton';
-import TvIcon from '@mui/icons-material/Tv';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import StopIcon from '@mui/icons-material/Stop';
-import MinimizeIcon from '@mui/icons-material/Minimize';
-import DriveFileMoveOutlinedIcon from '@mui/icons-material/DriveFileMoveOutlined';
 
+import {
+  DriveFileMoveOutlinedIcon,
+  MinimizeIcon,
+  OpenInNewIcon,
+  StopIcon,
+  TvIcon,
+} from '@/components/Icons/Icons';
 import EditableTitle from '@/components/EditableTitle/EditableTitle';
 import {
-  CARD_COLORS, HeaderMeta, StatusMark, cardSx,
+  CARD_COLORS, HeaderMeta, StatusTitle, cardSx,
 } from '@/components/CardParts/CardParts';
 import { getInstanceTitle } from '@/helpers/instanceHelper';
 
@@ -40,13 +42,14 @@ const TerminalCard = ({
         borderBottom: `1px solid ${CARD_COLORS.border}`,
       }}
       >
-        <StatusMark status={isRunning ? 'running' : 'exited'} dotOnly />
-        <EditableTitle
-          title={getInstanceTitle(instance) || 'Terminal'}
-          onRename={title => onRename?.(instance.id, title)}
-          fontSize="0.84rem"
-          color={CARD_COLORS.strong}
-        />
+        <StatusTitle status={isRunning ? 'running' : 'exited'}>
+          <EditableTitle
+            title={getInstanceTitle(instance) || 'Terminal'}
+            onRename={title => onRename?.(instance.id, title)}
+            fontSize="0.84rem"
+            color={CARD_COLORS.strong}
+          />
+        </StatusTitle>
         <HeaderMeta>
           <Box component="span" sx={{ color: shellInfo.color }}>{shellInfo.label}</Box>
         </HeaderMeta>
@@ -92,12 +95,7 @@ const TerminalCard = ({
             <MinimizeIcon sx={{ fontSize: 16 }} />
           </IconButton>
         )}
-        <Box sx={{
-          flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5,
-        }}
-        >
-          <StatusMark status={isRunning ? 'running' : 'exited'} />
-        </Box>
+        <Box sx={{ flex: 1 }} />
         <IconButton
           size="small"
           onClick={e => onMoveToGroup?.(instance.id, e.currentTarget)}

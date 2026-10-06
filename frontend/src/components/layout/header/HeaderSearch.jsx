@@ -1,9 +1,9 @@
 import {
   InputBase,
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 
+import { SearchIcon } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 const styles = theme => ({

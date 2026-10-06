@@ -8,11 +8,10 @@ import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
 
+import {
+  CloseIcon, DeleteIcon, PlayArrowIcon, StopIcon,
+} from '@/components/Icons/Icons';
 import { splitGroupTabs } from '@/helpers/groupTabsHelper';
 import GroupStatusChips, { getGroupCounts } from '@/components/GroupStatusChips/GroupStatusChips';
 

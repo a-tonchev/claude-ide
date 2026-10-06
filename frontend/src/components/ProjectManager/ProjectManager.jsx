@@ -16,12 +16,10 @@ import {
   InputAdornment,
   Tooltip,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import AddIcon from '@mui/icons-material/Add';
-import SaveIcon from '@mui/icons-material/Save';
 
+import {
+  AddIcon, DeleteIcon, EditIcon, FolderOpenIcon, SaveIcon,
+} from '@/components/Icons/Icons';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import DirectoryBrowser from '@/components/DirectoryBrowser/DirectoryBrowser';
 import { managerPaperSx } from '@/components/ManagerDialog/managerStyles';

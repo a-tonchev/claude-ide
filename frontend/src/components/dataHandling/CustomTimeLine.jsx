@@ -1,4 +1,3 @@
-import { Ballot } from '@mui/icons-material';
 import Timeline from '@mui/lab/Timeline';
 import TimelineItem from '@mui/lab/TimelineItem';
 import TimelineSeparator from '@mui/lab/TimelineSeparator';
@@ -9,6 +8,7 @@ import TimelineDot from '@mui/lab/TimelineDot';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 
+import { BallotIcon as Ballot } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 const styles = {

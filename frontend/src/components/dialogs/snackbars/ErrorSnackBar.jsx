@@ -1,4 +1,3 @@
-import { Close, Error } from '@mui/icons-material';
 import {
   IconButton,
   Snackbar,
@@ -6,6 +5,7 @@ import {
   Typography,
 } from '@mui/material';
 
+import { CloseIcon as Close, ErrorIcon as Error } from '@/components/Icons/Icons';
 import useClasses from '@/components/layout/hooks/useClasses';
 
 import {

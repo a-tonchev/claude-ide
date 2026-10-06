@@ -7,21 +7,23 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import CircularProgress from '@mui/material/CircularProgress';
 import Popover from '@mui/material/Popover';
-import TvIcon from '@mui/icons-material/Tv';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import StopIcon from '@mui/icons-material/Stop';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
-import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
-import MinimizeIcon from '@mui/icons-material/Minimize';
-import DriveFileMoveOutlinedIcon from '@mui/icons-material/DriveFileMoveOutlined';
-import { ArrowFatLinesUp } from '@phosphor-icons/react';
-import DescriptionIcon from '@mui/icons-material/Description';
-import HistoryIcon from '@mui/icons-material/History';
 
+import {
+  ArrowFatLinesUpIcon as ArrowFatLinesUp,
+  DescriptionIcon,
+  DriveFileMoveOutlinedIcon,
+  ExpandLessIcon,
+  HistoryIcon,
+  MinimizeIcon,
+  OpenInNewIcon,
+  StopIcon,
+  TvIcon,
+  UnfoldLessIcon,
+  UnfoldMoreIcon,
+} from '@/components/Icons/Icons';
 import ChatInput from '@/components/ChatInput/ChatInput';
 import {
-  CARD_COLORS, FeedItem, HeaderMeta, PendingChoices, SaveToggle, StatusMark, cardSx, latestQuestion,
+  CARD_COLORS, FeedItem, HeaderMeta, PendingChoices, SaveToggle, StatusTitle, cardSx, latestQuestion,
 } from '@/components/CardParts/CardParts';
 import { FileDropZone } from '@/components/Attachments/Attachments';
 import useAttachments from '@/hooks/useAttachments';
@@ -109,14 +111,15 @@ const ObserverCard = ({
             flexShrink: 0,
           }}
         >
-          <StatusMark status={instance.status} dotOnly />
-          <EditableTitle
-            title={getInstanceTitle(instance)}
-            onRename={title => onRename?.(instance.id, title)}
-            fontSize="0.84rem"
-            color={CARD_COLORS.strong}
-            icon={<ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" style={{ flexShrink: 0 }} />}
-          />
+          <StatusTitle status={instance.status}>
+            <EditableTitle
+              title={getInstanceTitle(instance)}
+              onRename={title => onRename?.(instance.id, title)}
+              fontSize="0.84rem"
+              color={CARD_COLORS.strong}
+              icon={<ArrowFatLinesUp size={13} weight="bold" color="#B07ACC" style={{ flexShrink: 0 }} />}
+            />
+          </StatusTitle>
           <HeaderMeta>Observer</HeaderMeta>
           {hiddenCount > 0 && (
             <Box
@@ -391,12 +394,7 @@ const ObserverCard = ({
                 : <UnfoldMoreIcon sx={{ fontSize: 16 }} />}
             </IconButton>
           )}
-          <Box sx={{
-            flex: 1, minWidth: 0, display: 'flex', justifyContent: 'center', px: 0.5,
-          }}
-          >
-            <StatusMark status={instance.status} />
-          </Box>
+          <Box sx={{ flex: 1 }} />
           {onToggleSaved && (
             <SaveToggle saved={instance.saved} onToggle={() => onToggleSaved(instance.id, !instance.saved)} />
           )}
