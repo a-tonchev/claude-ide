@@ -40,6 +40,10 @@ def resolve_profile(config, profile_id):
     if not isinstance(profile_id, str) or not ID.fullmatch(profile_id):
         raise ValueError('Invalid profile ID')
     profile = config['profiles'][profile_id]
+    if 'claudeBypassPermissions' in profile and type(profile['claudeBypassPermissions']) is not bool:
+        raise ValueError('claudeBypassPermissions must be a boolean in the root-owned profile')
+    if 'codexSandbox' in profile and profile['codexSandbox'] not in ('read-only', 'workspace-write', 'danger-full-access'):
+        raise ValueError('Invalid codexSandbox in the root-owned profile')
     account = pwd.getpwnam(profile['username'])
     if account.pw_uid == 0 or account.pw_dir != profile['home']:
         raise ValueError('Profiles must be unprivileged users with matching homes')
@@ -76,6 +80,20 @@ def ensure_codex_home(profile, account):
                    env={'PATH': '/usr/bin:/bin'}, check=True, capture_output=True)
 
 
+def apply_launch_policy(profile, kind, args):
+    invocation = list(args)
+    if kind == 'claude' and profile.get('claudeBypassPermissions') is True:
+        if '--dangerously-skip-permissions' not in invocation:
+            invocation.insert(0, '--dangerously-skip-permissions')
+    if kind == 'codex' and 'codexSandbox' in profile:
+        # The selected policy belongs to the root-owned profile, never the request.
+        if any(arg == '--sandbox' or arg.startswith(('-s', '--sandbox='))
+               or re.match(r'^(?:--config=)?sandbox_mode\s*=', arg) for arg in invocation):
+            raise ValueError('Codex sandbox flags are managed by the execution profile')
+        invocation = ['--sandbox', profile['codexSandbox'], *invocation]
+    return invocation
+
+
 def main():
     if os.geteuid() != 0:
         raise ValueError('Must run through the configured sudo rule')
@@ -99,6 +117,7 @@ def main():
         if not cwd.is_dir() or not any(cwd == root or root in cwd.parents for root in roots):
             raise ValueError('Working directory is outside the configured shared project roots')
         env = profile_env(profile, account, payload.get('env'))
+        args = apply_launch_policy(profile, kind, args)
         if kind == 'codex':
             ensure_codex_home(profile, account)
         command = ['/usr/bin/systemd-run', '--quiet', '--collect', '--wait', '--pty', '--service-type=exec',

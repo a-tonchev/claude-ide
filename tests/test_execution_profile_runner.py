@@ -97,6 +97,54 @@ class RunnerTests(unittest.TestCase):
             with self.assertRaisesRegex(PermissionError, 'not writable'):
                 self.launch(kind='codex', args=[])
 
+    def test_root_claude_bypass_applies_to_launch_and_resume_but_not_terminal(self):
+        self.profile['claudeBypassPermissions'] = True
+        for args in [[], ['--resume', INSTANCE], ['--dangerously-skip-permissions']]:
+            invocation = self.launch(args=args).args[1]
+            self.assertEqual(invocation.count('--dangerously-skip-permissions'), 1)
+        terminal = self.launch(kind='terminal', args=['-l']).args[1]
+        self.assertNotIn('--dangerously-skip-permissions', terminal)
+        self.assertNotIn('--sandbox', terminal)
+        self.profile['claudeBypassPermissions'] = False
+        self.assertNotIn('--dangerously-skip-permissions', self.launch(args=[]).args[1])
+
+    def test_codex_policy_comes_only_from_root_profile_and_preserves_approvals(self):
+        self.profile['codexSandbox'] = 'danger-full-access'
+        self.profile['claudeBypassPermissions'] = True
+        with patch.object(runner, 'ensure_codex_home'):
+            invocation = self.launch(kind='codex', args=['resume', INSTANCE],
+                                     codexSandbox='read-only', claudeBypassPermissions=False).args[1]
+        self.assertEqual(invocation[invocation.index('--sandbox') + 1], 'danger-full-access')
+        self.assertNotIn('--ask-for-approval', invocation)
+        self.assertNotIn('--dangerously-bypass-approvals-and-sandbox', invocation)
+        self.assertNotIn('--dangerously-skip-permissions', invocation)
+        self.assertEqual(invocation[-2:], ['resume', INSTANCE])
+
+    def test_sandbox_mode_allowlist_and_conflicting_request_flags(self):
+        for mode in ['read-only', 'workspace-write', 'danger-full-access']:
+            self.profile['codexSandbox'] = mode
+            with patch.object(runner, 'ensure_codex_home'):
+                invocation = self.launch(kind='codex', args=[]).args[1]
+            self.assertEqual(invocation[invocation.index('--sandbox') + 1], mode)
+        for mode in ['root', None, False, [], {}]:
+            self.profile['codexSandbox'] = mode
+            with self.assertRaisesRegex(ValueError, 'Invalid codexSandbox'):
+                self.launch(kind='codex', args=[])
+        self.profile['codexSandbox'] = 'danger-full-access'
+        for args in [['--sandbox', 'read-only'], ['--sandbox=read-only'], ['-sread-only'],
+                     ['-c', 'sandbox_mode="read-only"'], ['--config=sandbox_mode="read-only"']]:
+            with self.assertRaisesRegex(ValueError, 'managed by the execution profile'):
+                self.launch(kind='codex', args=args)
+        for value in ['true', 1, None]:
+            self.profile['claudeBypassPermissions'] = value
+            with self.assertRaisesRegex(ValueError, 'must be a boolean'):
+                self.launch()
+
+    def test_unspecified_policies_leave_cli_defaults_unchanged(self):
+        self.assertNotIn('--dangerously-skip-permissions', self.launch(args=[]).args[1])
+        with patch.object(runner, 'ensure_codex_home'):
+            self.assertNotIn('--sandbox', self.launch(kind='codex', args=[]).args[1])
+
     def test_stop_targets_exact_install_profile_instance_service(self):
         with patch.object(sys, 'argv', ['runner', 'stop', 'claude1', INSTANCE]), \
                 patch.object(runner.subprocess, 'run', return_value=types.SimpleNamespace(returncode=0)) as execute:

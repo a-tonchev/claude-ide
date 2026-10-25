@@ -56,16 +56,21 @@ Create `/etc/claude-ide/execution-profiles.json` as root:root mode 0644:
   "profiles": {
     "claude1": {
       "username": "lab-claude1", "home": "/home/lab-claude1",
+      "claudeBypassPermissions": true,
+      "codexSandbox": "danger-full-access",
       "path": "/usr/local/bin:/usr/bin:/bin",
       "commands": { "claude": "/usr/local/bin/claude", "codex": "/usr/local/bin/codex" }
     },
     "claude2": {
       "username": "lab-claude2", "home": "/home/lab-claude2",
+      "claudeBypassPermissions": true,
+      "codexSandbox": "danger-full-access",
       "path": "/usr/local/bin:/usr/bin:/bin",
       "commands": { "claude": "/usr/local/bin/claude", "codex": "/usr/local/bin/codex" }
     },
     "codex": {
       "username": "lab-codex", "home": "/home/lab-codex",
+      "codexSandbox": "danger-full-access",
       "path": "/usr/local/bin:/usr/bin:/bin",
       "commands": { "claude": "/usr/local/bin/claude", "codex": "/usr/local/bin/codex" }
     }
@@ -115,6 +120,19 @@ no read permission on the profile's private credentials or conversation director
 Before a Codex launch the runner creates the configured `.codex` directory with mode 0700
 as the profile user. Codex refuses to start when an explicit `CODEX_HOME` does not exist.
 The runner does not create or chown this directory as root; existing credentials are preserved.
+
+Optional launch policies belong only to this root-owned profile JSON. An actual boolean
+`claudeBypassPermissions: true` adds Claude's `--dangerously-skip-permissions` on fresh and resumed
+launches. It has no effect on terminals or Codex. Omitted/false leaves Claude's flags unchanged.
+
+`codexSandbox` accepts only `read-only`, `workspace-write`, or `danger-full-access`. The trusted
+development lab selects `danger-full-access` so its existing Linux users can invoke the constrained
+sudo service helper. This passes only `--sandbox`; it does not bypass Codex approvals or change the
+user's approval policy. An uploads `--add-dir` requires a writable sandbox: a fresh Codex home with
+its implicit read-only policy otherwise exits during startup. Omitted leaves Codex's config intact.
+Request payload fields cannot change either policy, and conflicting Codex sandbox arguments are
+rejected. Local launches outside managed profiles retain their existing behavior. Policy changes
+take effect on the next launch/resume without restarting the backend or other sessions.
 
 Only TERM, dashboard IDs, dashboard prompt/upload path and the instance-scoped MCP credential
 are accepted from the backend launch environment. Backend provider credentials, HOME, CODEX_HOME,
