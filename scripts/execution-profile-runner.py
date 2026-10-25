@@ -66,6 +66,16 @@ def profile_env(profile, account, extra=None):
     return env
 
 
+def ensure_codex_home(profile, account):
+    # An explicit CODEX_HOME must already exist in current Codex versions.
+    # Create it as the profile user: a user-controlled symlink must never make
+    # the privileged runner write or change ownership outside that user's rights.
+    subprocess.run(['/usr/bin/mkdir', '-p', '-m', '0700', '--', profile['home'] + '/.codex'],
+                   user=account.pw_uid, group=account.pw_gid,
+                   extra_groups=os.getgrouplist(account.pw_name, account.pw_gid),
+                   env={'PATH': '/usr/bin:/bin'}, check=True, capture_output=True)
+
+
 def main():
     if os.geteuid() != 0:
         raise ValueError('Must run through the configured sudo rule')
@@ -89,6 +99,8 @@ def main():
         if not cwd.is_dir() or not any(cwd == root or root in cwd.parents for root in roots):
             raise ValueError('Working directory is outside the configured shared project roots')
         env = profile_env(profile, account, payload.get('env'))
+        if kind == 'codex':
+            ensure_codex_home(profile, account)
         command = ['/usr/bin/systemd-run', '--quiet', '--collect', '--wait', '--pty', '--service-type=exec',
                    '--unit=' + unit, '--uid=' + account.pw_name, '--gid=' + str(account.pw_gid),
                    '--working-directory=' + str(cwd), '--property=KillMode=control-group',

@@ -28,6 +28,7 @@ import {
   TuneIcon,
 } from '@/components/Icons/Icons';
 import useMobile from '@/components/layout/hooks/useMobile';
+import { useLabAuth } from '@/components/LabAuth/LabAuthContext';
 
 const menuPaperSx = {
   bgcolor: '#313335',
@@ -52,6 +53,7 @@ const TitleBar = ({
   groupActions = null,
 }) => {
   const { isMobile } = useMobile();
+  const labAuth = useLabAuth();
   const [settingsAnchor, setSettingsAnchor] = useState(null);
   const [addAnchor, setAddAnchor] = useState(null);
   const [moreAnchor, setMoreAnchor] = useState(null);
@@ -89,12 +91,15 @@ const TitleBar = ({
     {
       key: 'plans', label: 'Plans', icon: menuIcon(ArticleIcon, '#CC7832'), onClick: onManagePlans, divider: true,
     },
+    ...(labAuth ? [{
+      key: 'logout', label: 'Sign out', onClick: labAuth.logout, disabled: labAuth.busy, divider: true,
+    }] : []),
   ];
 
   const renderItems = (items, close) => items.flatMap(item => [
     item.divider && <Divider key={`${item.key}-divider`} sx={{ borderColor: '#3C3F41' }} />,
-    <MenuItem key={item.key} onClick={() => { close(); item.onClick?.(); }}>
-      <ListItemIcon>{item.icon}</ListItemIcon>
+    <MenuItem key={item.key} disabled={item.disabled} onClick={() => { close(); item.onClick?.(); }}>
+      {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
       {item.label}
       {item.count > 0 && <Box component="span" sx={countSx}>{item.count}</Box>}
     </MenuItem>,

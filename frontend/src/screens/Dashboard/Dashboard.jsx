@@ -641,9 +641,9 @@ const Dashboard = () => {
     await updateGroupItems(activeGroupId, newItems);
   }, [activeGroupId, activeGroup, updateGroupItems]);
 
-  const handleProviderChange = useCallback(async (item, provider) => {
+  const handleAiChange = useCallback(async (item, { provider, executionProfileId }) => {
     if (!activeGroupId || !activeGroup?.items) return;
-    await updateGroupItems(activeGroupId, activeGroup.items.map(i => (i === item ? { ...i, provider } : i)));
+    await updateGroupItems(activeGroupId, activeGroup.items.map(i => (i === item ? { ...i, provider, executionProfileId } : i)));
   }, [activeGroupId, activeGroup, updateGroupItems]);
 
   const handleProfileChange = useCallback(async (item, executionProfileId) => {
@@ -779,7 +779,7 @@ const Dashboard = () => {
       onRemove={handleRemoveSavedItem}
       launchFlags={launchFlags}
       onToggleFlag={handleToggleFlag}
-      onProviderChange={handleProviderChange}
+      onAiChange={handleAiChange}
       onProfileChange={handleProfileChange}
       error={item.id ? startErrors[item.id] : null}
     />

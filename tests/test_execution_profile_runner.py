@@ -79,6 +79,24 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unprivileged'):
             self.launch()
 
+    def test_first_codex_launch_creates_private_home_without_root_file_writes(self):
+        with patch.object(os, 'getgrouplist', return_value=[1001, 1002], create=True), \
+                patch.object(runner.subprocess, 'run') as mkdir:
+            call = self.launch(kind='codex', args=[])
+            mkdir.assert_called_once()
+            self.assertEqual(mkdir.call_args.args[0], ['/usr/bin/mkdir', '-p', '-m', '0700', '--', str(self.home) + '/.codex'])
+            self.assertEqual(mkdir.call_args.kwargs['user'], 1001)
+            self.assertEqual(mkdir.call_args.kwargs['group'], 1001)
+            self.assertEqual(mkdir.call_args.kwargs['extra_groups'], [1001, 1002])
+            self.assertEqual(mkdir.call_args.kwargs['env'], {'PATH': '/usr/bin:/bin'})
+            self.assertEqual(call.args[1][-1], '/usr/local/bin/codex')
+
+    def test_codex_home_creation_failure_prevents_launch(self):
+        with patch.object(os, 'getgrouplist', return_value=[1001], create=True), \
+                patch.object(runner.subprocess, 'run', side_effect=PermissionError('home is not writable')):
+            with self.assertRaisesRegex(PermissionError, 'not writable'):
+                self.launch(kind='codex', args=[])
+
     def test_stop_targets_exact_install_profile_instance_service(self):
         with patch.object(sys, 'argv', ['runner', 'stop', 'claude1', INSTANCE]), \
                 patch.object(runner.subprocess, 'run', return_value=types.SimpleNamespace(returncode=0)) as execute:

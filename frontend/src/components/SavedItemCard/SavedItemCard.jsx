@@ -5,19 +5,23 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 import ExecutionProfileSelect from '@/components/ExecutionProfileSelect/ExecutionProfileSelect';
+import AiLaunchPicker from '@/components/AiLaunchPicker/AiLaunchPicker';
+import { useStoreValue } from '@/components/state/GlobalState';
+import { ExecutionProfileStores } from '@/stores/executionProfileAtoms';
+import { getAiLaunchChoice } from '@/helpers/aiLaunchHelper';
 import { DeleteIcon, PlayArrowIcon } from '@/components/Icons/Icons';
 import { CARD_COLORS, HeaderMeta, cardSx } from '@/components/CardParts/CardParts';
 
 const SavedItemCard = ({
-  item, onStart, onRemove, launchFlags = [], onToggleFlag, onProviderChange, onProfileChange, error,
+  item, onStart, onRemove, launchFlags = [], onToggleFlag, onAiChange, onProfileChange, error,
 }) => {
+  const { profiles, defaultId } = useStoreValue(ExecutionProfileStores.profilesStore);
   const isClaude = item.type === 'claude';
   const provider = item.provider || 'claude';
   const activeFlagIds = item.flagIds || [];
+  const choice = getAiLaunchChoice(item, profiles, defaultId);
 
   return (
     <Card sx={{
@@ -98,39 +102,22 @@ const SavedItemCard = ({
         </Typography>
       )}
 
-      <Box sx={{ px: 1.5 }}>
-        <ExecutionProfileSelect value={item.executionProfileId} onChange={value => onProfileChange?.(item, value)} />
-      </Box>
+      {!isClaude && <Box sx={{ px: 1.5 }}><ExecutionProfileSelect value={item.executionProfileId} onChange={value => onProfileChange?.(item, value)} /></Box>}
       {/* Actions */}
       {isClaude && (
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          value={provider}
-          onChange={(event, value) => { if (value) onProviderChange?.(item, value); }}
-          aria-label={`AI provider for ${item.name}`}
-          sx={{
-            mx: 1.5,
-            mb: 1,
-            '& .MuiToggleButton-root': {
-              color: '#808080', fontSize: '0.7rem', py: 0.25, px: 1.5, textTransform: 'none',
-            },
-            '& .MuiToggleButton-root.Mui-selected': { color: '#A9B7C6', bgcolor: '#21428355' },
-          }}
-        >
-          <ToggleButton value="claude">Claude</ToggleButton>
-          <ToggleButton value="codex">Codex</ToggleButton>
-        </ToggleButtonGroup>
+        <AiLaunchPicker profiles={profiles} value={choice} onChange={option => onAiChange?.(item, option)} label={`AI for ${item.name}`} sx={{ mx: 1.5, mb: 1 }} />
       )}
+      {isClaude && !choice && <Typography role="alert" sx={{ px: 1.5, pb: 1, fontSize: '0.7rem', color: '#CC7832' }}>Choose an available AI before starting.</Typography>}
       <Box sx={{
         display: 'flex', alignItems: 'center', gap: 0.5, px: 1, py: 0.5, borderTop: '1px solid #3C3F41',
       }}
       >
         <IconButton
           size="small"
-          onClick={() => onStart(item)}
-          title={isClaude ? `Start ${provider === 'codex' ? 'Codex' : 'Claude'}` : 'Start'}
-          aria-label={isClaude ? `Start ${provider === 'codex' ? 'Codex' : 'Claude'}` : 'Start'}
+          onClick={() => onStart(isClaude ? { ...item, provider: choice.provider, executionProfileId: choice.executionProfileId } : item)}
+          disabled={isClaude && !choice}
+          title={isClaude ? `Start ${choice?.label || 'AI'}` : 'Start'}
+          aria-label={isClaude ? `Start ${choice?.label || 'AI'}` : 'Start'}
           sx={{ color: '#7CB368', '&:hover': { color: '#8FD47A' } }}
         >
           <PlayArrowIcon sx={{ fontSize: 18 }} />

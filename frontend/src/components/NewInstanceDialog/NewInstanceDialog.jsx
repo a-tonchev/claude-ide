@@ -14,15 +14,16 @@ import {
   Typography,
   CircularProgress,
   Box,
-  ToggleButton,
-  ToggleButtonGroup,
   Alert,
   Chip,
   Tooltip,
 } from '@mui/material';
 
 import { AddIcon, FolderOutlinedIcon } from '@/components/Icons/Icons';
-import ExecutionProfileSelect from '@/components/ExecutionProfileSelect/ExecutionProfileSelect';
+import AiLaunchPicker from '@/components/AiLaunchPicker/AiLaunchPicker';
+import { useStoreValue } from '@/components/state/GlobalState';
+import { ExecutionProfileStores } from '@/stores/executionProfileAtoms';
+import { getAiLaunchChoice } from '@/helpers/aiLaunchHelper';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import getRequestError from '@/helpers/requestErrorHelper';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
@@ -42,15 +43,17 @@ const readSavedFlagIds = () => {
 const NewInstanceDialog = ({
   open, onClose, onCreate, disabled = false, defaultProvider = 'claude', launchFlags = [],
 }) => {
-  const [executionProfileId, setExecutionProfileId] = useState(null);
+  const { profiles, defaultId } = useStoreValue(ExecutionProfileStores.profilesStore);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [provider, setProvider] = useState(defaultProvider);
+  const [selection, setSelection] = useState({ provider: defaultProvider, executionProfileId: null });
+  const { provider } = selection;
   const [flagIds, setFlagIds] = useState(readSavedFlagIds);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const savePending = useRef(false);
+  const choice = getAiLaunchChoice(selection, profiles, defaultId);
 
   const toggleFlag = useCallback(flagId => {
     setFlagIds(prev => {
@@ -63,7 +66,9 @@ const NewInstanceDialog = ({
   }, []);
 
   useEffect(() => {
-    if (open) setProvider(defaultProvider);
+    if (open) {
+      setSelection(previous => (previous.provider === defaultProvider ? previous : { provider: defaultProvider, executionProfileId: null }));
+    }
   }, [open, defaultProvider]);
 
   useEffect(() => {
@@ -89,16 +94,16 @@ const NewInstanceDialog = ({
   }, [open]);
 
   const handleCreate = useCallback(async () => {
-    if (!selected || disabled || savePending.current) return;
+    if (!selected || !choice || disabled || savePending.current) return;
     savePending.current = true;
     setSaving(true);
     setError('');
     try {
       // Launch flags apply to Claude only; ids of flags deleted meanwhile are dropped
-      const chosenFlagIds = provider === 'claude'
+      const chosenFlagIds = choice.provider === 'claude'
         ? flagIds.filter(id => launchFlags.some(flag => flag._id === id))
         : [];
-      const result = await onCreate?.(selected._id, selected.name, selected.path, provider, chosenFlagIds, executionProfileId);
+      const result = await onCreate?.(selected._id, selected.name, selected.path, choice.provider, chosenFlagIds, choice.executionProfileId);
       if (!result?.ok) {
         setError(getRequestError(result, 'Could not add the AI card. Please try again.'));
         return;
@@ -110,7 +115,7 @@ const NewInstanceDialog = ({
       savePending.current = false;
       setSaving(false);
     }
-  }, [selected, disabled, onCreate, onClose, provider, flagIds, launchFlags, executionProfileId]);
+  }, [selected, disabled, onCreate, onClose, choice, flagIds, launchFlags]);
 
   return (
     <Dialog
@@ -128,9 +133,8 @@ const NewInstanceDialog = ({
       </DialogTitle>
       <DialogContent>
         <Typography sx={{ color: '#808080', fontSize: 13, mb: 2 }}>
-          Select a project and choose Claude or Codex to start it.
+          Select a project and choose an AI to start it.
         </Typography>
-        <ExecutionProfileSelect value={executionProfileId} onChange={setExecutionProfileId} disabled={saving} />
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         {loading ? (
@@ -199,25 +203,14 @@ const NewInstanceDialog = ({
                   />
                 </ListItemButton>
                 {selected?._id === project._id && (
-                  <ToggleButtonGroup
-                    exclusive
-                    size="small"
-                    value={provider}
+                  <AiLaunchPicker
+                    profiles={profiles}
+                    value={choice}
                     disabled={disabled || saving}
-                    onChange={(event, value) => { if (value) setProvider(value); }}
-                    aria-label={`AI provider for ${project.name}`}
-                    sx={{
-                      mx: 2,
-                      mb: 1.5,
-                      '& .MuiToggleButton-root': {
-                        color: '#808080', fontSize: '0.8rem', px: 2, textTransform: 'none',
-                      },
-                      '& .MuiToggleButton-root.Mui-selected': { color: '#A9B7C6', bgcolor: '#21428355' },
-                    }}
-                  >
-                    <ToggleButton value="claude">Claude</ToggleButton>
-                    <ToggleButton value="codex">Codex</ToggleButton>
-                  </ToggleButtonGroup>
+                    onChange={option => setSelection({ provider: option.provider, executionProfileId: option.executionProfileId })}
+                    label={`AI for ${project.name}`}
+                    sx={{ mx: 2, mb: 1.5 }}
+                  />
                 )}
                 {selected?._id === project._id && provider === 'claude' && launchFlags.length > 0 && (
                   <Box sx={{
@@ -270,7 +263,7 @@ const NewInstanceDialog = ({
         <Button
           variant="contained"
           onClick={handleCreate}
-          disabled={!selected || disabled || loading || saving}
+          disabled={!selected || !choice || disabled || loading || saving}
           startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <AddIcon sx={{ fontSize: 16 }} />}
           sx={{
             bgcolor: '#579945',

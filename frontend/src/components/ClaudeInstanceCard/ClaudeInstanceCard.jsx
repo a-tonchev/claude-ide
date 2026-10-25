@@ -30,6 +30,7 @@ import EditableTitle from '@/components/EditableTitle/EditableTitle';
 import { useStoreFamilyValue } from '@/components/state/GlobalState';
 import { InstanceStores, setInputDraft, markPlanSeen } from '@/stores/instanceAtoms';
 import { getInstanceTitle } from '@/helpers/instanceHelper';
+import { getAiLabel } from '@/helpers/aiLaunchHelper';
 import useFeedWindow from '@/hooks/useFeedWindow';
 
 const ClaudeInstanceCard = ({
@@ -118,7 +119,7 @@ const ClaudeInstanceCard = ({
               color={CARD_COLORS.strong}
             />
           </StatusTitle>
-          <HeaderMeta>{instance.provider === 'codex' ? 'Codex' : 'Claude'}{instance.executionProfileLabel ? ` · ${instance.executionProfileLabel}` : ''}</HeaderMeta>
+          <HeaderMeta>{getAiLabel(instance)}</HeaderMeta>
           {(instance.launchFlags || []).map(flag => (
             <Chip
               key={flag.id}

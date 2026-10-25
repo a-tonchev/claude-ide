@@ -26,6 +26,7 @@ import {
 import useConfirm from '@/components/dialogs/hooks/useConfirm';
 import { fetchFeedPage } from '@/hooks/useInstanceFeed';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
+import { getAiLabel } from '@/helpers/aiLaunchHelper';
 
 const PREVIEW_PAGE_SIZE = 10;
 const LONG_TEXT_LENGTH = 300;
@@ -39,8 +40,7 @@ const MESSAGE_COLORS = {
 };
 
 const providerLabel = record => {
-  const label = record.type === 'observer' ? 'Observer' : record.provider === 'codex' ? 'Codex' : 'Claude';
-  return record.executionProfileId ? `${label} · ${record.executionProfileId}` : label;
+  return record.type === 'observer' ? 'Observer' : getAiLabel(record);
 };
 
 const formatDate = value => (value ? new Date(value).toLocaleString() : '');

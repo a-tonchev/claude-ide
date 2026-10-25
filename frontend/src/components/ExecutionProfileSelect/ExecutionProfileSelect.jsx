@@ -1,4 +1,4 @@
-import { MenuItem, TextField } from '@mui/material';
+import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { useStoreValue } from '@/components/state/GlobalState';
 import { ExecutionProfileStores } from '@/stores/executionProfileAtoms';
 
@@ -6,16 +6,18 @@ const ExecutionProfileSelect = ({ value, onChange, disabled = false }) => {
   const { profiles, defaultId } = useStoreValue(ExecutionProfileStores.profilesStore);
   if (!profiles.length) return null;
   const selected = value || defaultId || profiles[0].id;
-  const missing = !profiles.some(profile => profile.id === selected);
   return (
-    <TextField
-      select fullWidth size="small" label="Execution profile" value={selected} disabled={disabled}
-      onChange={event => onChange(event.target.value)} sx={{ my: 1 }}
-      helperText={missing ? 'This profile is unavailable. Select another profile to start a new session.' : 'The selected account and home are kept for this session.'}
+    <ToggleButtonGroup
+      exclusive size="small" value={selected} disabled={disabled} aria-label="Terminal account"
+      onChange={(event, id) => { if (id) onChange(id); }}
+      sx={{
+        my: 1,
+        '& .MuiToggleButton-root': { color: '#808080', fontSize: '0.75rem', py: 0.4, px: 1.5, textTransform: 'none' },
+        '& .MuiToggleButton-root.Mui-selected': { color: '#A9B7C6', bgcolor: '#21428355' },
+      }}
     >
-      {missing && <MenuItem value={selected} disabled>{selected} (unavailable)</MenuItem>}
-      {profiles.map(profile => <MenuItem key={profile.id} value={profile.id}>{profile.label}</MenuItem>)}
-    </TextField>
+      {profiles.map(profile => <ToggleButton key={profile.id} value={profile.id}>{profile.label.replace(/^Claude (\d+)$/, 'Claude$1')}</ToggleButton>)}
+    </ToggleButtonGroup>
   );
 };
 

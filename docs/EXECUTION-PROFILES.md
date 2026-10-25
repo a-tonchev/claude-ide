@@ -112,6 +112,10 @@ profile processes. Natural CLI exit also ends its service cgroup.
 as that user. It returns only transcript existence or a Codex session UUID. The backend needs
 no read permission on the profile's private credentials or conversation directories.
 
+Before a Codex launch the runner creates the configured `.codex` directory with mode 0700
+as the profile user. Codex refuses to start when an explicit `CODEX_HOME` does not exist.
+The runner does not create or chown this directory as root; existing credentials are preserved.
+
 Only TERM, dashboard IDs, dashboard prompt/upload path and the instance-scoped MCP credential
 are accepted from the backend launch environment. Backend provider credentials, HOME, CODEX_HOME,
 CLAUDE_CONFIG_DIR, NODE_OPTIONS and dynamic loader variables are discarded. systemd receives

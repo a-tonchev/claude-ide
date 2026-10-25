@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import getRequestError from '../frontend/src/helpers/requestErrorHelper.js';
+import { getAiLaunchChoice, getAiLaunchOptions } from '../frontend/src/helpers/aiLaunchHelper.js';
 
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const { transformSync, types: t } = require('@babel/core');
@@ -28,7 +29,7 @@ const { code } = transformSync(readFileSync(new URL(
 
 // Run the real component's callbacks with an isolated hook store and mocked
 // network. No browser, backend, database, or agent process is touched.
-function harness(onCreate, projectsResult = { ok: true, data: { projects: [{ _id: 'project', name: 'Project', path: 'D:/project' }] } }) {
+function harness(onCreate, projectsResult = { ok: true, data: { projects: [{ _id: 'project', name: 'Project', path: 'D:/project' }] } }, profiles = []) {
   const hooks = [];
   const effects = [];
   let index = 0;
@@ -38,7 +39,7 @@ function harness(onCreate, projectsResult = { ok: true, data: { projects: [{ _id
     React: { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) },
     useState(initial) {
       const slot = index++;
-      if (!(slot in hooks)) hooks[slot] = initial;
+      if (!(slot in hooks)) hooks[slot] = typeof initial === 'function' ? initial() : initial;
       return [hooks[slot], value => { hooks[slot] = typeof value === 'function' ? value(hooks[slot]) : value; }];
     },
     useRef(initial) {
@@ -55,6 +56,9 @@ function harness(onCreate, projectsResult = { ok: true, data: { projects: [{ _id
     Connections: { postRequest: async () => projectsResult },
     ApiEndpoints: { projectsAll: '/projects/all' },
     getRequestError,
+    getAiLaunchChoice,
+    ExecutionProfileStores: { profilesStore: {} },
+    useStoreValue: () => ({ profiles, defaultId: 'claude1' }),
   });
   vm.runInContext(code, context);
   const render = () => {
@@ -99,7 +103,7 @@ test('waits for save, blocks duplicate clicks, retains selection on failure, and
   await pending;
   assert.equal(h.closed(), 0);
   assert.equal(find(h.render(), 'Alert').children[0], 'Could not save this group');
-  assert.equal(find(h.render(), 'ToggleButtonGroup').value, 'codex');
+  assert.equal(find(h.render(), 'AiLaunchPicker').value.id, 'codex');
   assert.equal(addButton(h.render()).disabled, false);
   const retry = addButton(h.render()).onClick();
   finish({ ok: true });
@@ -118,16 +122,20 @@ test('thrown save errors keep the dialog open and allow retry', async () => {
   assert.equal(addButton(h.render()).disabled, false);
 });
 
-test('Add AI passes its selected execution profile through to launch', async () => {
-  const calls = [];
-  const h = harness(async (...args) => { calls.push(args); return { ok: true }; });
-  h.render();
-  await settle();
-  find(h.render(), 'ExecutionProfileSelect').onChange('claude2');
-  find(h.render(), 'ListItemButton').onClick();
-  await addButton(h.render()).onClick();
-  assert.equal(calls[0][5], 'claude2');
-  assert.equal(h.closed(), 1);
+test('one direct AI choice launches its matching provider and account', async () => {
+  const profiles = [{ id: 'claude1', label: 'Claude 1' }, { id: 'claude2', label: 'Claude 2' }, { id: 'codex', label: 'Codex' }];
+  for (const option of getAiLaunchOptions(profiles)) {
+    const calls = [];
+    const h = harness(async (...args) => { calls.push(args); return { ok: true }; }, undefined, profiles);
+    h.render();
+    await settle();
+    find(h.render(), 'ListItemButton').onClick();
+    find(h.render(), 'AiLaunchPicker').onChange(option);
+    await addButton(h.render()).onClick();
+    assert.equal(calls[0][3], option.provider);
+    assert.equal(calls[0][5], option.executionProfileId);
+    assert.equal(h.closed(), 1);
+  }
 });
 
 test('project-loading failures are visible and cannot submit a stale selection', async () => {

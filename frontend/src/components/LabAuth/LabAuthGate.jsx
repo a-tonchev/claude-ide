@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, Box, Button, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Paper, Snackbar, Stack, TextField, Typography } from '@mui/material';
 import BasicConfig, { getServerBaseUrl } from '@/components/config/BasicConfig';
+import { LabAuthContext } from './LabAuthContext';
 
 const enabled = import.meta.env.VITE_LAB_AUTH === 'true';
 if (enabled) axios.defaults.withCredentials = true;
@@ -57,14 +58,12 @@ export default function LabAuthGate({ children }) {
     } catch { setError('Sign out failed. Please try again.'); setBusy(false); }
   };
   if (user) return (
-    <>
+    <LabAuthContext.Provider value={{ user, logout, busy }}>
       {children}
-      <Paper sx={{ position: 'fixed', bottom: 8, right: 12, zIndex: 1500, px: 1.5, py: 0.25, display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Typography variant="caption">{user.email}</Typography>
-        <Button size="small" onClick={logout} disabled={busy}>Sign out</Button>
-        {error && <Typography role="alert" variant="caption" color="error">{error}</Typography>}
-      </Paper>
-    </>
+      <Snackbar open={!!error} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <Alert severity="error" onClose={() => setError('')}>{error}</Alert>
+      </Snackbar>
+    </LabAuthContext.Provider>
   );
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3, bgcolor: 'background.default' }}>
