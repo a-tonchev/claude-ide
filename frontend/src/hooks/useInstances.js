@@ -15,7 +15,7 @@ const useInstances = onMessage => {
   const { send } = useWebSocket(onMessage);
 
   const createInstance = useCallback((projectId, name, path, args, groupId, flagIds, options = {}) => {
-    const { provider = 'claude', savedItemId } = options;
+    const { provider = 'claude', savedItemId, executionProfileId } = options;
     send('create', {
       projectId,
       name,
@@ -25,6 +25,7 @@ const useInstances = onMessage => {
       flagIds: Array.isArray(flagIds) ? flagIds : [],
       provider,
       savedItemId,
+      executionProfileId,
     });
   }, [send]);
 
@@ -56,9 +57,9 @@ const useInstances = onMessage => {
 
   // savedItemId: the saved card this terminal starts from, or a fresh id that becomes the
   // card's id if the group is saved with it.
-  const createTerminal = useCallback((name, shell, command, groupId, savedItemId) => {
+  const createTerminal = useCallback((name, shell, command, groupId, savedItemId, executionProfileId) => {
     send('create_terminal', {
-      name, shell, command, groupId, savedItemId,
+      name, shell, command, groupId, savedItemId, executionProfileId,
     });
   }, [send]);
 

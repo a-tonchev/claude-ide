@@ -39,8 +39,8 @@ const MESSAGE_COLORS = {
 };
 
 const providerLabel = record => {
-  if (record.type === 'observer') return 'Observer';
-  return record.provider === 'codex' ? 'Codex' : 'Claude';
+  const label = record.type === 'observer' ? 'Observer' : record.provider === 'codex' ? 'Codex' : 'Claude';
+  return record.executionProfileId ? `${label} · ${record.executionProfileId}` : label;
 };
 
 const formatDate = value => (value ? new Date(value).toLocaleString() : '');

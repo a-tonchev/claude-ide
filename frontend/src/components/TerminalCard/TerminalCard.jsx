@@ -51,7 +51,7 @@ const TerminalCard = ({
           />
         </StatusTitle>
         <HeaderMeta>
-          <Box component="span" sx={{ color: shellInfo.color }}>{shellInfo.label}</Box>
+          <Box component="span" sx={{ color: shellInfo.color }}>{shellInfo.label}{instance.executionProfileLabel ? ` · ${instance.executionProfileLabel}` : ''}</Box>
         </HeaderMeta>
       </Box>
 

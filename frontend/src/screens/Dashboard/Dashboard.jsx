@@ -299,27 +299,27 @@ const Dashboard = () => {
   // Add AI starts a brand-new instance and never touches the group's saved cards: a
   // stopped instance is gone, and only Save / Update Group turns it into a saved card.
   // The fresh savedItemId becomes that card's id if the group is saved with it.
-  const handleAddAI = useCallback(async (projectId, name, path, provider, flagIds = []) => {
+  const handleAddAI = useCallback(async (projectId, name, path, provider, flagIds = [], executionProfileId = null) => {
     const gid = await ensureGroup();
     if (!gid) return { ok: false, errorMessage: 'Could not create a group for the AI instance. Please try again.' };
     const aiProvider = getAiProvider({ provider });
     rememberProvider(aiProvider);
     const savedItemId = createUuid();
     createInstance(projectId, name, path, [], gid, aiProvider === 'claude' ? flagIds : [], {
-      provider: aiProvider, savedItemId,
+      provider: aiProvider, savedItemId, executionProfileId,
     });
     setCardInUrl(savedItemId);
     return { ok: true };
   }, [ensureGroup, createInstance, rememberProvider, setCardInUrl]);
 
-  const handleCreateTerminal = useCallback(async (name, shell, command) => {
+  const handleCreateTerminal = useCallback(async (name, shell, command, executionProfileId) => {
     const gid = await ensureGroup();
     if (!gid) {
       setInstanceError('Could not create a group for the terminal. Please try again.');
       return;
     }
     const savedItemId = createUuid();
-    createTerminal(name, shell, command, gid, savedItemId);
+    createTerminal(name, shell, command, gid, savedItemId, executionProfileId);
     setCardInUrl(savedItemId);
   }, [createTerminal, ensureGroup, setCardInUrl]);
 
@@ -616,7 +616,7 @@ const Dashboard = () => {
       if (!path) return;
       rememberProvider(getAiProvider(item));
       createInstance(item.projectId, item.name, path, [], gid, item.flagIds || [], {
-        provider: getAiProvider(item), savedItemId: item.id,
+        provider: getAiProvider(item), savedItemId: item.id, executionProfileId: item.executionProfileId,
       });
     } else {
       let { shell, command } = item;
@@ -631,7 +631,7 @@ const Dashboard = () => {
           }
         }
       }
-      createTerminal(item.name, shell || 'powershell', command, gid, item.id);
+      createTerminal(item.name, shell || 'powershell', command, gid, item.id, item.executionProfileId);
     }
   }, [activeGroupId, createInstance, createTerminal, rememberProvider]);
 
@@ -644,6 +644,11 @@ const Dashboard = () => {
   const handleProviderChange = useCallback(async (item, provider) => {
     if (!activeGroupId || !activeGroup?.items) return;
     await updateGroupItems(activeGroupId, activeGroup.items.map(i => (i === item ? { ...i, provider } : i)));
+  }, [activeGroupId, activeGroup, updateGroupItems]);
+
+  const handleProfileChange = useCallback(async (item, executionProfileId) => {
+    if (!activeGroupId || !activeGroup?.items) return;
+    await updateGroupItems(activeGroupId, activeGroup.items.map(i => (i === item ? { ...i, executionProfileId } : i)));
   }, [activeGroupId, activeGroup, updateGroupItems]);
 
   const handleToggleFlag = useCallback(async (item, flagId) => {
@@ -775,6 +780,7 @@ const Dashboard = () => {
       launchFlags={launchFlags}
       onToggleFlag={handleToggleFlag}
       onProviderChange={handleProviderChange}
+      onProfileChange={handleProfileChange}
       error={item.id ? startErrors[item.id] : null}
     />
   );

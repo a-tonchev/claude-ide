@@ -12,6 +12,7 @@ import {
   InstanceStores,
   withoutBroadcast,
 } from '@/stores/instanceAtoms';
+import { setExecutionProfiles } from '@/stores/executionProfileAtoms';
 import { clearPlaceholder } from '@/stores/groupAtoms';
 import { loadFeedIntoStore } from '@/hooks/useInstanceFeed';
 
@@ -73,6 +74,7 @@ function handleMessage(event) {
     withoutBroadcast(() => {
       switch (type) {
         case 'instances': {
+          setExecutionProfiles(message.executionProfiles || [], message.defaultExecutionProfileId || null);
           // The backend open handler already subscribes us to all instance topics,
           // so we just need to set the state — no need to send subscribe messages.
           setInstances(message.list || []);
@@ -97,6 +99,8 @@ function handleMessage(event) {
             title: message.title || null,
             type: message.instanceType || 'claude',
             provider: message.provider || 'claude',
+            executionProfileId: message.executionProfileId || null,
+            executionProfileLabel: message.executionProfileLabel || null,
             savedItemId: message.savedItemId || null,
             groupId: message.groupId || null,
             cwd: message.cwd || null,
@@ -179,6 +183,8 @@ function handleMessage(event) {
               id: inst.instanceId,
               type: inst.type,
               provider: inst.provider || 'claude',
+              executionProfileId: inst.executionProfileId || null,
+              executionProfileLabel: inst.executionProfileLabel || null,
               savedItemId: inst.savedItemId || null,
               projectId: inst.projectId || null,
               projectName: inst.name,
@@ -252,7 +258,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 function connect() {
-  if (wsState.connecting || wsState.socket?.readyState === WebSocket.OPEN) return;
+  if (!wsState.listeners.size || wsState.connecting || wsState.socket?.readyState === WebSocket.OPEN) return;
   wsState.connecting = true;
 
   if (wsState.reconnectTimer) {
@@ -262,8 +268,11 @@ function connect() {
 
   const url = getWsUrl();
   const socket = new WebSocket(url);
+  // Track CONNECTING sockets too so an authentication gate unmount can close them.
+  wsState.socket = socket;
 
   socket.onopen = () => {
+    if (wsState.socket !== socket || !wsState.listeners.size) { socket.close(); return; }
     wsState.connecting = false;
     wsState.socket = socket;
     wsState.resyncFeeds = true;
@@ -285,6 +294,7 @@ function connect() {
   socket.onmessage = handleMessage;
 
   socket.onclose = () => {
+    if (wsState.socket !== socket) return;
     wsState.connecting = false;
     wsState.socket = null;
     clearInterval(wsState.resyncTimer);
@@ -292,14 +302,17 @@ function connect() {
     notifyListeners({ type: 'ws_disconnected' });
 
     // Auto-reconnect
-    wsState.reconnectTimer = setTimeout(() => {
-      connect();
-    }, RECONNECT_DELAY);
+    if (wsState.listeners.size) {
+      wsState.reconnectTimer = setTimeout(() => {
+        connect();
+      }, RECONNECT_DELAY);
+    }
   };
 
   // Not logged: every reconnect attempt during a backend restart fires it, and onclose
   // (which always follows) reconnects.
   socket.onerror = () => {
+    if (wsState.socket !== socket) return;
     wsState.connecting = false;
   };
 }
@@ -311,9 +324,12 @@ function disconnect() {
   }
   clearInterval(wsState.resyncTimer);
   wsState.resyncTimer = null;
+  wsState.connecting = false;
+  wsState.sendQueue = [];
   if (wsState.socket) {
-    wsState.socket.close();
+    const socket = wsState.socket;
     wsState.socket = null;
+    socket.close();
   }
 }
 

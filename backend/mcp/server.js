@@ -32,7 +32,10 @@ async function apiPost(path, body) {
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(process.env.CLAUDE_IDE_MCP_TOKEN ? { Authorization: `Bearer ${process.env.CLAUDE_IDE_MCP_TOKEN}` } : {}),
+      },
       body: JSON.stringify(body),
     });
     return res.json();

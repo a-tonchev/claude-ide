@@ -12,7 +12,9 @@ import setupFileRoutes from './routes/setup/setupFileRoutes';
 import WsHandler from '#modules/wsHandler/WsHandler';
 import InstanceManager from '#modules/instanceManager/InstanceManager';
 import InstanceStore from '#modules/instanceStore/InstanceStore';
-import { ensureMcpConfig, setMcpApiPort } from '../mcp/setupMcp.js';
+import { ensureMcpConfig, setMcpApiPort, setAdditionalMcpServers } from '../mcp/setupMcp.js';
+import LabAuth from '#modules/labAuth/LabAuth';
+import protectApp from '#modules/labAuth/protectApp';
 
 const settingsToUse = SystemSettingsServices.getSettings();
 
@@ -27,11 +29,13 @@ const mongoSetup = mongoPool({
 // config through a setter for the same reason.
 const port = Number(process.env.CLAUDE_IDE_PORT || settingsToUse.port || 6950);
 setMcpApiPort(port);
+setAdditionalMcpServers(settingsToUse.additionalMcpServers);
 // Write mcp-config.json now rather than at the first instance: a rewrite then would
 // restart the dev server (nodemon) and kill that instance.
 try {
   ensureMcpConfig();
 } catch (err) {
+  if (LabAuth.enabled) throw err;
   console.error('[startup] MCP config not written:', err.message);
 }
 
@@ -56,7 +60,8 @@ InstanceStore.deleteOrphanMessages()
   })
   .catch(err => console.error('[startup] feed item cleanup failed:', err.message));
 
-const app = uWebSockets.App();
+await LabAuth.ensureIndexes();
+const app = protectApp(uWebSockets.App(), LabAuth);
 
 setupFaviconRoute(app);
 
@@ -72,7 +77,7 @@ setupRouteHandlers(app, mongoSetup);
 
 setupNotFoundRoute(app);
 
-app.listen(port, listenSocket => {
+app.listen(settingsToUse.listenHost || (LabAuth.enabled ? '127.0.0.1' : '0.0.0.0'), port, listenSocket => {
   if (listenSocket) {
     if (process.env.npm_lifecycle_event === 'start-dev') {
       console.info('Start in DEVELOPMENT mode');

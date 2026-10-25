@@ -14,6 +14,7 @@ const GroupSchemaFields = {
       bsonType: 'object',
       properties: {
         id: { bsonType: 'string' },
+        executionProfileId: { bsonType: 'string' },
         provider: { bsonType: 'string', enum: ['claude', 'codex'] },
         type: { bsonType: 'string', enum: ['claude', 'terminal'] },
         projectId: { bsonType: 'string' },

@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useRoutes } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+import UrlEnums from '@/components/connections/enums/UrlEnums';
 
 import Authorized from '@/components/routes/Authorized';
 
@@ -43,7 +45,15 @@ const normalizeRoutes = routes => routes.map(
 );
 
 const MainRoutes = () => {
-  const normalizedRoutes = useMemo(() => normalizeRoutes(routesBase), []);
+  const normalizedRoutes = useMemo(() => {
+    if (import.meta.env.VITE_LAB_AUTH === 'true') {
+      return [
+        ...routesBase.filter(route => [UrlEnums.DASHBOARD, UrlEnums.INSTANCE_WINDOW, UrlEnums.PLAN_VIEW].includes(route.path)),
+        { path: '*', element: <Navigate to={UrlEnums.DASHBOARD} replace /> },
+      ];
+    }
+    return normalizeRoutes(routesBase);
+  }, []);
 
   return useRoutes(normalizedRoutes);
 };

@@ -101,6 +101,7 @@ const InstanceController = {
         id: r._id,
         type: r.type,
         provider: r.provider,
+        executionProfileId: r.executionProfileId || null,
         projectId: r.projectId,
         projectName: r.projectName,
         title: r.title,

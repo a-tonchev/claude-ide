@@ -60,6 +60,7 @@ const setupContext = async (req, res, path) => {
   const queryString = req.getQuery();
 
   const ctx = ({
+    labPrincipal: req.labPrincipal || null,
     privateState: {
       user: null,
     },

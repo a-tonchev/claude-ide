@@ -5,7 +5,7 @@ import { createServer } from 'node:http';
 import { createInterface } from 'node:readline';
 import { once } from 'node:events';
 import { buildCodexArgs } from '../backend/src/modules/instanceManager/codexLauncher.js';
-import { MCP_SERVER_PATH } from '../backend/mcp/setupMcp.js';
+import { MCP_SERVER_PATH, getMcpServers, setAdditionalMcpServers } from '../backend/mcp/setupMcp.js';
 import { getAiProvider, matchesSavedItem } from '../frontend/src/helpers/aiHelper.js';
 
 test('cards in the same project remain distinct and legacy cards default to Claude', () => {
@@ -18,6 +18,22 @@ test('cards in the same project remain distinct and legacy cards default to Clau
   assert.equal(matchesSavedItem({ ...legacy, provider: 'codex' }, legacy), false);
 });
 
+test('trusted additional MCP servers reach Claude and Codex without credential literals', () => {
+  const browser = { command: '/usr/local/bin/chrome-devtools-mcp', args: ['--browserUrl=http://127.0.0.1:9222', '--no-usage-statistics'] };
+  try {
+    setAdditionalMcpServers({ 'chrome-devtools': browser });
+    assert.deepEqual(getMcpServers()['chrome-devtools'], browser);
+    const args = buildCodexArgs('prompt', { INSTANCE_ID: 'i1', CLAUDE_IDE_MCP_TOKEN: 'must-not-be-in-argv' });
+    assert.ok(args.includes('mcp_servers.chrome-devtools.command="/usr/local/bin/chrome-devtools-mcp"'));
+    assert.ok(args.includes(`mcp_servers.chrome-devtools.args=${JSON.stringify(browser.args)}`));
+    assert.ok(!JSON.stringify(args).includes('must-not-be-in-argv'));
+    assert.throws(() => setAdditionalMcpServers({ 'claude-ide': browser }));
+    assert.throws(() => setAdditionalMcpServers({ 'bad.name': browser }));
+    assert.throws(() => setAdditionalMcpServers({ browser: { ...browser, env: { SECRET: 'no' } } }));
+    assert.throws(() => setAdditionalMcpServers({ browser: { command: 'relative-command', args: [] } }));
+  } finally { setAdditionalMcpServers({}); }
+});
+
 test('Codex receives independent instance identity and preserves prompt quoting', () => {
   const prompt = 'Use "MCP" tools.\nDirectory: C:\\a path\\repo';
   const first = buildCodexArgs(prompt, { INSTANCE_ID: 'a', PROJECT_ID: 'shared' });
@@ -28,6 +44,7 @@ test('Codex receives independent instance identity and preserves prompt quoting'
   assert.ok(!second.includes('mcp_servers.claude-ide.env.INSTANCE_ID="a"'));
   assert.ok(!first.includes('--mcp-config'));
   assert.ok(!first.includes('--append-system-prompt'));
+  assert.ok(first.includes('mcp_servers.claude-ide.env_vars=["CLAUDE_IDE_MCP_TOKEN"]'));
 });
 
 test('shared MCP tools route two agents to their own dashboard cards', { timeout: 10000 }, async t => {

@@ -69,6 +69,7 @@ const encodeQueryData = data => {
 };
 
 const getLoginHeader = async () => {
+  if (import.meta.env.VITE_LAB_AUTH === 'true') return { withCredentials: true };
   const token = tokenStore.get();
   const headers = {};
   if (token) {
@@ -124,6 +125,7 @@ const connectionErrorResponse = error => {
     if (responseError.data) {
       errorData = responseError.data;
     }
+    if (import.meta.env.VITE_LAB_AUTH === 'true') return { ok: false, errorCode, errorData, errorMessage, online: true };
     if (error.response.status === 401) {
       Storage.getObject(StorageEnums.token).then(
         tokenStored => {

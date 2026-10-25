@@ -15,6 +15,7 @@ const InstanceSchema = {
     type: { enum: Object.values(InstanceTypes) },
     provider: { enum: Object.values(AiProviders) },
     sessionId: nullableString,
+    executionProfileId: nullableString,
     projectId: nullableString,
     projectName: nullableString,
     title: nullableString,

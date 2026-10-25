@@ -23,6 +23,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
 
 import { DeleteIcon, RocketLaunchIcon, TerminalIcon } from '@/components/Icons/Icons';
+import ExecutionProfileSelect from '@/components/ExecutionProfileSelect/ExecutionProfileSelect';
+import { useStoreValue } from '@/components/state/GlobalState';
+import { ExecutionProfileStores } from '@/stores/executionProfileAtoms';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
 
@@ -37,6 +40,9 @@ const SHELLS = [
 const SHELL_LABELS = Object.fromEntries(SHELLS.map(s => [s.value, s.label]));
 
 const NewTerminalDialog = ({ open, onClose, onCreate }) => {
+  const { profiles } = useStoreValue(ExecutionProfileStores.profilesStore);
+  const profileMode = profiles.length > 0;
+  const [executionProfileId, setExecutionProfileId] = useState(null);
   const [name, setName] = useState('');
   const [shell, setShell] = useState('powershell');
   const [command, setCommand] = useState('');
@@ -60,25 +66,25 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
     if (!open) return;
     setSelected(null);
     setName('');
-    setShell('powershell');
+    setShell(profileMode ? 'bash' : 'powershell');
     setCommand('');
     setSaveConfig(false);
     fetchConfigs();
-  }, [open, fetchConfigs]);
+  }, [open, fetchConfigs, profileMode]);
 
   const handleSelectConfig = useCallback(config => {
     setSelected(config);
     setName(config.name);
-    setShell(config.shell);
+    setShell(profileMode ? 'bash' : config.shell);
     setCommand(config.command || '');
-  }, []);
+  }, [profileMode]);
 
   const handleClearSelection = useCallback(() => {
     setSelected(null);
     setName('');
-    setShell('powershell');
+    setShell(profileMode ? 'bash' : 'powershell');
     setCommand('');
-  }, []);
+  }, [profileMode]);
 
   const handleDelete = useCallback(async (e, configId) => {
     e.stopPropagation();
@@ -102,9 +108,9 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
       });
     }
 
-    onCreate(termName, shell, termCommand);
+    onCreate(termName, shell, termCommand, executionProfileId);
     onClose();
-  }, [name, shell, command, saveConfig, selected, onCreate, onClose]);
+  }, [name, shell, command, saveConfig, selected, onCreate, onClose, executionProfileId]);
 
   const canLaunch = !!shell;
 
@@ -124,6 +130,7 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
         New Terminal
       </DialogTitle>
       <DialogContent>
+        <ExecutionProfileSelect value={executionProfileId} onChange={setExecutionProfileId} />
         {/* Saved configs list */}
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
@@ -213,7 +220,7 @@ const NewTerminalDialog = ({ open, onClose, onCreate }) => {
               onChange={e => setShell(e.target.value)}
               sx={{ fontSize: 13 }}
             >
-              {SHELLS.map(s => (
+              {(profileMode ? SHELLS.filter(s => s.value === 'bash') : SHELLS).map(s => (
                 <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
               ))}
             </Select>

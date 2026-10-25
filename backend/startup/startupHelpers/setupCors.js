@@ -1,4 +1,8 @@
+import SystemSettingsServices from '#modules/systemSettings/SystemSettingsServices';
+
 const setupCors = (res, origin) => {
+  const auth = SystemSettingsServices.getSettings().labAuth;
+  if (auth?.enabled && !auth.allowedOrigins?.includes(origin)) return;
   res.writeHeader('Access-Control-Allow-Origin', `${origin}`)
     .writeHeader('Access-Control-Allow-Credentials', 'true')
     .writeHeader('Access-Control-Allow-Headers', 'origin, content-type, accept,'

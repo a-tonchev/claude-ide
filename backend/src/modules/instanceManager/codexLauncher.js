@@ -1,19 +1,25 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { getMcpServerConfig } from '../../../mcp/setupMcp.js';
+import { getMcpServers } from '../../../mcp/setupMcp.js';
 
 export function buildCodexArgs(systemPrompt, extraEnv) {
-  const server = getMcpServerConfig();
   // Invocation-scoped config keeps simultaneous instances isolated and leaves
   // the user's Codex config, login, and project instructions intact.
   const config = {
     developer_instructions: systemPrompt,
-    'mcp_servers.claude-ide.command': server.command,
-    'mcp_servers.claude-ide.args': server.args,
-    'mcp_servers.claude-ide.required': true,
-    ...Object.fromEntries(Object.entries({ ...server.env, ...extraEnv })
-      .map(([key, value]) => [`mcp_servers.claude-ide.env.${key}`, value])),
   };
+  for (const [name, server] of Object.entries(getMcpServers())) {
+    config[`mcp_servers.${name}.command`] = server.command;
+    config[`mcp_servers.${name}.args`] = server.args;
+    if (name === 'claude-ide') {
+      config[`mcp_servers.${name}.required`] = true;
+      // Codex filters the MCP child's inherited environment; forward the credential by name.
+      config[`mcp_servers.${name}.env_vars`] = ['CLAUDE_IDE_MCP_TOKEN'];
+      for (const [key, value] of Object.entries({ ...server.env, ...extraEnv })) {
+        if (key !== 'CLAUDE_IDE_MCP_TOKEN') config[`mcp_servers.${name}.env.${key}`] = value;
+      }
+    }
+  }
   return ['--no-alt-screen', ...Object.entries(config)
     .flatMap(([key, value]) => ['-c', `${key}=${JSON.stringify(value)}`])];
 }

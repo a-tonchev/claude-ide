@@ -59,9 +59,28 @@ const TOOL_PERMISSIONS = [
 
 // Set by startup/server.js from settings.js; see the comment there.
 let apiPort = null;
+let additionalMcpServers = {};
 
 function setMcpApiPort(port) {
   apiPort = port;
+}
+
+// This comes exclusively from the root-owned backend settings, never a client request.
+// Keep the surface deliberately small: stdio command/args, with no literal credentials.
+function setAdditionalMcpServers(servers = {}) {
+  if (!servers || typeof servers !== 'object' || Array.isArray(servers)) throw new Error('additionalMcpServers must be an object');
+  const validated = {};
+  for (const [name, server] of Object.entries(servers)) {
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name) || name === 'claude-ide'
+      || !server || typeof server !== 'object' || Array.isArray(server)
+      || Object.keys(server).some(key => !['command', 'args'].includes(key))
+      || typeof server.command !== 'string' || !path.isAbsolute(server.command) || server.command.includes('\0')
+      || !Array.isArray(server.args || []) || (server.args || []).some(arg => typeof arg !== 'string' || arg.includes('\0'))) {
+      throw new Error('Additional MCP servers require a safe unique name, absolute command, and string args only');
+    }
+    validated[name] = { command: server.command, args: [...(server.args || [])] };
+  }
+  additionalMcpServers = validated;
 }
 
 function getMcpServerConfig() {
@@ -75,15 +94,17 @@ function getMcpServerConfig() {
   };
 }
 
+function getMcpServers() {
+  return { 'claude-ide': getMcpServerConfig(), ...structuredClone(additionalMcpServers) };
+}
+
 /**
  * Ensures the shared mcp-config.json exists next to server.js.
  * Only writes when missing or when API_URL/port changed.
  */
 function ensureMcpConfig() {
   const config = {
-    mcpServers: {
-      'claude-ide': getMcpServerConfig(),
-    },
+    mcpServers: getMcpServers(),
   };
 
   const desired = JSON.stringify(config, null, 2);
@@ -153,7 +174,9 @@ function setupForClaude(projectCwd) {
 
 export {
   setMcpApiPort,
+  setAdditionalMcpServers,
   getMcpServerConfig,
+  getMcpServers,
   ensureMcpConfig,
   enableMcpInSettings,
   findGitRoot,

@@ -22,6 +22,7 @@ import {
 } from '@mui/material';
 
 import { AddIcon, FolderOutlinedIcon } from '@/components/Icons/Icons';
+import ExecutionProfileSelect from '@/components/ExecutionProfileSelect/ExecutionProfileSelect';
 import Connections, { ApiEndpoints } from '@/components/connections/Connections';
 import getRequestError from '@/helpers/requestErrorHelper';
 import { dialogPaperSx } from '@/components/ManagerDialog/managerStyles';
@@ -41,6 +42,7 @@ const readSavedFlagIds = () => {
 const NewInstanceDialog = ({
   open, onClose, onCreate, disabled = false, defaultProvider = 'claude', launchFlags = [],
 }) => {
+  const [executionProfileId, setExecutionProfileId] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -96,7 +98,7 @@ const NewInstanceDialog = ({
       const chosenFlagIds = provider === 'claude'
         ? flagIds.filter(id => launchFlags.some(flag => flag._id === id))
         : [];
-      const result = await onCreate?.(selected._id, selected.name, selected.path, provider, chosenFlagIds);
+      const result = await onCreate?.(selected._id, selected.name, selected.path, provider, chosenFlagIds, executionProfileId);
       if (!result?.ok) {
         setError(getRequestError(result, 'Could not add the AI card. Please try again.'));
         return;
@@ -108,7 +110,7 @@ const NewInstanceDialog = ({
       savePending.current = false;
       setSaving(false);
     }
-  }, [selected, disabled, onCreate, onClose, provider, flagIds, launchFlags]);
+  }, [selected, disabled, onCreate, onClose, provider, flagIds, launchFlags, executionProfileId]);
 
   return (
     <Dialog
@@ -128,6 +130,7 @@ const NewInstanceDialog = ({
         <Typography sx={{ color: '#808080', fontSize: 13, mb: 2 }}>
           Select a project and choose Claude or Codex to start it.
         </Typography>
+        <ExecutionProfileSelect value={executionProfileId} onChange={setExecutionProfileId} disabled={saving} />
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
         {loading ? (

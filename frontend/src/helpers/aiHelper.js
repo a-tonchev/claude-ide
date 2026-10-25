@@ -3,6 +3,7 @@ export const getAiProvider = item => (item?.provider === 'codex' ? 'codex' : 'cl
 
 export const matchesSavedItem = (instance, item) => {
   if (instance.type !== item.type) return false;
+  if (item.executionProfileId && instance.executionProfileId !== item.executionProfileId) return false;
   if (item.id) return instance.savedItemId === item.id;
   if (item.type === 'claude') {
     return instance.projectId === item.projectId && getAiProvider(instance) === getAiProvider(item);

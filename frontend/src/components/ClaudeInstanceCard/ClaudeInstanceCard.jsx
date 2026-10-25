@@ -118,7 +118,7 @@ const ClaudeInstanceCard = ({
               color={CARD_COLORS.strong}
             />
           </StatusTitle>
-          <HeaderMeta>{instance.provider === 'codex' ? 'Codex' : 'Claude'}</HeaderMeta>
+          <HeaderMeta>{instance.provider === 'codex' ? 'Codex' : 'Claude'}{instance.executionProfileLabel ? ` · ${instance.executionProfileLabel}` : ''}</HeaderMeta>
           {(instance.launchFlags || []).map(flag => (
             <Chip
               key={flag.id}

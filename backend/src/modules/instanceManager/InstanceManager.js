@@ -10,6 +10,8 @@ import { setupForClaude } from '../../../mcp/setupMcp.js';
 import SystemSettingsServices from '#modules/systemSettings/SystemSettingsServices';
 import InstanceStore from '#modules/instanceStore/InstanceStore';
 import FileStore from '#modules/files/FileStore';
+import LabAuth from '#modules/labAuth/LabAuth';
+import { resolveExecutionProfile, profileLaunch, queryProfileSession, stopProfile, sweepProfileServices } from './executionProfiles.js';
 import {
   descendantsOf, killPids, readProcessTable, readProcessTableAsync, sweepMcpOrphansAsync,
 } from './processSweep.js';
@@ -290,9 +292,10 @@ function buildSystemPrompt(basePrompt, launchFlags) {
 
 // Claude sessions get their id up front. One that already has a transcript is
 // resumed; one that never talked (no transcript yet) starts fresh under that id.
-function claudeSessionArgs(sessionId) {
+function claudeSessionArgs(sessionId, profile = null) {
   if (!isUuid(sessionId)) throw new Error('Invalid session ID');
-  return findClaudeTranscript(sessionId) ? ['--resume', sessionId] : ['--session-id', sessionId];
+  const exists = profile ? queryProfileSession(SystemSettingsServices.getSettings(), profile, { kind: 'claude', sessionId }) : findClaudeTranscript(sessionId);
+  return exists ? ['--resume', sessionId] : ['--session-id', sessionId];
 }
 
 // The attachments folder (settings.js filesDir) is added to the instance's allowed
@@ -303,7 +306,7 @@ function withFilesSection(prompt, instanceId) {
   return section ? `${prompt}\n\n${section}` : prompt;
 }
 
-function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launchFlags = [], instanceName = '', sessionArgs = []) {
+function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launchFlags = [], instanceName = '', sessionArgs = [], profile = null) {
   const basePrompt = extraEnv.CLAUDE_IDE_SYSTEM_PROMPT || MCP_SYSTEM_PROMPT;
   const systemPrompt = withFilesSection(buildSystemPrompt(basePrompt, launchFlags), extraEnv.INSTANCE_ID);
   const filesDir = FileStore.getRoot();
@@ -341,10 +344,10 @@ function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launch
   const mcpArgs = mcpConfigPath ? ['--mcp-config', mcpConfigPath] : [];
   const flagArgs = flagStrings.flatMap(tokenizeArgs);
   const addDirArgs = filesDir ? ['--add-dir', filesDir] : [];
-  return pty.spawn('claude', ['--append-system-prompt', systemPrompt, ...addDirArgs, ...mcpArgs, ...sessionArgs, ...flagArgs, ...args], {
-    name: 'xterm-256color',
-    cwd,
-    env,
+  const invocation = ['--append-system-prompt', systemPrompt, ...addDirArgs, ...mcpArgs, ...sessionArgs, ...flagArgs, ...args];
+  const launch = profile ? profileLaunch(SystemSettingsServices.getSettings(), profile, extraEnv.INSTANCE_ID, 'claude', cwd, invocation, env) : null;
+  return pty.spawn(launch?.file || 'claude', launch?.args || invocation, {
+    name: 'xterm-256color', cwd, env: launch?.env || env,
   });
 }
 
@@ -390,6 +393,7 @@ function persistStart(instance, flagIds = []) {
     groupId: instance.groupId || null,
     savedItemId: instance.savedItemId || null,
     flagIds,
+    executionProfileId: instance.executionProfileId || null,
     status: instance.status,
     pendingInput: null,
     resumeError: null,
@@ -463,8 +467,9 @@ function terminate(instance, descendants, graceMs) {
 const InstanceManager = {
   // `record` is a remembered instance to resume: its id and session are reused.
   create(projectId, projectName, rawCwd, args = [], {
-    launchFlags = [], provider = 'claude', savedItemId = null, groupId = null, record = null,
+    launchFlags = [], provider = 'claude', savedItemId = null, groupId = null, record = null, executionProfileId = null,
   } = {}) {
+    const profile = resolveExecutionProfile(SystemSettingsServices.getSettings(), executionProfileId, record);
     if (!['claude', 'codex'].includes(provider)) throw new Error('Unknown AI provider');
     if (savedItemId !== null && typeof savedItemId !== 'string') throw new Error('Invalid card ID');
     const cwd = normalizePath(rawCwd);
@@ -488,29 +493,37 @@ const InstanceManager = {
     const extraEnv = {
       INSTANCE_ID: id,
       PROJECT_ID: projectId,
+      CLAUDE_IDE_MCP_TOKEN: LabAuth.issueServiceToken({ instanceId: id, projectId }),
     };
     let ptyProcess;
-    if (provider === 'codex') {
-      const command = resolveCodexCommand(getChildPath());
-      // The marker lets detectCodexSession find the session file Codex writes for this instance.
-      const codexArgs = buildCodexArgs(withFilesSection(`${codexInstanceMarker(id)}\n\n${CODEX_SYSTEM_PROMPT}`, id), extraEnv);
-      const filesDir = FileStore.getRoot();
-      if (filesDir) codexArgs.push('--add-dir', filesDir);
-      if (sessionId && !isUuid(sessionId)) throw new Error('Invalid session ID');
-      const invocation = sessionId ? ['resume', ...codexArgs, sessionId] : codexArgs;
-      ptyProcess = pty.spawn(command.file, [...command.args, ...invocation], {
-        name: 'xterm-256color',
-        cwd,
-        env: withChildPath({ ...process.env, TERM: 'xterm-256color', ...extraEnv }),
-      });
-    } else {
-      ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath, launchFlags, projectName, claudeSessionArgs(sessionId));
+    try {
+      if (provider === 'codex') {
+        const command = profile ? { file: 'codex', args: [] } : resolveCodexCommand(getChildPath());
+        // The marker lets detectCodexSession find the session file Codex writes for this instance.
+        const codexArgs = buildCodexArgs(withFilesSection(`${codexInstanceMarker(id)}\n\n${CODEX_SYSTEM_PROMPT}`, id), { INSTANCE_ID: id, PROJECT_ID: projectId });
+        const filesDir = FileStore.getRoot();
+        if (filesDir) codexArgs.push('--add-dir', filesDir);
+        if (sessionId && !isUuid(sessionId)) throw new Error('Invalid session ID');
+        const invocation = sessionId ? ['resume', ...codexArgs, sessionId] : codexArgs;
+        const env = withChildPath({ ...process.env, TERM: 'xterm-256color', ...extraEnv });
+        const launch = profile ? profileLaunch(SystemSettingsServices.getSettings(), profile, id, 'codex', cwd, invocation, env) : null;
+        ptyProcess = pty.spawn(launch?.file || command.file, launch?.args || [...command.args, ...invocation], {
+          name: 'xterm-256color', cwd, env: launch?.env || env,
+        });
+      } else {
+        ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath, launchFlags, projectName, claudeSessionArgs(sessionId, profile), profile);
+      }
+    } catch (err) {
+      LabAuth.revokeServiceToken(id);
+      throw err;
     }
 
     const instance = {
       id,
       type: 'claude',
       provider,
+      executionProfileId: profile?.id || null,
+      executionProfileLabel: profile?.label || null,
       sessionId,
       savedItemId,
       projectId,
@@ -538,7 +551,8 @@ const InstanceManager = {
     return instance;
   },
 
-  createObserver(observerId, name, rawCwd, groupId, { record = null } = {}) {
+  createObserver(observerId, name, rawCwd, groupId, { record = null, executionProfileId = null } = {}) {
+    const profile = resolveExecutionProfile(SystemSettingsServices.getSettings(), executionProfileId, record);
     const cwd = normalizePath(rawCwd);
     if (!cwd || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
       throw new Error(`Invalid working directory: ${cwd} (original: ${rawCwd})`);
@@ -566,14 +580,23 @@ const InstanceManager = {
       INSTANCE_ID: id,
       PROJECT_ID: observerId,
       OBSERVER_ID: observerId,
+      CLAUDE_IDE_MCP_TOKEN: LabAuth.issueServiceToken({ instanceId: id, projectId: observerId, observerId }),
       CLAUDE_IDE_SYSTEM_PROMPT: observerSystemPrompt,
     };
-    const ptyProcess = spawnClaude(cwd, [], extraEnv, mcpConfigPath, [], '', claudeSessionArgs(sessionId));
+    let ptyProcess;
+    try {
+      ptyProcess = spawnClaude(cwd, [], extraEnv, mcpConfigPath, [], '', claudeSessionArgs(sessionId, profile), profile);
+    } catch (err) {
+      LabAuth.revokeServiceToken(id);
+      throw err;
+    }
 
     const instance = {
       id,
       type: 'observer',
       provider: 'claude',
+      executionProfileId: profile?.id || null,
+      executionProfileLabel: profile?.label || null,
       sessionId,
       projectId: observerId,
       projectName: name || 'Observer',
@@ -599,14 +622,17 @@ const InstanceManager = {
   },
 
   createTerminal({
-    name, shell, command, cwd, groupId, savedItemId = null,
+    name, shell, command, cwd, groupId, savedItemId = null, executionProfileId = null,
   }) {
+    const profile = resolveExecutionProfile(SystemSettingsServices.getSettings(), executionProfileId);
+    if (profile && shell !== 'bash') throw new Error('Execution profile terminals use Bash');
     const id = generateId();
     const resolvedCwd = cwd ? normalizePath(cwd) : undefined;
     const isWsl = platform === 'win32' && shell === 'wsl';
     const wslDistro = isWsl ? getWslDistro() : null;
     const wslMarker = isWsl ? terminalMarker({ installKey: INSTALL_KEY, bootId: BOOT_ID, instanceId: id }) : null;
-    const ptyProcess = spawnTerminal(shell, command, resolvedCwd, wslMarker);
+    const launch = profile ? profileLaunch(SystemSettingsServices.getSettings(), profile, id, 'terminal', resolvedCwd, command ? ['-lc', command] : ['-l'], { TERM: 'xterm-256color' }) : null;
+    const ptyProcess = launch ? pty.spawn(launch.file, launch.args, { name: 'xterm-256color', cwd: '/', env: launch.env }) : spawnTerminal(shell, command, resolvedCwd, wslMarker);
 
     // WSL: spawned as interactive PowerShell, enter WSL, then optionally run command
     if (isWsl) {
@@ -621,6 +647,8 @@ const InstanceManager = {
     const instance = {
       id,
       type: 'terminal',
+      executionProfileId: profile?.id || null,
+      executionProfileLabel: profile?.label || null,
       projectId: null,
       projectName: name || 'Terminal',
       title: null,
@@ -678,9 +706,19 @@ const InstanceManager = {
     // A kept record (saved, or not a manual stop) needs Codex's session id to resume
     if (!discard || instance.saved) InstanceManager.detectCodexSession(instanceId, { force: true });
     instances.delete(instanceId);
+    LabAuth.revokeServiceToken(instance.id);
     // deleteRecord skips saved records, so a save racing this stop can't lose one
     if (discard) persist(instance, () => InstanceStore.deleteRecord(instanceId));
     if (!shuttingDown) stopWslProcesses(instance);
+    if (instance.executionProfileId) {
+      const settings = SystemSettingsServices.getSettings();
+      try {
+        const result = stopProfile(settings, instance.executionProfileId, instance.id, { sync: shuttingDown });
+        result?.catch(err => console.error(`[stop ${instance.id}] profile cleanup failed:`, err.message));
+      } catch (err) { console.error(`[stop ${instance.id}] profile cleanup failed:`, err.message); }
+      // The helper owns the service cgroup. Never kill stale/cross-user PID snapshots.
+      return true;
+    }
     if (alreadyExited) return true;
 
     // Ctrl+C first so processes inside the PTY (especially WSL children) can stop cleanly;
@@ -707,6 +745,7 @@ const InstanceManager = {
     const instance = instances.get(instanceId);
     if (!instance) return false;
     instance.status = 'exited';
+    LabAuth.revokeServiceToken(instance.id);
     stopWslProcesses(instance);
     persist(instance, () => InstanceStore.updateRecord(instanceId, {
       status: 'exited', pendingInput: null, ...(resumeError && { resumeError }),
@@ -748,6 +787,8 @@ const InstanceManager = {
       id: instance.id,
       type: instance.type,
       provider: instance.provider || 'claude',
+      executionProfileId: instance.executionProfileId || null,
+      executionProfileLabel: instance.executionProfileLabel || null,
       savedItemId: instance.savedItemId || null,
       projectId: instance.projectId,
       projectName: instance.projectName,
@@ -841,9 +882,16 @@ const InstanceManager = {
     }
     instance.lastSessionLookup = now;
     const claimedIds = [...instances.values()].map(i => i.sessionId).filter(Boolean);
-    const sessionId = findCodexSession({
-      cwd: instance.cwd, startedAt: instance.startedAt, instanceId, claimedIds,
-    });
+    const query = { kind: 'codex', cwd: instance.cwd, startedAt: instance.startedAt, instanceId, claimedIds };
+    let sessionId;
+    try {
+      sessionId = instance.executionProfileId
+        ? queryProfileSession(SystemSettingsServices.getSettings(), { id: instance.executionProfileId }, query)
+        : findCodexSession(query);
+    } catch (err) {
+      console.error(`[instance ${instanceId}] profile session lookup failed:`, err.message);
+      return null;
+    }
     if (!sessionId) return null;
     instance.sessionId = sessionId;
     persist(instance, () => InstanceStore.updateRecord(instanceId, { sessionId }));
@@ -895,6 +943,8 @@ const InstanceManager = {
   // is protected, so instances started meanwhile are safe. So are WSL programs of
   // terminals from a run that was killed or crashed (a reboot already stopped WSL).
   sweepStartupOrphans() {
+    // Runs before any card is started. Restrict cleanup to this install's named service cgroups.
+    sweepProfileServices(SystemSettingsServices.getSettings());
     sweepMcpOrphansAsync({ getExcludeRootPids: () => [process.pid] })
       .then(swept => {
         if (swept.length) console.info(`[startup] swept ${swept.length} orphan MCP process(es):`, swept.map(o => o.pid).join(', '));

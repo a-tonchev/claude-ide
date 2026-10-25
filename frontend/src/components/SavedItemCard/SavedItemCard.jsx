@@ -8,11 +8,12 @@ import Chip from '@mui/material/Chip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
+import ExecutionProfileSelect from '@/components/ExecutionProfileSelect/ExecutionProfileSelect';
 import { DeleteIcon, PlayArrowIcon } from '@/components/Icons/Icons';
 import { CARD_COLORS, HeaderMeta, cardSx } from '@/components/CardParts/CardParts';
 
 const SavedItemCard = ({
-  item, onStart, onRemove, launchFlags = [], onToggleFlag, onProviderChange, error,
+  item, onStart, onRemove, launchFlags = [], onToggleFlag, onProviderChange, onProfileChange, error,
 }) => {
   const isClaude = item.type === 'claude';
   const provider = item.provider || 'claude';
@@ -97,6 +98,9 @@ const SavedItemCard = ({
         </Typography>
       )}
 
+      <Box sx={{ px: 1.5 }}>
+        <ExecutionProfileSelect value={item.executionProfileId} onChange={value => onProfileChange?.(item, value)} />
+      </Box>
       {/* Actions */}
       {isClaude && (
         <ToggleButtonGroup

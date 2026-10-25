@@ -90,7 +90,7 @@ test('waits for save, blocks duplicate clicks, retains selection on failure, and
   const pending = click();
   await click();
   assert.equal(calls.length, 1);
-  assert.deepEqual(calls[0], ['project', 'Project', 'D:/project', 'codex']);
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0])), ['project', 'Project', 'D:/project', 'codex', [], null]);
   assert.equal(h.closed(), 0);
   assert.equal(addButton(h.render()).disabled, true);
   find(h.render(), 'Dialog').onClose();
@@ -116,6 +116,18 @@ test('thrown save errors keep the dialog open and allow retry', async () => {
   assert.equal(h.closed(), 0);
   assert.equal(find(h.render(), 'Alert').children[0], 'The selected group is unavailable');
   assert.equal(addButton(h.render()).disabled, false);
+});
+
+test('Add AI passes its selected execution profile through to launch', async () => {
+  const calls = [];
+  const h = harness(async (...args) => { calls.push(args); return { ok: true }; });
+  h.render();
+  await settle();
+  find(h.render(), 'ExecutionProfileSelect').onChange('claude2');
+  find(h.render(), 'ListItemButton').onClick();
+  await addButton(h.render()).onClick();
+  assert.equal(calls[0][5], 'claude2');
+  assert.equal(h.closed(), 1);
 });
 
 test('project-loading failures are visible and cannot submit a stale selection', async () => {

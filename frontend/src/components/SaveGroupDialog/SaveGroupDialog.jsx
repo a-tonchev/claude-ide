@@ -51,6 +51,7 @@ const SaveGroupDialog = ({
         items.push({
           id: inst.savedItemId || undefined,
           type: 'terminal',
+          executionProfileId: inst.executionProfileId || undefined,
           name: inst.projectName || inst.name,
           shell: inst.shell,
           command: inst.command,
@@ -63,6 +64,7 @@ const SaveGroupDialog = ({
           id: inst.savedItemId || undefined,
           type: 'claude',
           provider: getAiProvider(inst),
+          executionProfileId: inst.executionProfileId || undefined,
           projectId: inst.projectId,
           name: inst.projectName || inst.name,
           path: inst.cwd,
@@ -75,7 +77,7 @@ const SaveGroupDialog = ({
     existingItems.forEach(item => {
       const alreadyCovered = items.some(i => {
         if (item.id) return i.id === item.id;
-        if (i.type !== item.type) return false;
+        if (i.type !== item.type || i.executionProfileId !== item.executionProfileId) return false;
         if (i.type === 'claude') return i.projectId === item.projectId && getAiProvider(i) === getAiProvider(item);
         return i.name === item.name && i.shell === item.shell;
       });

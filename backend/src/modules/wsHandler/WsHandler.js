@@ -7,6 +7,7 @@ import SettingsEnums from '#lib/settings/enums/SettingsEnums';
 import GroupEnums from '#lib/groups/enums/GroupEnums';
 import { FeedKinds } from '#lib/instances/enums/InstanceEnums';
 import FileStore from '#modules/files/FileStore';
+import { configuredProfiles } from '../instanceManager/executionProfiles.js';
 
 const prefix = SystemSettingsServices.getRoutePrefix();
 const wsPath = `${prefix}/ws`;
@@ -232,12 +233,12 @@ function sendInstanceList(ws) {
   for (const inst of list) {
     ws.subscribe(`instance_${inst.id}`);
   }
-  sendJson(ws, { type: 'instances', list });
+  sendJson(ws, { type: 'instances', list, executionProfiles: configuredProfiles(SystemSettingsServices.getSettings()), defaultExecutionProfileId: SystemSettingsServices.getSettings().defaultExecutionProfileId || null });
 }
 
 async function handleCreate(ws, message) {
   const {
-    projectId, name, path, args, groupId, flagIds, provider = 'claude', savedItemId = null,
+    projectId, name, path, args, groupId, flagIds, provider = 'claude', savedItemId = null, executionProfileId = null,
   } = message;
 
   if (!projectId || !path) {
@@ -248,7 +249,7 @@ async function handleCreate(ws, message) {
   try {
     const launchFlags = provider === 'claude' ? await resolveLaunchFlags(flagIds) : [];
     instance = InstanceManager.create(projectId, name || '', path, args || [], {
-      launchFlags, provider, savedItemId, groupId: groupId || null,
+      launchFlags, provider, savedItemId, groupId: groupId || null, executionProfileId,
     });
   } catch (err) {
     console.error('Instance create failed:', err.message);
@@ -278,7 +279,7 @@ function handleCreateObserver(ws, message) {
 
 function handleCreateTerminal(ws, message) {
   const {
-    name, shell, command, cwd, groupId, savedItemId,
+    name, shell, command, cwd, groupId, savedItemId, executionProfileId,
   } = message;
 
   if (!shell) {
@@ -288,7 +289,7 @@ function handleCreateTerminal(ws, message) {
   let instance;
   try {
     instance = InstanceManager.createTerminal({
-      name, shell, command, cwd, groupId, savedItemId,
+      name, shell, command, cwd, groupId, savedItemId, executionProfileId,
     });
   } catch (err) {
     console.error('Terminal create failed:', err.message);
@@ -547,7 +548,7 @@ async function handleStartGroup(ws, message) {
         // eslint-disable-next-line no-await-in-loop
         const launchFlags = (item.provider || 'claude') === 'claude' ? await resolveLaunchFlags(item.flagIds) : [];
         instance = InstanceManager.create(item.projectId, item.name || '', item.path || '', [], {
-          launchFlags, provider: item.provider || 'claude', savedItemId: item.id || null, groupId,
+          launchFlags, provider: item.provider || 'claude', savedItemId: item.id || null, groupId, executionProfileId: item.executionProfileId,
         });
       } else if (item.type === 'observer') {
         instance = InstanceManager.createObserver(item.observerId, item.name || '', item.cwd || '', groupId);
@@ -559,6 +560,7 @@ async function handleStartGroup(ws, message) {
           cwd: item.cwd,
           groupId,
           savedItemId: item.id || null,
+          executionProfileId: item.executionProfileId,
         });
       }
 
@@ -572,6 +574,7 @@ async function handleStartGroup(ws, message) {
       }
     } catch (err) {
       console.error('Start group item failed:', err.message);
+      sendJson(ws, { type: 'start_failed', savedItemId: item.id || null, groupId, name: item.name, message: err.message });
     }
   }
 

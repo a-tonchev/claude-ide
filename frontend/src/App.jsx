@@ -10,6 +10,7 @@ import MainRoutes from '@/components/routes/MainRoutes';
 import DesignProvider from '@/components/layout/DesignProvider';
 import NavigateSetter from '@/components/connections/NavigateSetter';
 import GlobalStore from '@/components/state/GlobalStore';
+import LabAuthGate from '@/components/LabAuth/LabAuthGate';
 
 const App = () => {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ const App = () => {
           <Suspense fallback={<div />}>
             <LoadingContainer>
               <DesignProvider>
-                <MainRoutes />
+                <LabAuthGate><MainRoutes /></LabAuthGate>
               </DesignProvider>
             </LoadingContainer>
           </Suspense>
