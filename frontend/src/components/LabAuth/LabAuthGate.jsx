@@ -15,6 +15,14 @@ export default function LabAuthGate({ children }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const openBrowser = enabled && new URLSearchParams(window.location.search).get('open') === 'browser';
+  useEffect(() => {
+    if (user && openBrowser) {
+      // A fixed destination prevents user-controlled redirect URLs. Returning
+      // through Lab also establishes the same-site context for the strict cookie.
+      window.location.replace(new URL('/browser/', getServerBaseUrl()).href);
+    }
+  }, [user, openBrowser]);
   useEffect(() => {
     if (!enabled) return undefined;
     let active = true;
@@ -37,7 +45,7 @@ export default function LabAuthGate({ children }) {
     return () => { active = false; clearInterval(timer); window.removeEventListener('focus', check); axios.interceptors.response.eject(interceptor); };
   }, []);
   if (!enabled) return children;
-  if (loading) return <Box sx={{ display: 'grid', placeItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
+  if (loading || (user && openBrowser)) return <Box sx={{ display: 'grid', placeItems: 'center', height: '100vh' }}><CircularProgress /></Box>;
   const login = async event => {
     event.preventDefault();
     setBusy(true);
