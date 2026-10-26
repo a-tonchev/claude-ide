@@ -68,7 +68,7 @@ const tabsSx = {
 // activeKey (the ?card= URL param) is the shown page's key. A key that isn't in pages yet,
 // such as a card just added or one still loading after a refresh, opens once it appears.
 const MobileCardPager = ({
-  pages, renderCard, activeKey, onActiveKeyChange, minimized = [], onRestoreMinimized,
+  pages, renderCard, activeKey, onActiveKeyChange, minimized = [], onRestoreMinimized, onStopMinimized,
 }) => {
   const scrollerRef = useRef(null);
   const settleTimer = useRef(null);
@@ -402,6 +402,7 @@ const MobileCardPager = ({
             variant="row"
             instances={minimized}
             onRestore={id => { setPickerOpen(false); onRestoreMinimized?.(id); }}
+            onStop={onStopMinimized}
           />
         </Box>
       </Dialog>

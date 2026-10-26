@@ -1,5 +1,5 @@
 import React, {
-  useState, useCallback, useRef, useEffect,
+  useState, useCallback,
 } from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -32,6 +32,7 @@ import { InstanceStores, setInputDraft, markPlanSeen } from '@/stores/instanceAt
 import { getInstanceTitle } from '@/helpers/instanceHelper';
 import { getAiLabel } from '@/helpers/aiLaunchHelper';
 import useFeedWindow from '@/hooks/useFeedWindow';
+import useFeedAutoScroll from '@/hooks/useFeedAutoScroll';
 
 const ClaudeInstanceCard = ({
   instance,
@@ -52,7 +53,6 @@ const ClaudeInstanceCard = ({
   const inputText = useStoreFamilyValue(InstanceStores.inputDraftFamilyStore, instance.id);
   const [plansAnchorEl, setPlansAnchorEl] = useState(null);
   const [pendingCollapsed, setPendingCollapsed] = useState(false);
-  const feedRef = useRef(null);
 
   const plans = instance.plans || [];
   const pending = instance.pendingInput;
@@ -66,23 +66,8 @@ const ClaudeInstanceCard = ({
 
   const isProcessing = ['thinking', 'planning', 'working'].includes(instance.status);
 
-  // Auto-scroll feed to bottom only if user hasn't scrolled up
-  const userScrolledUp = useRef(false);
-  useEffect(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      userScrolledUp.current = !atBottom;
-    };
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
-  useEffect(() => {
-    if (feedRef.current && !userScrolledUp.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
-  }, [newestId]);
+  // Follow new items (and a question appearing) unless the user scrolled up to read
+  const { ref: feedRef, onScroll: onFeedScroll } = useFeedAutoScroll([newestId, !!pending]);
 
   // Files attached to the message being written; dropped anywhere on the card or pasted
   const attachments = useAttachments(instance.id);
@@ -168,7 +153,8 @@ const ClaudeInstanceCard = ({
             px: 1,
             py: 0.5,
             borderBottom: '1px solid #3C3F41',
-            flexShrink: 1,
+            // Gives up its room before the question block below (see PendingChoices)
+            flexShrink: 1000,
             flexGrow: 1,
             minHeight: 0,
             overflow: 'hidden',
@@ -176,7 +162,7 @@ const ClaudeInstanceCard = ({
             flexDirection: 'column',
           }}
           >
-            <Box ref={feedRef} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            <Box ref={feedRef} onScroll={onFeedScroll} sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
               {visibleFeed.map(item => (
                 <FeedItem key={item.id} item={item} instanceId={instance.id} onOpen={onViewPlan} />
               ))}

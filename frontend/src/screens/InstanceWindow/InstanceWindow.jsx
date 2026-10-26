@@ -42,6 +42,7 @@ import PlanViewerDialog from '@/components/PlanViewerDialog/PlanViewerDialog';
 import useConfirm from '@/components/dialogs/hooks/useConfirm';
 import useInstances from '@/hooks/useInstances';
 import useFeedWindow from '@/hooks/useFeedWindow';
+import useFeedAutoScroll from '@/hooks/useFeedAutoScroll';
 import {
   setPendingInput, updateInstanceField, markPlanSeen,
 } from '@/stores/instanceAtoms';
@@ -58,7 +59,6 @@ const menuPaperSx = {
 const InstanceWindow = () => {
   const { instanceId } = useParams();
   const termRef = useRef(null);
-  const feedRef = useRef(null);
   const [inputText, setInputText] = useState('');
   const [viewingPlan, setViewingPlan] = useState(null);
   const [viewingMessage, setViewingMessage] = useState(null);
@@ -125,23 +125,8 @@ const InstanceWindow = () => {
     }
   }, [instance?.title, instance?.projectName, instance?.name, instance?.status]);
 
-  // Auto-scroll feed to bottom only if user hasn't scrolled up
-  const userScrolledUp = useRef(false);
-  useEffect(() => {
-    const el = feedRef.current;
-    if (!el) return;
-    const handleScroll = () => {
-      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-      userScrolledUp.current = !atBottom;
-    };
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
-  useEffect(() => {
-    if (feedRef.current && !userScrolledUp.current) {
-      feedRef.current.scrollTop = feedRef.current.scrollHeight;
-    }
-  }, [newestId, pending]);
+  // Follow new items (and a question appearing) unless the user scrolled up to read
+  const { ref: feedRef, onScroll: onFeedScroll } = useFeedAutoScroll([newestId, !!pending]);
 
   // Resize handle for activity panel (desktop only)
   useEffect(() => {
@@ -616,6 +601,7 @@ const InstanceWindow = () => {
               {/* Activity feed */}
               <Box
                 ref={feedRef}
+                onScroll={onFeedScroll}
                 sx={{
                   flex: 1, overflow: 'auto', px: 1, py: 1,
                 }}

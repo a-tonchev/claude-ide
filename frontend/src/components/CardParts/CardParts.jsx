@@ -193,14 +193,13 @@ export const FeedItem = ({
     title = 'User Message';
   } else if (item.kind === 'message') {
     full = item.text || '';
-    title = 'Message';
+    title = item.type === 'question' ? 'Question' : 'Message';
   } else {
     full = `${item.accomplished || ''}${item.workingOn ? ` → ${item.workingOn}` : ''}`;
     title = 'Milestone';
   }
-  // Questions always show in full: they have to be read to be answered
-  const isQuestion = item.kind === 'message' && item.type === 'question';
-  const isLong = !isQuestion && full.length > LONG_TEXT;
+  // Long questions are shortened too; the options block shows the pending one in full
+  const isLong = full.length > LONG_TEXT;
   const open = isLong ? () => onOpen?.({ title, content: full }) : undefined;
 
   let body;
@@ -274,7 +273,8 @@ export const FeedItem = ({
 
 // The question waiting for an answer, edge to edge across the card. The question text is the
 // newest "question" message in the feed. ˅ folds the options away, ˄ opens them again.
-// maxListHeight: past it the options scroll, so a long list can't push the input out of a card
+// maxListHeight: past it the question and the options scroll. The block also shrinks to the room
+// left in a card, each part scrolling on its own, so long options can't push the input out.
 export const PendingChoices = ({
   choices, question, collapsed, onToggle, onChoose, maxListHeight = '30vh',
 }) => (
@@ -284,11 +284,25 @@ export const PendingChoices = ({
     bgcolor: `${CARD_COLORS.waiting}14`,
     borderTop: `1px solid ${CARD_COLORS.waiting}55`,
     borderBottom: `1px solid ${CARD_COLORS.waiting}55`,
-    flexShrink: 0,
+    // Shrinks once the feed above has given up its room (the feed's flexShrink is 1000), and
+    // never below one line of the question and one option, so the parts can't spill under the
+    // input. Not a fractional factor here: a shrink sum under 1 removes only that share of the
+    // overflow, and the rest pushed the input out of the card.
+    flex: '0 1 auto',
+    minHeight: collapsed ? 'auto' : 64,
+    display: 'flex',
+    flexDirection: 'column',
   }}
   >
     <Box sx={{
-      display: 'flex', alignItems: 'flex-start', gap: 1, mb: collapsed ? 0 : 0.5,
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 1,
+      mb: collapsed ? 0 : 0.5,
+      flex: '0 1 auto',
+      // Open: the whole question, scrolling past a height so the options and input keep their
+      // room; at least the toggle's height stays visible
+      ...(collapsed ? { flexShrink: 0 } : { minHeight: 22, maxHeight: maxListHeight, overflowY: 'auto' }),
     }}
     >
       <Typography
@@ -301,14 +315,13 @@ export const PendingChoices = ({
           lineHeight: 1.35,
           overflowWrap: 'anywhere',
           whiteSpace: 'pre-wrap',
-          // Open: the whole question, scrolling past a height so the options and input keep
-          // their room. Folded: one line.
-          ...(collapsed ? {
+          // Folded: one line
+          ...(collapsed && {
             overflow: 'hidden',
             display: '-webkit-box',
             WebkitBoxOrient: 'vertical',
             WebkitLineClamp: 1,
-          } : { maxHeight: maxListHeight, overflowY: 'auto' }),
+          }),
         }}
         title={question}
       >
@@ -324,6 +337,9 @@ export const PendingChoices = ({
           all: 'unset',
           cursor: 'pointer',
           flexShrink: 0,
+          // Stays in view while a long question scrolls
+          position: 'sticky',
+          top: 0,
           display: 'inline-flex',
           alignItems: 'center',
           gap: 0.25,
@@ -342,7 +358,14 @@ export const PendingChoices = ({
     </Box>
     {!collapsed && (
       <Box sx={{
-        display: 'flex', flexDirection: 'column', gap: 0.5, maxHeight: maxListHeight, overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.5,
+        flex: '0 1 auto',
+        // At least one option stays visible when the card is short
+        minHeight: 28,
+        maxHeight: maxListHeight,
+        overflowY: 'auto',
       }}
       >
         {choices.map((choice, idx) => (

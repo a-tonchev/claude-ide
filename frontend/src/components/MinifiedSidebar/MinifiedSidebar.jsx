@@ -11,13 +11,15 @@ import {
   AutoAwesomeIcon,
   FiberManualRecordIcon,
   MonitorIcon,
+  StopIcon,
   TvIcon,
 } from '@/components/Icons/Icons';
 
-// The minimized cards as icons; a click offers Restore (and Open in placeholder when given).
+// The minimized cards as icons; a click offers Restore, Stop (when given and running) and
+// Open in placeholder (when given).
 // variant "row": a titled row with a count, for the bottom of the mobile card list.
 const MinifiedSidebar = ({
-  instances, onRestore, onOpenPlaceholder, variant = 'sidebar',
+  instances, onRestore, onOpenPlaceholder, onStop, variant = 'sidebar',
 }) => {
   const isRow = variant === 'row';
   const [anchorEl, setAnchorEl] = useState(null);
@@ -177,6 +179,17 @@ const MinifiedSidebar = ({
                     sx={{ color: '#808080', '&:hover': { bgcolor: '#3C3F41', color: '#6897BB' } }}
                   >
                     <TvIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {onStop && isRunning(selectedInstance) && (
+                <Tooltip title="Stop" placement="bottom">
+                  <IconButton
+                    size="small"
+                    onClick={() => { onStop(selectedInstance.id); handleClose(); }}
+                    sx={{ color: '#BC3F3C', '&:hover': { bgcolor: '#3C3F41', color: '#D45B58' } }}
+                  >
+                    <StopIcon sx={{ fontSize: 16 }} />
                   </IconButton>
                 </Tooltip>
               )}

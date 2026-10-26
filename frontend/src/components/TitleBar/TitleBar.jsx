@@ -241,7 +241,7 @@ const TitleBar = ({
             <Badge
               variant="dot"
               color="warning"
-              invisible={!(savedCount || rememberedCount || groupActions?.isUpdate)}
+              invisible={!(savedCount || rememberedCount)}
             >
               <MoreVertIcon />
             </Badge>

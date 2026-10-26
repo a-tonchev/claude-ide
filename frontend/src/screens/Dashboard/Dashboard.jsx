@@ -914,11 +914,17 @@ const Dashboard = () => {
                 onActiveKeyChange={setCardInUrl}
                 minimized={minimizedInGroup}
                 onRestoreMinimized={handleRestoreOnMobile}
+                onStopMinimized={confirmStopInstance}
               />
             ) : (
               <>
                 {emptyState}
-                <MinifiedSidebar variant="row" instances={minimizedInGroup} onRestore={handleRestoreOnMobile} />
+                <MinifiedSidebar
+                  variant="row"
+                  instances={minimizedInGroup}
+                  onRestore={handleRestoreOnMobile}
+                  onStop={confirmStopInstance}
+                />
               </>
             )}
           </Box>
@@ -990,6 +996,7 @@ const Dashboard = () => {
                 instances={minimizedInGroup}
                 onRestore={handleRestore}
                 onOpenPlaceholder={handleOpenPlaceholder}
+                onStop={confirmStopInstance}
               />
             </Box>
 
