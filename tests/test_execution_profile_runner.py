@@ -21,6 +21,11 @@ INSTANCE = '12345678-1234-4234-8234-123456789abc'
 
 
 class RunnerTests(unittest.TestCase):
+    def test_runner_uses_unix_line_endings(self):
+        script = (Path(__file__).parents[1] / 'scripts' / 'execution-profile-runner.py').read_bytes()
+        self.assertTrue(script.startswith(b'#!/usr/bin/python3 -I\n'))
+        self.assertNotIn(b'\r\n', script)
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
