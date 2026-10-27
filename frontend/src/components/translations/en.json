@@ -51,5 +51,8 @@
 
   "errorDescription.email": "E-mail Address is a required field",
   "errorDescription.password": "Password is required.",
-  "newVersionDetected.refresh": "New version detected. Do you want to install it?"
+  "newVersionDetected.refresh": "New version detected. Do you want to install it?",
+  "newVersionDetected.update": "Update",
+  "newVersionDetected.later": "Later",
+  "newVersionDetected.updating": "Updating…"
 }

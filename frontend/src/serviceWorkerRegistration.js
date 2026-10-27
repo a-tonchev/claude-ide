@@ -22,12 +22,6 @@ const isLocalhost = Boolean(
     ),
 );
 
-window.addEventListener('beforeunload', async () => {
-  if (window.swNeedUpdate) {
-    await SWHelper.skipWaitingWhenSolo();
-  }
-});
-
 export function register(config) {
   if (import.meta.env.VITE_ENVIRONMENT === 'prod' && 'serviceWorker' in navigator) {
     // The URL constructor is available in all browsers that support SW.
@@ -67,7 +61,7 @@ export function register(config) {
 
 function registerValidSW(swUrl, config) {
   navigator.serviceWorker
-    .register(swUrl)
+    .register(swUrl, { updateViaCache: 'none' })
     .then(registration => {
       if (registration.waiting && registration.active) {
         SWHelper.callNewServiceWorkerEvent().then();

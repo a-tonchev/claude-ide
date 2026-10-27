@@ -51,5 +51,8 @@
 
   "errorDescription.email": "E-mail Adresse wird benötigt",
   "errorDescription.password": "Passwort wird benötigt",
-  "newVersionDetected.refresh": "Neue Version erkannt. Möchtest du sie installieren?"
+  "newVersionDetected.refresh": "Neue Version erkannt. Möchtest du sie installieren?",
+  "newVersionDetected.update": "Aktualisieren",
+  "newVersionDetected.later": "Später",
+  "newVersionDetected.updating": "Wird aktualisiert…"
 }

@@ -1,56 +1,68 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  Alert, Button, CircularProgress, Snackbar, Stack,
+} from '@mui/material';
 
-import useConfirm from '@/components/dialogs/hooks/useConfirm';
 import SWHelper from '@/components/helpers/SWHelper';
 
 const VersionDetector = () => {
   const { t } = useTranslation();
-  const {
-    ConfirmDialog,
-    openDialog,
-  } = useConfirm('snackbar');
+  const [open, setOpen] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const openNewVersionDialog = () => {
-      openDialog(
-        t('newVersionDetected.refresh'),
-        () => {
-          SWHelper.forceRefreshSW().then();
-        },
-      ).then();
+    const show = () => setOpen(true);
+    const message = ({ data }) => {
+      if (data?.msg === 'OPEN_DIALOG' || data?.msg === 'CACHE_PREPARED') show();
     };
-
-    const swMessageHandler = ({ data }) => {
-      if (data?.msg === 'OPEN_DIALOG') {
-        openNewVersionDialog();
-      }
-      if (data?.msg === 'CACHE_PREPARED') {
-        SWHelper.skipWaiting().then(() => {
-          SWHelper.reloadClients().then();
-        });
-      }
-    };
-
-    navigator.serviceWorker?.addEventListener('message', swMessageHandler);
-    window.addEventListener(
-      'newVersion',
-      openNewVersionDialog,
-    );
-
-    if (SWHelper.isNewAvailable()) {
-      openNewVersionDialog();
-    }
-
+    navigator.serviceWorker?.addEventListener('message', message);
+    window.addEventListener('newVersion', show);
+    if (SWHelper.isNewAvailable()) show();
     return () => {
-      navigator.serviceWorker?.removeEventListener('message', swMessageHandler);
-      window.removeEventListener('newVersion', openNewVersionDialog);
+      navigator.serviceWorker?.removeEventListener('message', message);
+      window.removeEventListener('newVersion', show);
     };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return ConfirmDialog;
+  const update = async () => {
+    setUpdating(true);
+    setError('');
+    try {
+      await SWHelper.updateByUser();
+    } catch (failure) {
+      setError(failure.message);
+      setUpdating(false);
+    }
+  };
+
+  return (
+    <Snackbar open={open} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Alert
+        severity={error ? 'error' : 'info'}
+        role="alertdialog"
+        aria-label={t('newVersionDetected.refresh')}
+        action={(
+          <Stack direction="row" spacing={1}>
+            <Button color="inherit" disabled={updating} onClick={() => setOpen(false)}>
+              {t('newVersionDetected.later')}
+            </Button>
+            <Button
+              color="inherit"
+              disabled={updating}
+              onClick={update}
+              startIcon={updating ? <CircularProgress size={16} color="inherit" /> : null}
+            >
+              {t(updating ? 'newVersionDetected.updating' : 'newVersionDetected.update')}
+            </Button>
+          </Stack>
+        )}
+      >
+        {error || t('newVersionDetected.refresh')}
+      </Alert>
+    </Snackbar>
+  );
 };
 
 export default VersionDetector;
