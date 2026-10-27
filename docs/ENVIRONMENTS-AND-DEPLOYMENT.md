@@ -100,19 +100,23 @@ already-installed app names/icons can follow the browser/OS manifest update sche
 
 | Item | Verified value |
 |---|---|
-| Deployed application commit | `c55bb564c84d23531467f97e31f41155dc2aeee2` |
-| Lab release | `/srv/metrik-lab/releases/ide-unified-c55bb56` |
-| Current symlink | `/srv/metrik-lab/current` → that release |
-| Nginx UI root | `/srv/metrik-lab/current/frontend/build` |
-| Main UI script | `/static/index-CBE04nJd.js` |
+| Backend application commit | `c55bb564c84d23531467f97e31f41155dc2aeee2` |
+| Backend release / current symlink | `/srv/metrik-lab/current` → `/srv/metrik-lab/releases/ide-unified-c55bb56` |
+| Frontend application commit | `3b80325` (environment names/icons; no backend changes) |
+| Frontend release / current symlink | `/srv/metrik-lab/ui-current` → `/srv/metrik-lab/releases/ide-ui-3b80325` |
+| Nginx UI root | `/srv/metrik-lab/ui-current/frontend/build` |
+| Main UI script | `/static/index-DoNHh78S.js` |
 | Previous backend release | `/srv/metrik-lab/releases/ide-20261025` |
 | Previous served UI root | `/srv/metrik-lab/releases/ide-ui-browser-login-20261026-v2/frontend/build` |
 | Deployment rollback files | `/srv/metrik-lab/deploy-backups/unified-c55bb56` |
+| Frontend-only rollback files | `/srv/metrik-lab/deploy-backups/ui-3b80325` |
 | Windows live | Intentionally not deployed or restarted during this rollout |
 
-The previous backend and UI were on different releases; the current symlink now anchors both.
-Documentation-only commits after `c55bb56` do not mean the deployed application is missing a
-runtime fix. Read `current/REVISION`, the symlink and served asset hashes to determine reality.
+The unified rollout originally pointed both components through `current`. The later branding
+update introduced `ui-current` so frontend-only changes can ship without restarting backend
+instances. Both components still come from the same source history. Read `current/REVISION`
+for backend and `ui-current/REVISION` for frontend, plus the served asset hashes. Neither a
+documentation commit nor a frontend-only commit requires a new backend deployment.
 
 Changes included:
 
@@ -121,6 +125,10 @@ Changes included:
   because Windows archive conversion put CRLF in the runner shebang; automatic rollback
   restored the old release. The final release includes the permanent fix and regression test.
 - `c55bb56`: service worker activation and Update UI fixes, including translations.
+- `3b80325`: Local/Lab/Dev names and colored favicon/PWA icons. Deployed **frontend only**;
+  backend PID `4182625` and its `2026-10-27 09:56:21 CET` start time stayed unchanged.
+  Browser Update loaded `Claude IDE · Lab`, theme `#7C3AED`, and the new bundle successfully.
+  Local branding remains staged in source until the deferred Windows deployment.
 
 Verified: 60 JavaScript tests on Windows; 35 relevant JavaScript and 11 Python tests on Linux;
 production frontend build; live authenticated API/WS, profile terminal launch/stop, attachment
@@ -138,6 +146,7 @@ until its own refresh. This verifies that updating one tab does not navigate all
 |---|---|
 | Service | `claude-ide-lab.service`, user/group `claude-lab`, `environment=lab` |
 | Working directory | `/srv/metrik-lab/current/backend` |
+| Static UI | `/srv/metrik-lab/ui-current/frontend/build` (independent frontend release) |
 | Node | `/opt/metrik-lab/node-v24.14.0/bin/node` |
 | Backend settings | `/etc/claude-ide/settings.js`, symlinked from each release's `backend/settings.js` |
 | Build overrides | `/etc/claude-ide/frontend.env` |
@@ -197,9 +206,11 @@ deployment script exists. `scripts/deploy-live.mjs` targets **Windows**, never L
 7. Apply root ownership/read-only code permissions; MCP JSON is readable, settings keep their
    existing restricted ownership. Run Linux tests against the extracted code/dependencies.
    Install the matching runner and keep profile `sessionLookup` pointing through `current`.
-8. Validate Nginx with `nginx -t`. Atomically replace `current` using a temporary symlink in
-   the same directory and `mv -T`. Restart **only** `claude-ide-lab.service`; reload Nginx if
-   its configuration changed. Arm rollback for startup or smoke-test failure.
+8. Validate Nginx with `nginx -t`. For a full release, atomically replace `current` and
+   `ui-current` using temporary symlinks in the same directory and `mv -T`, both pointing at
+   the new release containing backend and built frontend. Restart **only**
+   `claude-ide-lab.service`; reload Nginx if its configuration changed. Arm rollback for
+   startup or smoke-test failure. For frontend-only work use the procedure below instead.
 9. Verify anonymous auth status, authenticated HTTP/WS, profile launch/stop, plan save and
    attachments. Use disposable test records and remove only those records. Check existing
    session IDs survived. Verify UI/SW hashes, MIME types and cache headers over HTTPS, then
@@ -215,6 +226,8 @@ curl --resolve lab-api.metrik.fit:443:10.88.0.1 https://lab-api.metrik.fit/api/v
 systemctl show claude-ide-lab.service -p ActiveState -p MainPID -p NRestarts
 readlink -f /srv/metrik-lab/current
 cat /srv/metrik-lab/current/REVISION
+readlink -f /srv/metrik-lab/ui-current
+cat /srv/metrik-lab/ui-current/REVISION
 ```
 
 The anonymous session response should report `ok: true`, `enabled: true`, `user: null`.
@@ -235,10 +248,37 @@ When piping a Bash script from PowerShell, strip CR characters and append a fina
 Here the backticks are PowerShell escape characters (use a literal single-quoted here-string
 for the Bash body); no shell interpolation of secrets is needed.
 
+### Frontend-only updates (no backend restart)
+
+Build from the desired commit with Lab overrides, including `VITE_IDE_ENVIRONMENT=lab`.
+Extract into a new `releases/ide-ui-<revision>/frontend/build` and write that commit into
+the release's `REVISION`. Preserve old hashed assets alongside the new ones, without replacing
+new files. Back up the previous UI symlink target, Nginx config and frontend build env. Atomically
+switch **only** `ui-current`; keep `current`, settings, profile runner and all backend code
+untouched. Nginx already serves through `ui-current`, so subsequent symlink switches need no
+config change or reload. Never run `systemctl restart claude-ide-lab.service` for this path.
+
+If changing Nginx configuration, `nginx -t` and reload it gracefully. Poll the expected HTML
+hash briefly: the first request immediately after reload can still hit an old worker. This
+happened during the initial branding switch and must not be confused with a broken artifact.
+Verify entrypoint, worker, manifest, icon assets, browser Update and unchanged backend
+PID/start time. Existing installed PWA metadata may update on the browser/OS's own schedule.
+
+For the branding release, archive SHA-256 is
+`c54b5733bdc9e7c99002e0935e2830b419a6457025a3894218a4080bc3bae38e`;
+served HTML SHA-256 is `7de4932792c8a2fe55087dc29c1aadfbc8f30e9d1c323664261d912a1330be05`.
+
 ### Rollback
 
+For a **frontend-only** release, restore its previous UI target and any changed Nginx/frontend
+env files, then verify the old UI is served. Reload Nginx only if its config changed; do not
+restart the backend. The `ui-3b80325` backup contains `nginx`, `frontend.env`,
+`previous-ui-release` and `backend-pid`. Its preceding UI is in the `ide-unified-c55bb56` release.
+
+For a **full backend/UI** release:
+
 Restore the selected deployment's saved Nginx site, profile configuration and installed runner;
-atomically repoint `current` to that backup's `previous-release`; validate/reload Nginx and
+atomically repoint `current` and the UI target to their recorded previous releases; validate/reload Nginx and
 restart only the Lab IDE service. Then repeat health and UI checks. Do not restore/delete
 databases or user files as part of code rollback. A future database migration needs its own
 rollback plan; this rollout did not introduce a data migration.
