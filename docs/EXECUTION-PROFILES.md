@@ -1,5 +1,9 @@
 # Linux execution profiles
 
+For actual Lab paths/profile accounts, deployment and rollback, see
+[ENVIRONMENTS-AND-DEPLOYMENT.md](ENVIRONMENTS-AND-DEPLOYMENT.md). The provisioning examples below
+are generic; do not overwrite an existing host's settings with their sample identities.
+
 Each AI/terminal card selects a server-owned execution profile. The session's profile ID is
 stored on the instance record and group item. Resume uses the stored ID, never a new client
 selection. Removing a profile prevents resume; IDs must never be reassigned to another OS home.

@@ -4,12 +4,18 @@
 Dashboard UI for running and managing many Claude Code, Codex and terminal instances.
 Built on react-boilerplate (Vite + React + Material UI).
 
+Read [environments and deployment](../docs/ENVIRONMENTS-AND-DEPLOYMENT.md) before changing
+API build settings, authentication or PWA updates. It includes the verified Lab release and
+the one-time recovery URL for old cached clients. The shared login gate is controlled by
+`VITE_LAB_AUTH` on both Windows and Lab; API URLs are compiled into the bundle.
+
 ## Rules
 - Plain JavaScript only. No TypeScript. Ever.
 - State management: Jotai, through `components/state/GlobalStateHelper`
 - UI components: Material UI
 - Follow existing boilerplate patterns — screens/, components/, hooks/, stores/, helpers/
-- No unnecessary dependencies. Never run `vite build` yourself; the live deploy does it.
+- No unnecessary dependencies. Build only when the user explicitly authorizes the build or
+  deployment for that target. Building for Lab does not authorize a Windows live deployment.
 
 ## Screens (src/screens/)
 - `Dashboard/` — title bar, group tabs, instance cards, saved cards, placeholder panels, dialogs

@@ -1,5 +1,9 @@
 # Lab authentication
 
+Deployment paths, current rollout status and the pending Windows activation are recorded in
+[ENVIRONMENTS-AND-DEPLOYMENT.md](ENVIRONMENTS-AND-DEPLOYMENT.md). This file describes configuration;
+its examples do not imply that authentication has already been activated in every installation.
+
 The same authentication implementation serves Windows local/dev installs and the Linux Lab.
 Each install selects its own settings and database; authentication does not require Linux
 execution profiles. Configure the Lab backend's external, root-owned settings as follows:

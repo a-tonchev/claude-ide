@@ -2,6 +2,22 @@
 
 ## What This Is
 A web-based IDE dashboard for running and managing multiple Claude Code terminal instances simultaneously. Think of it as a control panel where you can spin up multiple Claude agents, each working on different tasks or projects, and monitor all of them from a single UI.
+
+## Environments and deployment — read first
+
+**One codebase, separate install configuration:** Windows dev, Windows live and Linux Lab
+use the same `master`. A branch/worktree is not a deployed installation.
+Read [docs/ENVIRONMENTS-AND-DEPLOYMENT.md](docs/ENVIRONMENTS-AND-DEPLOYMENT.md) before
+merging versions, building, deploying, changing authentication or troubleshooting updates.
+It records the deployment map, current release, rollback procedure, PWA recovery and pending
+local rollout. Detailed configuration: [authentication](docs/LAB-AUTH.md) and
+[Linux execution profiles](docs/EXECUTION-PROFILES.md).
+
+As of **2026-10-27**, the unified application is deployed to Lab; Windows live at
+`D:\Programs\claude-ide` is deliberately still the previous installation. The user will stop
+the other local instances before authorizing that final deployment. Do not overwrite/restart
+Windows live as a side effect of documentation, merges, builds or a Lab deployment.
+
 ## Architecture
 
 ### Frontend (`frontend/`)
@@ -63,8 +79,8 @@ there rather than to tracked files.
   environment, and project dev servers read `PORT`.
 - `npm run deploy:live` (repo root) builds the frontend, stops the live backend, mirrors `backend/`
   and `frontend/build` into `D:\Programs\claude-ide`, keeps the live `settings.js`, then reloads
-  pm2 and saves the process list. **Never run it yourself** — it builds and restarts the live
-  system. The user runs it. `node scripts/deploy-live.mjs --frontend-only` rebuilds and copies
+  pm2 and saves the process list. Run it only when the user explicitly authorizes deployment
+  to Windows live; Lab authorization does not cover this target. `node scripts/deploy-live.mjs --frontend-only` rebuilds and copies
   just the UI; the live backend and its instances keep running.
 - Each backend's orphan sweep kills only its own MCP servers and `chrome-devtools-mcp` whose owner
   is gone (`processSweep.js`), so the two installs don't break each other's instances.
@@ -125,7 +141,8 @@ hot-reloads and never touches the backend or its PTYs.
 
 ## Rules
 - Plain JavaScript only. No TypeScript.
-- Never run build commands (`vite build`, `npm run build`, etc.)
+- Do not run build/deploy commands unless the user explicitly authorizes that work for the
+  relevant target. An authorized build does not authorize copying it into a running install.
 - Frontend state: Jotai. UI: Material UI.
 - Backend: native MongoDB driver (no Mongoose), uWebSockets.js.
 - Keep dependencies minimal.
