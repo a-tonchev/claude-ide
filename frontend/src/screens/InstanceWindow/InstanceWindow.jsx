@@ -49,6 +49,7 @@ import {
 import UrlEnums from '@/components/connections/enums/UrlEnums';
 import { STATUS_CONFIG, getInstanceTitle, stopConfirmText } from '@/helpers/instanceHelper';
 import useMobile from '@/components/layout/hooks/useMobile';
+import appBranding from '@/helpers/appBranding';
 
 const menuPaperSx = {
   bgcolor: '#313335',
@@ -113,15 +114,7 @@ const InstanceWindow = () => {
     const name = instance?.title || instance?.projectName || instance?.name;
     if (name) {
       const s = STATUS_CONFIG[instance.status] || STATUS_CONFIG.running;
-      document.title = `[${s.label}] ${name} — Claude IDE`;
-      // Update browser tab theme color
-      let meta = document.querySelector('meta[name="theme-color"]');
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = 'theme-color';
-        document.head.appendChild(meta);
-      }
-      meta.content = s.color;
+      document.title = `[${s.label}] ${name} — ${appBranding.name}`;
     }
   }, [instance?.title, instance?.projectName, instance?.name, instance?.status]);
 

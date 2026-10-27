@@ -52,6 +52,7 @@ Account data is separate in each install's database; unification does not synchr
 Lab frontend build overrides (`frontend/.env.production.local`, or equivalent build env):
 
 ```dotenv
+VITE_IDE_ENVIRONMENT=lab
 VITE_LAB_AUTH=true
 VITE_SERVER_PROTOCOL=https
 VITE_SERVER_HOST=lab-api.metrik.fit
@@ -66,6 +67,34 @@ Windows localhost. Never publish a Lab bundle without the overrides above. Conve
 reuse a Lab bundle for Windows live. For Windows live use HTTP localhost, port `6950`, and
 `VITE_LAB_AUTH=true` when activating the prepared local authentication. Dev uses port `6960`.
 Keep environment overrides in the build workspace so one target cannot contaminate the next.
+
+### Tab names, colored icons and installed app identity
+
+`VITE_IDE_ENVIRONMENT` is a **frontend branding** setting, independent of backend settings,
+authentication and execution profiles. It does not switch APIs or databases.
+
+| Value | Browser / PWA name | Icon and browser theme color |
+|---|---|---|
+| `local` | Claude IDE · Local | Blue `#2563EB` |
+| `lab` | Claude IDE · Lab | Purple `#7C3AED` |
+| `dev` | Claude IDE · Dev | Orange `#EA580C` |
+
+If omitted, Vite development mode uses `dev`; production builds use `local`. Lab builds must
+explicitly set `lab`. Invalid values fail the build. `frontend/branding.json` holds the shared
+names/colors; `frontend/branding.mjs` resolves the build profile; Vite uses it for the initial
+HTML title, favicon, Apple touch icon and generated `manifest.webmanifest`. React uses the
+same `appBranding` helper, including dashboard, plan and instance-window titles. Instance
+status stays in its title; it does not replace the environment's identifying color.
+
+SVG icons and 32/192/512px PNG fallbacks live in `frontend/public/branding/`. To regenerate them
+after changing colors, run `frontend/scripts/generate-branding-icons.ps1` on Windows. The
+existing hexagon mark stays the same in every environment. The old public `manifest.json`
+and generic icons are legacy assets for cached clients; new HTML uses only the generated
+environment-specific manifest. Do not add a second manifest link to `index.html`.
+
+Changing this branding needs only a frontend build and static deployment. **No backend
+restart or new database settings are needed.** Browser tabs adopt it after Update/reload;
+already-installed app names/icons can follow the browser/OS manifest update schedule.
 
 ## Verified release record — 2026-10-27
 

@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { Helmet } from 'react-helmet-async';
 
+import appBranding from '@/helpers/appBranding';
 import { TerminalIcon } from '@/components/Icons/Icons';
 import TitleBar from '@/components/TitleBar/TitleBar';
 import GroupTabs from '@/components/GroupTabs/GroupTabs';
@@ -832,7 +833,7 @@ const Dashboard = () => {
   return (
     <>
       <Helmet>
-        <title>Claude IDE</title>
+        <title>{appBranding.name}</title>
       </Helmet>
 
       <Box sx={{

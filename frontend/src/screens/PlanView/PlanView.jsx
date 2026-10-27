@@ -11,6 +11,7 @@ import Connections, { ApiEndpoints } from '@/components/connections/Connections'
 import MarkdownRenderer from '@/components/MarkdownRenderer/MarkdownRenderer';
 import CopyAllButton from '@/components/CopyAllButton/CopyAllButton';
 import { selectContents } from '@/helpers/clipboard';
+import appBranding from '@/helpers/appBranding';
 
 const PlanView = () => {
   const { planId } = useParams();
@@ -56,7 +57,7 @@ const PlanView = () => {
   return (
     <>
       <Helmet>
-        <title>{plan.title || 'Plan'} — Claude IDE</title>
+        <title>{`${plan.title || 'Plan'} — ${appBranding.name}`}</title>
       </Helmet>
 
       {/* Title and Copy stay in reach while scrolling a long plan */}

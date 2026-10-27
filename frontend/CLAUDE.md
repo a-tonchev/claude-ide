@@ -8,6 +8,9 @@ Read [environments and deployment](../docs/ENVIRONMENTS-AND-DEPLOYMENT.md) befor
 API build settings, authentication or PWA updates. It includes the verified Lab release and
 the one-time recovery URL for old cached clients. The shared login gate is controlled by
 `VITE_LAB_AUTH` on both Windows and Lab; API URLs are compiled into the bundle.
+`VITE_IDE_ENVIRONMENT=local|lab|dev` independently selects the tab/PWA name and icon color.
+`branding.json` and `branding.mjs` feed both Vite HTML/manifest generation and the React
+`helpers/appBranding.js` helper. Production defaults to Local; always set Lab explicitly.
 
 ## Rules
 - Plain JavaScript only. No TypeScript. Ever.

@@ -1,0 +1,5 @@
+{
+  "local": { "name": "Claude IDE · Local", "color": "#2563EB" },
+  "lab": { "name": "Claude IDE · Lab", "color": "#7C3AED" },
+  "dev": { "name": "Claude IDE · Dev", "color": "#EA580C" }
+}
