@@ -3,6 +3,17 @@ import { promisify } from 'node:util';
 
 const scrypt = promisify(scryptCallback);
 export const COOKIE_NAME = '__Host-claude_lab_session';
+export const LOCAL_COOKIE_NAME = 'claude_local_session';
+const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+// Use a literal bind address, never DNS, for the HTTP-only local exception.
+export function validateLabAuthBind(config = {}, host) {
+  if (config.enabled === true && config.allowLoopbackHttp === true
+    && !['127.0.0.1', '::1'].includes(host)) {
+    throw new Error('labAuth.allowLoopbackHttp requires a literal loopback listenHost.');
+  }
+  return host;
+}
 export const tokenHash = token => createHash('sha256').update(token).digest('hex');
 export const newToken = () => randomBytes(32).toString('base64url');
 const passwordOptions = { N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
@@ -28,6 +39,8 @@ export class LabAuthCore {
   constructor(config = {}, db = () => null, prefix = '/api/v1') {
     this.config = config;
     this.enabled = config.enabled === true;
+    this.localHttp = this.enabled && config.allowLoopbackHttp === true;
+    this.cookieName = this.localHttp ? LOCAL_COOKIE_NAME : COOKIE_NAME;
     this.db = db;
     this.prefix = prefix;
     this.services = new Map();
@@ -36,19 +49,26 @@ export class LabAuthCore {
     this.sessionMs = Math.min(Math.max(Number(config.sessionHours) || 12, 1), 24) * 3600000;
     if (this.enabled && (!Array.isArray(config.allowedOrigins) || !config.allowedOrigins.length
       || config.allowedOrigins.some(origin => {
-        try { return new URL(origin).origin !== origin || !origin.startsWith('https://'); } catch { return true; }
-      }))) throw new Error('labAuth.allowedOrigins must contain exact HTTPS origins.');
+        try {
+          const url = new URL(origin);
+          return url.origin !== origin || (this.localHttp
+            ? url.protocol !== 'http:' || !loopbackHosts.has(url.hostname)
+            : url.protocol !== 'https:');
+        } catch { return true; }
+      }))) throw new Error(this.localHttp
+      ? 'labAuth.allowedOrigins must contain only exact loopback HTTP origins.'
+      : 'labAuth.allowedOrigins must contain exact HTTPS origins.');
   }
 
   originAllowed(origin) { return this.config.allowedOrigins?.includes(origin) === true; }
 
   cookie(token, clear = false) {
-    return `${COOKIE_NAME}=${clear ? '' : token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${clear ? 0 : Math.floor(this.sessionMs / 1000)}`;
+    return `${this.cookieName}=${clear ? '' : token}; Path=/; HttpOnly; ${this.localHttp ? '' : 'Secure; '}SameSite=Strict; Max-Age=${clear ? 0 : Math.floor(this.sessionMs / 1000)}`;
   }
 
   readToken(cookie = '') {
-    const values = cookie.split(';').map(s => s.trim()).filter(s => s.startsWith(`${COOKIE_NAME}=`));
-    const token = values.length === 1 ? values[0].slice(COOKIE_NAME.length + 1) : '';
+    const values = cookie.split(';').map(s => s.trim()).filter(s => s.startsWith(`${this.cookieName}=`));
+    const token = values.length === 1 ? values[0].slice(this.cookieName.length + 1) : '';
     return /^[A-Za-z0-9_-]{43}$/.test(token) ? token : null;
   }
 

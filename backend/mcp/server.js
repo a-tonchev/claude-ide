@@ -146,14 +146,17 @@ const tools = {
       required: ['title', 'content'],
     },
     async handler({ title, content }) {
-      await apiPost(`/instances/${INSTANCE_ID}/status`, { status: 'plan_ready' });
-      return apiPost('/plans/add', {
+      const result = await apiPost('/plans/add', {
         project_id: PROJECT_ID,
         instance_id: INSTANCE_ID,
         title,
         content,
         status: 'draft',
       });
+      if (result.ok) {
+        await apiPost(`/instances/${INSTANCE_ID}/status`, { status: 'plan_ready' });
+      }
+      return result;
     },
   },
 };

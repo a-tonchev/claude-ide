@@ -15,8 +15,11 @@ import InstanceStore from '#modules/instanceStore/InstanceStore';
 import { ensureMcpConfig, setMcpApiPort, setAdditionalMcpServers } from '../mcp/setupMcp.js';
 import LabAuth from '#modules/labAuth/LabAuth';
 import protectApp from '#modules/labAuth/protectApp';
+import { validateLabAuthBind } from '#modules/labAuth/LabAuthCore.js';
 
 const settingsToUse = SystemSettingsServices.getSettings();
+const listenHost = validateLabAuthBind(settingsToUse.labAuth,
+  settingsToUse.listenHost || (LabAuth.enabled ? '127.0.0.1' : '0.0.0.0'));
 
 const mongoSetup = mongoPool({
   uri: settingsToUse.MONGO_URL,
@@ -77,7 +80,7 @@ setupRouteHandlers(app, mongoSetup);
 
 setupNotFoundRoute(app);
 
-app.listen(settingsToUse.listenHost || (LabAuth.enabled ? '127.0.0.1' : '0.0.0.0'), port, listenSocket => {
+app.listen(listenHost, port, listenSocket => {
   if (listenSocket) {
     if (process.env.npm_lifecycle_event === 'start-dev') {
       console.info('Start in DEVELOPMENT mode');

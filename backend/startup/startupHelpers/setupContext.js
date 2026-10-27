@@ -43,9 +43,10 @@ const getIpFromBuffer = ipArrayBuffer => {
     const ipAddress = ipaddr.fromByteArray(binaryArray);
 
     ips.ipv6 = ipAddress.toString();
+    ips.ip = ips.ipv6;
     if (ips.ipv6 === '::1') {
       ips.ip = '127.0.0.1';
-    } else {
+    } else if (ipAddress.kind() === 'ipv6' && ipAddress.isIPv4MappedAddress()) {
       ips.ip = ipAddress.toIPv4Address().toString();
     }
   } catch (e) {

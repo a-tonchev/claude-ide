@@ -49,12 +49,13 @@ test('Codex receives independent instance identity and preserves prompt quoting'
 
 test('shared MCP tools route two agents to their own dashboard cards', { timeout: 10000 }, async t => {
   const requests = [];
+  let failPlan = false;
   const api = createServer(async (req, res) => {
     let body = '';
     for await (const chunk of req) body += chunk;
-    requests.push({ url: req.url, body: JSON.parse(body) });
+    requests.push({ url: req.url, body: JSON.parse(body), authorization: req.headers.authorization });
     res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ ok: true }));
+    res.end(JSON.stringify(req.url.endsWith('/plans/add') && failPlan ? { ok: false, message: 'Plan rejected' } : { ok: true }));
   });
   api.listen(0, '127.0.0.1');
   await once(api, 'listening');
@@ -69,6 +70,7 @@ test('shared MCP tools route two agents to their own dashboard cards', { timeout
         PROJECT_ID: 'shared-project',
         API_URL: `http://127.0.0.1:${api.address().port}`,
         API_PREFIX: '/api/v1',
+        CLAUDE_IDE_MCP_TOKEN: 'test-service-token',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -104,6 +106,22 @@ test('shared MCP tools route two agents to their own dashboard cards', { timeout
       assert.equal(requests.at(-1).url, `/api/v1/instances/${instanceId}/${suffix}`);
       assert.deepEqual(requests.at(-1).body, args);
     }
+    const plan = { title: 'Implementation plan', content: '# Plan\n\n1. Verify routing.' };
+    const response = await call('tools/call', { name: 'send_plan', arguments: plan });
+    assert.equal(JSON.parse(response.result.content[0].text).ok, true);
+    assert.deepEqual(requests.at(-2), {
+      url: '/api/v1/plans/add',
+      body: { project_id: 'shared-project', instance_id: instanceId, ...plan, status: 'draft' },
+      authorization: 'Bearer test-service-token',
+    });
+    assert.equal(requests.at(-1).url, `/api/v1/instances/${instanceId}/status`);
+    assert.deepEqual(requests.at(-1).body, { status: 'plan_ready' });
+    failPlan = true;
+    const beforeFailure = requests.length;
+    const failed = await call('tools/call', { name: 'send_plan', arguments: plan });
+    assert.equal(JSON.parse(failed.result.content[0].text).ok, false);
+    assert.equal(requests.length, beforeFailure + 1, 'failed saves must not set plan_ready');
+    failPlan = false;
     child.stdin.end();
     await once(child, 'exit');
   }

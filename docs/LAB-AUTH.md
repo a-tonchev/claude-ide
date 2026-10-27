@@ -1,6 +1,8 @@
 # Lab authentication
 
-Enable only in the isolated lab backend's external, root-owned settings:
+The same authentication implementation serves Windows local/dev installs and the Linux Lab.
+Each install selects its own settings and database; authentication does not require Linux
+execution profiles. Configure the Lab backend's external, root-owned settings as follows:
 
 ```js
 labAuth: {
@@ -30,6 +32,83 @@ HttpOnly, SameSite=Strict, Path=/, with no Domain attribute. It belongs only to 
 the two HTTPS lab hosts are same-site, so credentialed frontend requests still send it.
 Do not enable access for untrusted origins. Login is limited by account and direct peer.
 Profiles share projects and dashboard capabilities; personal login is not tenant isolation.
+
+## Windows local and dev installs
+
+Settings keys are selected by the backend's `environment` variable (`local` when unset).
+Keep complete install settings in the existing git-ignored `backend/settings.js`; retain
+its required database/API/encryption/path fields. Add these explicit per-install values
+to the corresponding settings entry (do not inherit a remote execution profile):
+
+```js
+// settings.local — installed Windows UI on localhost:3010
+port: 6950,
+dbName: 'claude-ide',
+listenHost: '127.0.0.1',
+labAuth: {
+  enabled: true,
+  allowLoopbackHttp: true,
+  allowedOrigins: ['http://localhost:3010', 'http://localhost:6950'],
+  sessionHours: 12,
+  allowServiceKeePass: false,
+},
+
+// settings.dev — Windows Vite UI on localhost:3030
+port: 6960,
+dbName: 'claude-ide-dev',
+listenHost: '127.0.0.1',
+labAuth: {
+  enabled: true,
+  allowLoopbackHttp: true,
+  allowedOrigins: ['http://localhost:3030', 'http://localhost:6960'],
+  sessionHours: 12,
+  allowServiceKeePass: false,
+},
+```
+
+These are fragments for separate entries, not a replacement settings file. The Lab entry
+uses its own database, HTTPS origins and the default `allowLoopbackHttp: false`. Backend
+settings selection is independent of the OS execution mode. Leave Linux execution-profile
+configuration out of the Windows entries. Local login uses the same users, sessions and
+route protection, stored in that install's database.
+
+For dev, put the following frontend values in `frontend/.env.local` (local overrides, not
+a UI toggle), then start the normal Vite development command. For the installed frontend,
+provide the corresponding values at its normal build/deployment step using port 6950.
+`VITE_LAB_AUTH` enables the shared login gate despite its historical name.
+
+```dotenv
+VITE_LAB_AUTH=true
+VITE_SERVER_PROTOCOL=http
+VITE_SERVER_HOST=localhost
+VITE_SERVER_PORT=6960
+VITE_DEV_HOST=127.0.0.1
+```
+
+Start the dev backend with `$env:environment = 'dev'; npm run start-dev` from `backend/`.
+The selected frontend and backend auth settings must agree. Use `localhost` consistently
+for UI and API: mixing `localhost` and `127.0.0.1` breaks SameSite cookie delivery. Cookies
+are host-scoped, not port-scoped, so local/dev installs on the same host share the cookie
+name; signing into one can require signing into the other again. Databases remain separate.
+
+HTTP is accepted only with explicit `allowLoopbackHttp: true`, only when **all** configured
+origins are exact loopback HTTP origins, and only with a literal `127.0.0.1` or `::1` backend
+bind. Startup rejects public/wildcard/DNS binds for this option. This mode uses a separate
+`claude_local_session` cookie with HttpOnly, SameSite=Strict, Path=/ and no Domain or Secure
+attribute. HTTPS Lab cookies keep their existing Secure `__Host-` behavior. Do not use the
+HTTP option for a LAN or remote install.
+
+Create a local/dev account from PowerShell in `backend/`, selecting that same environment:
+
+```powershell
+$env:environment = 'dev' # 'local' for the installed Windows backend
+node --import ./register.mjs scripts/lab-user.mjs --email you@example.com --role admin --secret-file 'D:\private-secrets\claude-ide-password.txt'
+```
+
+Create the password file outside the checkout, restrict its Windows ACL to your account,
+and remove it after provisioning. No password goes in command arguments or tracked files.
+Use `--reset` or `--disable` as described below. This configuration does not create accounts
+automatically or enable authentication in any running install.
 
 ## Account administration
 

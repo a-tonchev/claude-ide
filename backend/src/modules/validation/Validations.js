@@ -7,6 +7,8 @@ const ajv = new Ajv({
   allErrors: true, strictTypes: false, verbose: true,
 });
 AjvBsonType(ajv);
+// Serialized schemas are cache keys, not URI references for Ajv's registry.
+const compiledSchemas = new Map();
 
 const Validations = {
   validateSchema(ctx, data, schemaToUse, attributesToExclude, returnErrors = false) {
@@ -30,11 +32,11 @@ const Validations = {
 
     const schemaName = JSON.stringify(schema);
 
-    let validate = ajv.getSchema(schemaName);
+    let validate = compiledSchemas.get(schemaName);
 
     if (!validate) {
-      ajv.addSchema(schema, schemaName);
-      validate = ajv.getSchema(schemaName);
+      validate = ajv.compile(schema);
+      compiledSchemas.set(schemaName, validate);
     }
 
     const valid = validate(data);
