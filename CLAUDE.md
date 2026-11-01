@@ -29,6 +29,17 @@ uWebSockets.js + MongoDB server. Manages PTY instances (node-pty), spawns Claude
 ### MCP Integration
 The backend injects MCP tools and system prompts into spawned Claude instances automatically. These instructions (status updates, milestones, messaging, permissions) are hardcoded in `backend/src/modules/instanceManager/InstanceManager.js` — they do NOT come from this file.
 
+### Session names
+An instance's IDE title is also its Claude Code **session name**, the name other Claude Code
+sessions see in ListAgents and use for cross-session SendMessage. `sessionNameFor`
+(`instanceManager/sessionName.js`) turns the title into `[a-z0-9-]`, max 60 (Cyrillic
+transliterated: "Ню фиксър" → `nyu-fiksar`). A titled instance starts/resumes with `-n <name>`;
+an untitled one keeps Claude's default. A rename (dashboard or the instance's own MCP
+`rename_me` → `POST /instances/:id/title`) types `/rename <name>` into the PTY, but only when that
+can't answer an open prompt: during startup (`running`), `waiting`, `plan_ready` or while a user
+message is being submitted it waits for the next status change. Clearing the title renames to the
+project name. Claude only; Codex titles stay dashboard-only.
+
 ### Launch Flags
 User-defined checkboxes shown when launching a Claude instance (Settings → Launch Flags). Each is a
 `settings` doc of type `launchFlag` with `name`, `args` and optional `instructions`. Checked flags

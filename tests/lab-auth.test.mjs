@@ -135,6 +135,8 @@ test('service tokens permit own MCP routes only and revoke on exit', async () =>
   assert.ok(scope);
   assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/instances/i1/status'), true);
   assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/instances/i2/status'), false);
+  assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/instances/i1/title'), true);
+  assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/instances/i2/title'), false);
   assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/settings/getCredentials', {}), false);
   assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/plans/add', { instance_id: 'i2', project_id: 'p1' }), false);
   assert.equal(auth.serviceAllowed(scope, 'post', '/api/v1/plans/add', { instance_id: 'i1', project_id: 'p1' }), true);

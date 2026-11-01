@@ -16,6 +16,8 @@ import {
   descendantsOf, killPids, readProcessTable, readProcessTableAsync, sweepMcpOrphansAsync,
 } from './processSweep.js';
 import { buildCodexArgs, resolveCodexCommand } from './codexLauncher.js';
+import { claudeArgv, claudeWindowsCommand } from './claudeLaunch.js';
+import { renameTarget, sessionNameArgs } from './sessionName.js';
 import {
   codexInstanceMarker, findClaudeTranscript, findCodexSession, isUuid,
 } from './sessionFiles.js';
@@ -127,7 +129,7 @@ const CODEX_PERMISSIONS = [
   'Reading files, searching, and listing directories never need permission.',
 ];
 
-const buildMcpSystemPrompt = permissions => [
+const buildMcpSystemPrompt = (permissions, extraTools = []) => [
   'You are managed by Claude IDE. The user sees ONLY the dashboard — never the terminal.',
   '',
   'IMPORTANT OUTPUT RULE: Do NOT write any text to the terminal. No prose, no explanations, no summaries.',
@@ -142,6 +144,7 @@ const buildMcpSystemPrompt = permissions => [
   '- user_input_needed({ message, choices }) — ask the user a question. NEVER use AskUserQuestion, ALWAYS this tool.',
   '- listKeePassConfigs() — list all KeePass database configurations. Returns available configs with their IDs.',
   '- getKeePassCredentials({ settingsId }) — get decrypted KeePass DB credentials by settings ID. Use to access passwords stored in KeePass instead of asking the user.',
+  ...extraTools,
   '',
   'CRITICAL — user_input_needed is ASYNCHRONOUS:',
   'The API returns { ok: true } immediately — this is NOT the user\'s answer, just an acknowledgment.',
@@ -166,7 +169,9 @@ const buildMcpSystemPrompt = permissions => [
   'Then follow its instructions. You have access to getObserver/setObserver MCP tools for persistent state.',
 ].join('\n');
 
-const MCP_SYSTEM_PROMPT = buildMcpSystemPrompt(CLAUDE_PERMISSIONS);
+const MCP_SYSTEM_PROMPT = buildMcpSystemPrompt(CLAUDE_PERMISSIONS, [
+  'Your session name (seen by other Claude sessions) follows your IDE title; to change it use rename_me({ name }).',
+]);
 const CODEX_SYSTEM_PROMPT = buildMcpSystemPrompt(CODEX_PERMISSIONS);
 
 // The backend usually runs inside a long-lived terminal whose PATH was captured
@@ -306,7 +311,8 @@ function withFilesSection(prompt, instanceId) {
   return section ? `${prompt}\n\n${section}` : prompt;
 }
 
-function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launchFlags = [], instanceName = '', sessionArgs = [], profile = null) {
+// `nameArgs` (['-n', name] or []) set the Claude Code session name other sessions see.
+function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launchFlags = [], instanceName = '', sessionArgs = [], profile = null, nameArgs = []) {
   const basePrompt = extraEnv.CLAUDE_IDE_SYSTEM_PROMPT || MCP_SYSTEM_PROMPT;
   const systemPrompt = withFilesSection(buildSystemPrompt(basePrompt, launchFlags), extraEnv.INSTANCE_ID);
   const filesDir = FileStore.getRoot();
@@ -328,23 +334,19 @@ function spawnClaude(cwd, args = [], extraEnv = {}, mcpConfigPath = null, launch
   if (platform === 'win32') {
     const systemRoot = process.env.SystemRoot || process.env.SYSTEMROOT || 'C:\\Windows';
     const psPath = `${systemRoot}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`;
-    // --add-dir takes several values, so it goes before the next option
-    const addDirFlag = filesDir ? ' --add-dir $env:CLAUDE_IDE_FILES_DIR' : '';
-    const mcpFlag = mcpConfigPath ? ` --mcp-config "${mcpConfigPath}"` : '';
-    // Session args are a fixed flag plus a validated UUID, so they are safe to inline.
-    const sessionSuffix = sessionArgs.length ? ` ${sessionArgs.join(' ')}` : '';
-    const flagsSuffix = flagStrings.length ? ` ${flagStrings.join(' ')}` : '';
-    return pty.spawn(psPath, ['-NoLogo', '-Command', `claude --append-system-prompt $env:CLAUDE_IDE_SYSTEM_PROMPT${addDirFlag}${mcpFlag}${sessionSuffix}${flagsSuffix}`], {
+    const command = claudeWindowsCommand({
+      hasFilesDir: !!filesDir, mcpConfigPath, sessionArgs, nameArgs, flagStrings,
+    });
+    return pty.spawn(psPath, ['-NoLogo', '-Command', command], {
       name: 'xterm-256color',
       cwd,
       env,
     });
   }
 
-  const mcpArgs = mcpConfigPath ? ['--mcp-config', mcpConfigPath] : [];
-  const flagArgs = flagStrings.flatMap(tokenizeArgs);
-  const addDirArgs = filesDir ? ['--add-dir', filesDir] : [];
-  const invocation = ['--append-system-prompt', systemPrompt, ...addDirArgs, ...mcpArgs, ...sessionArgs, ...flagArgs, ...args];
+  const invocation = claudeArgv({
+    systemPrompt, filesDir, mcpConfigPath, sessionArgs, nameArgs, flagArgs: flagStrings.flatMap(tokenizeArgs), args,
+  });
   const launch = profile ? profileLaunch(SystemSettingsServices.getSettings(), profile, extraEnv.INSTANCE_ID, 'claude', cwd, invocation, env) : null;
   return pty.spawn(launch?.file || 'claude', launch?.args || invocation, {
     name: 'xterm-256color', cwd, env: launch?.env || env,
@@ -478,6 +480,8 @@ const InstanceManager = {
     }
 
     const id = record?._id || generateId();
+    // A resumed instance keeps its IDE title as its Claude Code session name.
+    const nameArgs = provider === 'claude' ? sessionNameArgs(record?.title, projectName) : [];
     // Claude gets its session id up front (a record without one starts fresh under a
     // new id); Codex's is detected after it starts.
     const sessionId = record?.sessionId || (provider === 'claude' ? generateId() : null);
@@ -511,7 +515,7 @@ const InstanceManager = {
           name: 'xterm-256color', cwd, env: launch?.env || env,
         });
       } else {
-        ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath, launchFlags, projectName, claudeSessionArgs(sessionId, profile), profile);
+        ptyProcess = spawnClaude(cwd, args, extraEnv, mcpConfigPath, launchFlags, projectName, claudeSessionArgs(sessionId, profile), profile, nameArgs);
       }
     } catch (err) {
       LabAuth.revokeServiceToken(id);
@@ -529,6 +533,10 @@ const InstanceManager = {
       projectId,
       projectName,
       title: record?.title || null,
+      // The Claude Code session name the IDE gave it (null: Claude's default), and a rename
+      // waiting until it is safe to type (see sessionName.js).
+      sessionName: nameArgs[1] || null,
+      pendingSessionName: null,
       saved: !!record?.saved,
       cwd,
       pty: ptyProcess,
@@ -560,6 +568,7 @@ const InstanceManager = {
 
     const id = record?._id || generateId();
     const sessionId = record?.sessionId || generateId();
+    const nameArgs = sessionNameArgs(record?.title, name || 'Observer');
 
     // Ensure shared MCP config + set tool permissions (no files in project dir)
     let mcpConfigPath = null;
@@ -585,7 +594,7 @@ const InstanceManager = {
     };
     let ptyProcess;
     try {
-      ptyProcess = spawnClaude(cwd, [], extraEnv, mcpConfigPath, [], '', claudeSessionArgs(sessionId, profile), profile);
+      ptyProcess = spawnClaude(cwd, [], extraEnv, mcpConfigPath, [], '', claudeSessionArgs(sessionId, profile), profile, nameArgs);
     } catch (err) {
       LabAuth.revokeServiceToken(id);
       throw err;
@@ -601,6 +610,8 @@ const InstanceManager = {
       projectId: observerId,
       projectName: name || 'Observer',
       title: record?.title || null,
+      sessionName: nameArgs[1] || null,
+      pendingSessionName: null,
       saved: !!record?.saved,
       cwd,
       pty: ptyProcess,
@@ -836,11 +847,18 @@ const InstanceManager = {
     return true;
   },
 
+  // A running Claude instance's session name follows its title: the rename waits in
+  // pendingSessionName until WsHandler can safely type `/rename` (null cancels one).
   setTitle(instanceId, title) {
     const instance = instances.get(instanceId);
     if (!instance) return false;
     instance.title = title || null;
     persist(instance, () => InstanceStore.updateRecord(instanceId, { title: instance.title }));
+    if (instance.provider === 'claude' && isRemembered(instance) && instance.status !== 'exited') {
+      instance.pendingSessionName = renameTarget({
+        title: instance.title, projectName: instance.projectName, currentName: instance.sessionName,
+      });
+    }
     return true;
   },
 

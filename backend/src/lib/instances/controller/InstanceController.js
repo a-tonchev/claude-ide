@@ -1,10 +1,13 @@
 import InstanceManager from '#modules/instanceManager/InstanceManager';
 import InstanceStore from '#modules/instanceStore/InstanceStore';
-import WsHandler, { publishStatus, recordFeedItem, setStatus } from '#modules/wsHandler/WsHandler';
+import WsHandler, {
+  applyTitle, publishStatus, recordFeedItem, setStatus,
+} from '#modules/wsHandler/WsHandler';
 import { FeedKinds } from '../enums/InstanceEnums';
 
 const FEED_PAGE_SIZE = 50;
 const FEED_MAX_PAGE_SIZE = 200;
+const MAX_TITLE_LENGTH = 120;
 
 const notFound = ctx => ctx.modS.responses.createErrorResponse(
   ctx,
@@ -78,6 +81,23 @@ const InstanceController = {
     publishStatus(id, 'waiting');
 
     return ctx.modS.responses.createSuccessResponse(ctx);
+  },
+
+  // The instance renames itself (MCP rename_me): the same path as a dashboard rename, so
+  // the title is saved, every client gets title_update and a Claude session gets /rename.
+  async setTitle(ctx) {
+    const { id } = ctx.params;
+    const { title } = ctx.request.body || {};
+
+    if (typeof title !== 'string') return badRequest(ctx, 'title must be a string');
+    const trimmed = title.trim();
+    if (!trimmed || trimmed.length > MAX_TITLE_LENGTH) {
+      return badRequest(ctx, `title must be 1-${MAX_TITLE_LENGTH} characters`);
+    }
+
+    const result = applyTitle(id, trimmed);
+    if (!result) return notFound(ctx);
+    return ctx.modS.responses.createSuccessResponse(ctx, result);
   },
 
   async addMessage(ctx) {

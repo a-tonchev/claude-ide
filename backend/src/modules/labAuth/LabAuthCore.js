@@ -127,7 +127,7 @@ export class LabAuthCore {
   serviceAllowed(scope, method, path, body = {}) {
     if (!scope || method !== 'post' || !path.startsWith(`${this.prefix}/`)) return false;
     const relative = path.slice(this.prefix.length);
-    if (['status', 'milestones', 'messages', 'user-input'].some(action => relative === `/instances/${scope.instanceId}/${action}`)) return true;
+    if (['status', 'milestones', 'messages', 'user-input', 'title'].some(action => relative === `/instances/${scope.instanceId}/${action}`)) return true;
     if (relative === '/plans/add') return body.instance_id === scope.instanceId && body.project_id === scope.projectId;
     if (relative === '/settings/all') return body.type === 'keepass';
     if (relative === '/settings/getCredentials') return this.config.allowServiceKeePass === true;

@@ -8,6 +8,7 @@ import GroupEnums from '#lib/groups/enums/GroupEnums';
 import { FeedKinds } from '#lib/instances/enums/InstanceEnums';
 import FileStore from '#modules/files/FileStore';
 import { configuredProfiles } from '../instanceManager/executionProfiles.js';
+import { renameStep } from '../instanceManager/sessionName.js';
 
 const prefix = SystemSettingsServices.getRoutePrefix();
 const wsPath = `${prefix}/ws`;
@@ -71,6 +72,8 @@ function broadcastGroupStatus(instanceId) {
 function publishStatus(instanceId, status) {
   WsHandler.publish(`instance_${instanceId}`, { type: 'status_update', instanceId, status });
   broadcastGroupStatus(instanceId);
+  // A rename that waited for a question or plan to be answered can go now.
+  flushSessionRename(instanceId);
 }
 
 function setStatus(instanceId, status) {
@@ -405,8 +408,77 @@ function handleInput(ws, message) {
   }
 }
 
+// Type a line as the dashboard does: text, Enter after ENTER_DELAY_MS, a confirming Enter
+// after SUBMIT_DELAY_MS. Both timers are the shared ones, so user input that arrives
+// meanwhile flushes the Enter first instead of being glued to this line.
+function typeLine(instanceId, text) {
+  cancelPendingSubmit(instanceId);
+  InstanceManager.write(instanceId, text);
+  const timer = setTimeout(() => {
+    pendingEnter.delete(instanceId);
+    InstanceManager.write(instanceId, '\r');
+    pendingSubmit.set(instanceId, setTimeout(() => {
+      pendingSubmit.delete(instanceId);
+      InstanceManager.write(instanceId, '\r');
+    }, SUBMIT_DELAY_MS));
+  }, ENTER_DELAY_MS);
+  pendingEnter.set(instanceId, timer);
+}
+
+// How soon a rename held back by the backend's own typing (a user message being
+// submitted) is tried again.
+const RENAME_RETRY_MS = 1500;
+const renameRetry = new Map();
+
+// The IDE title is the Claude Code session name (seen by other sessions in ListAgents).
+// The model can't run /rename itself, so the backend types it, but only when typed text
+// can't answer an open prompt; otherwise the rename waits (see renameStep).
+function flushSessionRename(instanceId) {
+  const instance = InstanceManager.get(instanceId);
+  if (!instance?.pendingSessionName) return;
+  const step = renameStep({
+    pendingName: instance.pendingSessionName,
+    status: instance.status,
+    pendingInput: instance.pendingInput,
+    inputInFlight: pendingEnter.has(instanceId) || pendingSubmit.has(instanceId),
+  });
+  if (step.action === 'drop') {
+    instance.pendingSessionName = null;
+  } else if (step.action === 'retry' && !renameRetry.has(instanceId)) {
+    renameRetry.set(instanceId, setTimeout(() => {
+      renameRetry.delete(instanceId);
+      flushSessionRename(instanceId);
+    }, RENAME_RETRY_MS));
+  } else if (step.action === 'type') {
+    instance.sessionName = instance.pendingSessionName;
+    instance.pendingSessionName = null;
+    typeLine(instanceId, step.command);
+  }
+}
+
+// Set an instance's title (dashboard rename or the instance's own rename_me) and tell
+// every client. `title` is trimmed and capped; empty resets to the default.
+function applyTitle(instanceId, title) {
+  const trimmed = title.trim().slice(0, 120);
+  if (!InstanceManager.setTitle(instanceId, trimmed || null)) return null;
+  WsHandler.publish(`instance_${instanceId}`, {
+    type: 'title_update',
+    instanceId,
+    title: trimmed || null,
+  });
+  flushSessionRename(instanceId);
+  const instance = InstanceManager.get(instanceId);
+  return {
+    title: trimmed || null,
+    sessionName: instance.pendingSessionName || instance.sessionName || null,
+    renamePending: !!instance.pendingSessionName,
+  };
+}
+
 function cleanupPendingTimers(instanceId) {
   cancelPendingSubmit(instanceId);
+  clearTimeout(renameRetry.get(instanceId));
+  renameRetry.delete(instanceId);
   const enterTimer = pendingEnter.get(instanceId);
   if (enterTimer) {
     clearTimeout(enterTimer);
@@ -641,19 +713,9 @@ function handleRename(ws, message) {
   const { instanceId, title } = message;
   if (!instanceId || typeof title !== 'string') return;
 
-  const instance = InstanceManager.get(instanceId);
-  if (!instance) {
+  if (!applyTitle(instanceId, title)) {
     return sendJson(ws, { type: 'error', message: 'Instance not found' });
   }
-
-  const trimmed = title.trim().slice(0, 120);
-  InstanceManager.setTitle(instanceId, trimmed || null);
-
-  WsHandler.publish(`instance_${instanceId}`, {
-    type: 'title_update',
-    instanceId,
-    title: trimmed || null,
-  });
 }
 
 const messageHandlers = {
@@ -754,6 +816,6 @@ const WsHandler = {
 };
 
 export {
-  broadcastGroupStatus, publishStatus, recordFeedItem, setStatus,
+  applyTitle, broadcastGroupStatus, publishStatus, recordFeedItem, setStatus,
 };
 export default WsHandler;

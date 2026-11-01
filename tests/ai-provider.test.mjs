@@ -92,7 +92,7 @@ test('shared MCP tools route two agents to their own dashboard cards', { timeout
     assert.ok(init.result.capabilities.tools);
     child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
     const list = await call('tools/list', {});
-    for (const tool of ['send_message', 'send_milestone', 'send_plan', 'user_input_needed', 'update_status']) {
+    for (const tool of ['send_message', 'send_milestone', 'send_plan', 'user_input_needed', 'update_status', 'rename_me']) {
       assert.ok(list.result.tools.some(entry => entry.name === tool), tool);
     }
     for (const [name, args, suffix] of [
@@ -106,6 +106,13 @@ test('shared MCP tools route two agents to their own dashboard cards', { timeout
       assert.equal(requests.at(-1).url, `/api/v1/instances/${instanceId}/${suffix}`);
       assert.deepEqual(requests.at(-1).body, args);
     }
+    const renamed = await call('tools/call', { name: 'rename_me', arguments: { name: 'New Feature Fixer' } });
+    assert.equal(JSON.parse(renamed.result.content[0].text).ok, true);
+    assert.deepEqual(requests.at(-1), {
+      url: `/api/v1/instances/${instanceId}/title`,
+      body: { title: 'New Feature Fixer' },
+      authorization: 'Bearer test-service-token',
+    });
     const plan = { title: 'Implementation plan', content: '# Plan\n\n1. Verify routing.' };
     const response = await call('tools/call', { name: 'send_plan', arguments: plan });
     assert.equal(JSON.parse(response.result.content[0].text).ok, true);

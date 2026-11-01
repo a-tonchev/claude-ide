@@ -27,6 +27,8 @@ to the dashboard over uWebSockets.js. Built on rest-api-boilerplate.
 - `instanceManager/sessionFiles.js` — Claude transcripts and Codex session detection, for resume
 - `instanceManager/wslCleanup.js` — marker-based cleanup of the programs WSL terminals start
 - `instanceManager/codexLauncher.js` — Codex invocation-scoped MCP config
+- `instanceManager/claudeLaunch.js` — the Claude command line / argv (pure, tested)
+- `instanceManager/sessionName.js` — title → Claude Code session name, and when `/rename` is safe to type
 - `instanceStore/InstanceStore.js` — reads and writes of `instances` and `instanceMessages`
 - `files/FileStore.js` — chat attachments under settings.js `filesDir` (instances/<id>, shared/);
   its raw HTTP routes (`/files/upload|get|delete|config`) are in `startup/routes/setup/setupFileRoutes.js`
@@ -38,7 +40,9 @@ to the dashboard over uWebSockets.js. Built on rest-api-boilerplate.
 - Feed items are written to MongoDB, then published as `feed_item`; no feed is kept in memory.
   Status and pending questions are live state in memory only.
 - `/instances/:id/*` routes are called by the MCP server (`mcp/server.js`) inside each instance;
-  `/instances/feed` and `/instances/remembered*` by the dashboard.
+  `/instances/feed` and `/instances/remembered*` by the dashboard. `/:id/title` (MCP `rename_me`,
+  title 1–120 chars) shares `applyTitle` with WS `rename`; its service token may reach only its own id.
+- Titles are Claude session names: `-n` at launch, `/rename` typed later (see root `CLAUDE.md`).
 - Windows: Claude is spawned through powershell.exe; children never inherit the parent Claude Code
   session variables (they would switch transcript saving off).
 

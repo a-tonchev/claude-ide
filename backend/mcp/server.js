@@ -129,6 +129,23 @@ const tools = {
     },
   },
 
+  rename_me: {
+    description: 'Rename this instance. Sets its title in the IDE dashboard, which is also its Claude Code session name: the name other Claude sessions see (ListAgents) and use to message it. The session name is the title in lowercase Latin letters, digits and dashes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'The new name, 1-120 characters (e.g. "New Feature Fixer")',
+        },
+      },
+      required: ['name'],
+    },
+    async handler({ name }) {
+      return apiPost(`/instances/${INSTANCE_ID}/title`, { title: name });
+    },
+  },
+
   send_plan: {
     description: 'Save an implementation plan to the dashboard. ALWAYS use this instead of built-in EnterPlanMode/Plan tools. Use before starting any non-trivial task to share your plan with the user. Content must be markdown.',
     inputSchema: {

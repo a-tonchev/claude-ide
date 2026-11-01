@@ -41,6 +41,11 @@ const InstanceRoutes = createBasicRoutes({
       path: '/:id/user-input',
       handler: InstanceController.setUserInput,
     },
+    {
+      method: 'post',
+      path: '/:id/title',
+      handler: InstanceController.setTitle,
+    },
   ],
 });
 
